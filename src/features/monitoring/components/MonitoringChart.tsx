@@ -12,6 +12,7 @@ import {
 import type { MonitoringPoint } from '../api'
 import type {
   MonitoringCurrentValue,
+  MonitoringThresholdDefinition,
   MonitoringTooltipSnapshot,
   MonitoringYAxisDefinition,
 } from '../model'
@@ -32,6 +33,11 @@ type Props = {
   currentSnapshot?: MonitoringTooltipSnapshot
   historyError?: string | null
   loading?: boolean
+}
+
+type ThresholdState = {
+  label: 'Healthy' | 'Watch' | 'High'
+  tone: 'good' | 'warn' | 'bad'
 }
 
 const normalizeTimestamp = (timestamp: number) =>
@@ -107,6 +113,27 @@ const calculateAdaptiveDomain = (
 const thresholdColor = (tone: 'warn' | 'bad') =>
   tone === 'bad' ? '#ff6b6b' : '#f5b84b'
 
+const thresholdStateForValue = (
+  value: number,
+  thresholds?: readonly MonitoringThresholdDefinition[],
+): ThresholdState | null => {
+  if (!Number.isFinite(value) || !thresholds?.length) return null
+
+  const crossedThresholds = thresholds.filter(
+    (threshold) => Number.isFinite(threshold.value) && value >= threshold.value,
+  )
+
+  if (thresholds.every((threshold) => !Number.isFinite(threshold.value))) return null
+  if (crossedThresholds.some((threshold) => threshold.tone === 'bad')) {
+    return { label: 'High', tone: 'bad' }
+  }
+  if (crossedThresholds.some((threshold) => threshold.tone === 'warn')) {
+    return { label: 'Watch', tone: 'warn' }
+  }
+
+  return { label: 'Healthy', tone: 'good' }
+}
+
 export function MonitoringChart({
   points,
   title,
@@ -135,6 +162,9 @@ export function MonitoringChart({
   const liveValue = currentValue?.value
   const hasLiveCurrent = liveValue != null && Number.isFinite(liveValue)
   const headingValue = hasLiveCurrent ? liveValue : latestHistoryValue
+  const currentThresholdState = hasLiveCurrent
+    ? thresholdStateForValue(liveValue, yAxis?.thresholds)
+    : null
   const min = values.length ? Math.min(...values) : undefined
   const max = values.length ? Math.max(...values) : undefined
   const chartAccent = darkAccent(accent)
@@ -172,7 +202,17 @@ export function MonitoringChart({
         </div>
         {headingValue !== undefined && Number.isFinite(headingValue) && (
           <div className="chart-current-value">
-            <span>{hasLiveCurrent ? 'Current' : 'Latest sample'}</span>
+            <div className="chart-current-meta">
+              <span>{hasLiveCurrent ? 'Current' : 'Latest sample'}</span>
+              {currentThresholdState && (
+                <em
+                  className={`chart-threshold-status ${currentThresholdState.tone}`}
+                  aria-label={`${currentThresholdState.label} threshold status`}
+                >
+                  {currentThresholdState.label}
+                </em>
+              )}
+            </div>
             <strong>{valueFormatter(headingValue)}</strong>
             {hasLiveCurrent && currentValue?.context && <small>{currentValue.context}</small>}
           </div>
