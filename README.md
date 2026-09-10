@@ -1,40 +1,80 @@
-# Call operations dashboard
+# Velora Dashboard
 
-The dashboard reads `EXPO_PUBLIC_API_URL` from the root Velora-Mobile `.env` or `.env.local`, matching the mobile app's API gateway URL.
+Standalone operations dashboard for Velora. This repository contains the admin-facing React/Vite application for monitoring system health, Prometheus metrics, alerts, Loki logs, call telemetry, and service health.
 
-The repository root is a pnpm workspace that currently includes only the mobile package, while this dashboard keeps its own lockfile. Run dashboard package commands with `--ignore-workspace` so pnpm uses `apps/call-ops-dashboard/package.json` and its local lockfile instead of installing the mobile workspace.
+This project was extracted from `Velora-Mobile/apps/call-ops-dashboard` with its Git history preserved. It no longer depends on the Velora-Mobile pnpm workspace or Expo environment configuration.
+
+## Requirements
+
+- Node.js 20
+- pnpm 9.15.0
+
+The required pnpm version is pinned in `package.json` through the `packageManager` field.
+
+## Local development
+
+Install dependencies:
 
 ```bash
-cd apps/call-ops-dashboard
-pnpm --ignore-workspace install --frozen-lockfile
-pnpm --ignore-workspace dev
+pnpm install --frozen-lockfile
+```
+
+Create your local environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+Set the Velora API Gateway base URL in `.env.local`:
+
+```env
+VITE_API_URL=https://your-api-gateway.example.com
+```
+
+If the dashboard is served from the same origin as the API Gateway, `VITE_API_URL` may be left empty. Do not commit real environment files or credentials.
+
+Start the development server:
+
+```bash
+pnpm dev
 ```
 
 Production build:
 
 ```bash
-pnpm --ignore-workspace build
+pnpm build
 ```
 
-The authenticated ADMIN dashboard now has two observability layers:
+Preview the production build locally:
 
-- **System observability** — Prometheus-backed health, process RAM/heap/CPU, event-loop p99, RPC throughput, error rate and p95 latency. It refreshes every 15 seconds and can display 1h, 6h or 24h history.
-- **Application telemetry** — existing call setup, media readiness, QoE, failures, recent call legs and per-call timeline.
+```bash
+pnpm preview
+```
 
-The browser never talks to Prometheus directly. System metrics follow this path:
+## Architecture
+
+The browser does not talk directly to Prometheus or Loki. Monitoring traffic goes through the authenticated Velora backend:
 
 ```text
-call-ops-dashboard
+Velora Dashboard
   -> API Gateway /monitoring/*
   -> monitoring-service
-  -> Prometheus
+  -> Prometheus / Loki
 ```
 
-Required backend endpoints:
+The dashboard also uses the API Gateway for ADMIN authentication and call operations telemetry.
+
+Key monitoring endpoints currently include:
 
 ```text
 GET /monitoring/overview
 GET /monitoring/timeseries?metric=...&from=...&to=...&stepSeconds=...
+GET /monitoring/alerts
+GET /monitoring/logs?...filters
 ```
 
-Both endpoints use the same ADMIN session already required by the call operations dashboard. Arbitrary PromQL is not accepted by the browser-facing API.
+The dashboard uses the same ADMIN session cookie flow as the backend. Requests are sent with credentials enabled, and the client attempts `/auth/refresh` once when an authenticated request returns `401`.
+
+## CI
+
+GitHub Actions runs on pushes and pull requests targeting `main`. CI installs the standalone lockfile and runs the TypeScript + Vite production build from the repository root.
