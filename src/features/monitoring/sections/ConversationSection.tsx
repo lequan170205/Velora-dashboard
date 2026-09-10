@@ -70,7 +70,18 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
 ]
 
 export function ConversationSection() {
-  const { overview, history, rangeHours, setRangeHours, error, initialLoading, refreshing, hasData, refreshNow } = useMonitoringView({
+  const {
+    overview,
+    history,
+    historyErrors,
+    rangeHours,
+    setRangeHours,
+    error,
+    initialLoading,
+    refreshing,
+    hasData,
+    refreshNow,
+  } = useMonitoringView({
     series: SERIES,
     errorMessage: 'Unable to load conversation-service metrics',
   })
@@ -245,7 +256,12 @@ export function ConversationSection() {
       <MonitoringError error={error} title="Conversation metrics are temporarily unavailable." hasData={hasData} />
       <HealthSummary tone={reliabilityTone} label="Quick read" title={healthTitle} detail={healthDetail} generatedAt={overview?.generatedAt} refreshing={refreshing} />
       <MetricCardGrid cards={cards} refreshing={refreshing} />
-      <MonitoringCharts series={SERIES} history={history} initialLoading={initialLoading} />
+      <MonitoringCharts
+        series={SERIES}
+        history={history}
+        historyErrors={historyErrors}
+        initialLoading={initialLoading}
+      />
 
       <details className="technical-details">
         <summary>Conversation-service runtime details</summary>

@@ -72,6 +72,7 @@ export function CallServiceSection() {
   const {
     overview,
     history,
+    historyErrors,
     rangeHours,
     setRangeHours,
     error,
@@ -188,7 +189,12 @@ export function CallServiceSection() {
         <p>These metrics describe call-service signaling only. They do not yet measure active calls, Mediasoup workers, transports, producers, consumers, RTP bitrate, packet loss, or media QoE.</p>
       </div>
 
-      <MonitoringCharts series={SERIES} history={history} initialLoading={initialLoading} />
+      <MonitoringCharts
+        series={SERIES}
+        history={history}
+        historyErrors={historyErrors}
+        initialLoading={initialLoading}
+      />
     </section>
   )
 }

@@ -135,7 +135,18 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
 ]
 
 export function MonitoringSection() {
-  const { overview, history, rangeHours, setRangeHours, error, initialLoading, refreshing, hasData, refreshNow } = useMonitoringView({
+  const {
+    overview,
+    history,
+    historyErrors,
+    rangeHours,
+    setRangeHours,
+    error,
+    initialLoading,
+    refreshing,
+    hasData,
+    refreshNow,
+  } = useMonitoringView({
     series: SERIES,
     errorMessage: 'Unable to load monitoring-service data',
   })
@@ -225,7 +236,12 @@ export function MonitoringSection() {
         <p>Every chart here is scoped to monitoring-service. Look for sudden jumps or a trend that keeps rising. Hover over a line to see the exact value and time. Empty traffic charts are normal when no monitoring requests are being made.</p>
       </div>
 
-      <MonitoringCharts series={SERIES} history={history} initialLoading={initialLoading} />
+      <MonitoringCharts
+        series={SERIES}
+        history={history}
+        historyErrors={historyErrors}
+        initialLoading={initialLoading}
+      />
 
       <details className="technical-details">
         <summary>Technical details for monitoring-service</summary>
