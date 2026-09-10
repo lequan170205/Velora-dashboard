@@ -1,3 +1,4 @@
+import type { MonitoringMetric } from '../api'
 import {
   formatBytes,
   formatBytesAxis,
@@ -15,7 +16,11 @@ import {
   MonitoringToolbar,
 } from '../components'
 import { useMonitoringView } from '../hooks/useMonitoringView'
-import type { MetricCardDefinition, MonitoringSeriesDefinition } from '../model'
+import type {
+  MetricCardDefinition,
+  MonitoringCurrentValue,
+  MonitoringSeriesDefinition,
+} from '../model'
 
 const SERIES: readonly MonitoringSeriesDefinition[] = [
   {
@@ -88,6 +93,12 @@ export function CallServiceSection() {
   const call = overview?.call
   const serviceUp = call?.up ?? null
   const eventLoopP99 = call?.eventLoopP99Seconds ?? null
+  const chartCurrentValues: Partial<Record<MonitoringMetric, MonitoringCurrentValue>> = {
+    call_cpu: { value: call?.cpuSecondsPerSecond },
+    call_memory: { value: call?.residentMemoryBytes },
+    call_event_loop_p99: { value: call?.eventLoopP99Seconds },
+    call_sockets: { value: call?.socketConnections },
+  }
 
   const healthTone: Tone = serviceUp === null
     ? 'neutral'
@@ -193,6 +204,7 @@ export function CallServiceSection() {
         series={SERIES}
         history={history}
         historyErrors={historyErrors}
+        currentValues={chartCurrentValues}
         initialLoading={initialLoading}
       />
     </section>

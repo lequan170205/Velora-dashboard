@@ -18,6 +18,7 @@ import {
 import { useMonitoringView } from '../hooks/useMonitoringView'
 import type {
   MetricCardDefinition,
+  MonitoringCurrentValue,
   MonitoringSeriesDefinition,
   MonitoringTooltipSnapshot,
 } from '../model'
@@ -124,6 +125,9 @@ const capacitySnapshot = (
   }
 }
 
+const usedContext = (used: number | null | undefined) =>
+  used != null && Number.isFinite(used) ? `${formatBytes(used)} used` : null
+
 export function ServerSection() {
   const {
     overview,
@@ -145,6 +149,18 @@ export function ServerSection() {
   const hostUp = host?.up ?? null
   const serverHealthy = hostUp === true
   const hostTone: Tone = hostUp === null ? 'neutral' : serverHealthy ? 'good' : 'bad'
+  const chartCurrentValues: Partial<Record<MonitoringMetric, MonitoringCurrentValue>> = {
+    host_cpu: { value: host?.cpuUsageRatio },
+    host_memory: {
+      value: host?.memoryUsageRatio,
+      context: usedContext(host?.memoryUsedBytes),
+    },
+    host_disk: {
+      value: host?.diskUsageRatio,
+      context: usedContext(host?.diskUsedBytes),
+    },
+    host_load1: { value: host?.load1 },
+  }
   const chartSnapshots: Partial<Record<MonitoringMetric, MonitoringTooltipSnapshot>> = {
     host_memory: capacitySnapshot(
       'Current overview snapshot',
@@ -245,6 +261,7 @@ export function ServerSection() {
         series={SERIES}
         history={history}
         historyErrors={historyErrors}
+        currentValues={chartCurrentValues}
         snapshots={chartSnapshots}
         className="server-chart-grid"
         initialLoading={initialLoading}

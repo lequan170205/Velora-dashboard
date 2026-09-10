@@ -34,6 +34,11 @@ export type MonitoringTooltipSnapshot = {
   details: readonly MonitoringTooltipDetail[]
 }
 
+export type MonitoringCurrentValue = {
+  value: number | null | undefined
+  context?: string | null
+}
+
 export type MonitoringSeriesDefinition = {
   metric: MonitoringMetric
   title: string
