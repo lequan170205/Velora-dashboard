@@ -10,7 +10,11 @@ import {
 } from 'recharts'
 
 import type { MonitoringPoint } from '../api'
-import type { MonitoringTooltipSnapshot, MonitoringYAxisDefinition } from '../model'
+import type {
+  MonitoringCurrentValue,
+  MonitoringTooltipSnapshot,
+  MonitoringYAxisDefinition,
+} from '../model'
 
 type Props = {
   points: MonitoringPoint[]
@@ -24,6 +28,7 @@ type Props = {
   emptyTitle: string
   emptyDescription: string
   yAxis?: MonitoringYAxisDefinition
+  currentValue?: MonitoringCurrentValue
   currentSnapshot?: MonitoringTooltipSnapshot
   historyError?: string | null
   loading?: boolean
@@ -114,6 +119,7 @@ export function MonitoringChart({
   emptyTitle,
   emptyDescription,
   yAxis,
+  currentValue,
   currentSnapshot,
   historyError,
   loading = false,
@@ -124,8 +130,11 @@ export function MonitoringChart({
   }))
 
   const values = data.map((point) => point.value)
-  const current = values.at(-1)
+  const latestHistoryValue = values.at(-1)
   const latestTimestamp = data.at(-1)?.timestamp
+  const liveValue = currentValue?.value
+  const hasLiveCurrent = liveValue != null && Number.isFinite(liveValue)
+  const headingValue = hasLiveCurrent ? liveValue : latestHistoryValue
   const min = values.length ? Math.min(...values) : undefined
   const max = values.length ? Math.max(...values) : undefined
   const chartAccent = darkAccent(accent)
@@ -161,10 +170,11 @@ export function MonitoringChart({
           </div>
           <p>{description}</p>
         </div>
-        {current !== undefined && (
+        {headingValue !== undefined && Number.isFinite(headingValue) && (
           <div className="chart-current-value">
-            <span>{hasHistoryError ? 'Last sample' : 'Current'}</span>
-            <strong>{valueFormatter(current)}</strong>
+            <span>{hasLiveCurrent ? 'Current' : 'Latest sample'}</span>
+            <strong>{valueFormatter(headingValue)}</strong>
+            {hasLiveCurrent && currentValue?.context && <small>{currentValue.context}</small>}
           </div>
         )}
       </div>
@@ -274,7 +284,7 @@ export function MonitoringChart({
           </div>
           <div className="chart-range-summary" aria-label={`${title} range summary`}>
             <span><small>Low</small>{min === undefined ? '—' : valueFormatter(min)}</span>
-            <span><small>{hasHistoryError ? 'Last' : 'Current'}</small>{current === undefined ? '—' : valueFormatter(current)}</span>
+            <span><small>{hasHistoryError ? 'Last' : 'Latest'}</small>{latestHistoryValue === undefined ? '—' : valueFormatter(latestHistoryValue)}</span>
             <span><small>High</small>{max === undefined ? '—' : valueFormatter(max)}</span>
           </div>
         </>

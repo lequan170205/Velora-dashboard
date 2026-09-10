@@ -1,4 +1,4 @@
-import type { MonitoringOverview } from '../api'
+import type { MonitoringMetric, MonitoringOverview } from '../api'
 import {
   formatBytes,
   formatBytesAxis,
@@ -16,7 +16,11 @@ import {
   MonitoringToolbar,
 } from '../components'
 import { useMonitoringView } from '../hooks/useMonitoringView'
-import type { MetricCardDefinition, MonitoringSeriesDefinition } from '../model'
+import type {
+  MetricCardDefinition,
+  MonitoringCurrentValue,
+  MonitoringSeriesDefinition,
+} from '../model'
 
 const formatSuccessRate = (errorRate: number) =>
   Number.isFinite(errorRate) ? `${((1 - errorRate) * 100).toFixed(2)}%` : '—'
@@ -157,6 +161,12 @@ export function MonitoringSection() {
   const responsivenessState = responsivenessBadge(overview?.process.eventLoopP99Seconds ?? Number.NaN)
   const serviceUp = overview?.service.up ?? null
   const requestRate = overview?.rpc.requestsPerSecond ?? null
+  const chartCurrentValues: Partial<Record<MonitoringMetric, MonitoringCurrentValue>> = {
+    memory: { value: overview?.process.residentMemoryBytes },
+    cpu: { value: overview?.process.cpuSecondsPerSecond },
+    rpc_rate: { value: overview?.rpc.requestsPerSecond },
+    p95_rpc_latency: { value: overview?.rpc.p95LatencySeconds },
+  }
 
   const cards: readonly MetricCardDefinition[] = [
     {
@@ -240,6 +250,7 @@ export function MonitoringSection() {
         series={SERIES}
         history={history}
         historyErrors={historyErrors}
+        currentValues={chartCurrentValues}
         initialLoading={initialLoading}
       />
 

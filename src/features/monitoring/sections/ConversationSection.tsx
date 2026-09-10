@@ -1,3 +1,4 @@
+import type { MonitoringMetric } from '../api'
 import {
   formatBytes,
   formatCount,
@@ -16,7 +17,11 @@ import {
   MonitoringToolbar,
 } from '../components'
 import { useMonitoringView } from '../hooks/useMonitoringView'
-import type { MetricCardDefinition, MonitoringSeriesDefinition } from '../model'
+import type {
+  MetricCardDefinition,
+  MonitoringCurrentValue,
+  MonitoringSeriesDefinition,
+} from '../model'
 
 const SERIES: readonly MonitoringSeriesDefinition[] = [
   {
@@ -97,6 +102,12 @@ export function ConversationSection() {
   const measuredFailureRate = errorRate === null
     ? null
     : errorRate + (rejectRate ?? 0)
+  const chartCurrentValues: Partial<Record<MonitoringMetric, MonitoringCurrentValue>> = {
+    conversation_message_rate: { value: conversation?.messagesPerSecond },
+    conversation_send_rate: { value: conversation?.sendRequestsPerSecond },
+    conversation_p95_send_latency: { value: conversation?.p95SendLatencySeconds },
+    conversation_sockets: { value: conversation?.socketConnections },
+  }
 
   const reliabilityTone: Tone = serviceUp !== true
     ? serviceUp === false ? 'bad' : 'neutral'
@@ -260,6 +271,7 @@ export function ConversationSection() {
         series={SERIES}
         history={history}
         historyErrors={historyErrors}
+        currentValues={chartCurrentValues}
         initialLoading={initialLoading}
       />
 

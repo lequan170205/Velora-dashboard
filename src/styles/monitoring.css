@@ -52,6 +52,7 @@
 .chart-current-value { flex-shrink: 0; text-align: right; }
 .chart-current-value span { display: block; color: #5f6d81; font-size: .58rem; font-weight: 750; text-transform: uppercase; }
 .chart-current-value strong { display: block; margin-top: 3px; color: #eef2f7; font-size: .85rem; }
+.chart-current-value small { display: block; margin-top: 3px; color: #77859a; font-size: .62rem; font-weight: 650; white-space: nowrap; }
 .metric-chart-canvas { width: 100%; height: 230px; margin-top: 5px; }
 .monitoring-chart-tooltip { min-width: 210px; max-width: 280px; padding: 10px 11px; border: 1px solid #2a3545; border-radius: 10px; background: #111823; color: #f4f7fb; box-shadow: 0 14px 34px rgba(0, 0, 0, .32); font-size: .72rem; }
 .monitoring-chart-tooltip-time { display: block; margin-bottom: 7px; color: #8d9aaf; font-size: .65rem; }
