@@ -34,6 +34,7 @@ export function App() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
+  const [loginPending, setLoginPending] = useState(false)
   const calls = useCallTelemetry(authenticated)
   const [now, setNow] = useState(Date.now())
   const heartbeat = useMonitoringHeartbeat(authenticated)
@@ -85,31 +86,40 @@ export function App() {
 
   const login = async (event: FormEvent) => {
     event.preventDefault()
+    if (loginPending) return
+
     setLoginError(null)
+    setLoginPending(true)
 
-    const response = await fetchApi('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
-    if (!response.ok) {
-      setLoginError('Sign-in failed')
-      return
+    try {
+      const response = await fetchApi('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      if (!response.ok) {
+        setLoginError('Sign-in failed')
+        return
+      }
+
+      const profile = await fetchApi('/auth/me')
+      if (!profile.ok) {
+        setLoginError('Unable to verify the dashboard session')
+        return
+      }
+
+      const user = (await profile.json()) as { roles?: string[] }
+      if (!user.roles?.includes('ADMIN')) {
+        setLoginError('This account is not an administrator')
+        return
+      }
+
+      setAuthenticated(true)
+    } catch {
+      setLoginError('Unable to reach the Velora API. Please try again.')
+    } finally {
+      setLoginPending(false)
     }
-
-    const profile = await fetchApi('/auth/me')
-    if (!profile.ok) {
-      setLoginError('Unable to verify the dashboard session')
-      return
-    }
-
-    const user = (await profile.json()) as { roles?: string[] }
-    if (!user.roles?.includes('ADMIN')) {
-      setLoginError('This account is not an administrator')
-      return
-    }
-
-    setAuthenticated(true)
   }
 
   const logout = async () => {
@@ -141,6 +151,7 @@ export function App() {
         email={email}
         password={password}
         error={loginError}
+        loading={loginPending}
         onEmailChange={setEmail}
         onPasswordChange={setPassword}
         onSubmit={login}

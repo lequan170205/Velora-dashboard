@@ -15,6 +15,16 @@
 .login-heading p { margin: 0; color: var(--muted); font-size: .86rem; }
 .login-card label { display: grid; gap: 7px; margin-bottom: 14px; }
 .login-card input { min-height: 44px; }
-.login-button { width: 100%; min-height: 44px; margin-top: 4px; }
+.login-card input:disabled { cursor: not-allowed; opacity: .68; }
+.login-button { display: inline-flex; width: 100%; min-height: 44px; margin-top: 4px; align-items: center; justify-content: center; gap: 8px; }
+.login-button:disabled { cursor: wait; opacity: .82; }
+.login-button:disabled:hover { background: #7382f7; transform: none; }
+.login-spinner { width: 15px; height: 15px; flex: 0 0 15px; border: 2px solid rgba(255, 255, 255, .35); border-top-color: #fff; border-radius: 50%; animation: login-spin .7s linear infinite; }
 .error, .login-error { color: #ff8b96; }
 .login-error { margin: 14px 0 0; font-size: .8rem; font-weight: 700; }
+
+@keyframes login-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .login-spinner { animation-duration: 1.4s; }
+}

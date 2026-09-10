@@ -105,6 +105,7 @@ type LoginProps = {
   email: string
   password: string
   error: string | null
+  loading: boolean
   onEmailChange: (value: string) => void
   onPasswordChange: (value: string) => void
   onSubmit: (event: FormEvent) => void
@@ -114,6 +115,7 @@ export function LoginScreen({
   email,
   password,
   error,
+  loading,
   onEmailChange,
   onPasswordChange,
   onSubmit,
@@ -142,7 +144,7 @@ export function LoginScreen({
       </section>
 
       <section className="login-form-panel">
-        <form className="login-card" onSubmit={onSubmit}>
+        <form className="login-card" onSubmit={onSubmit} aria-busy={loading}>
           <div className="login-heading">
             <span>Admin sign in</span>
             <h2>Welcome back</h2>
@@ -156,6 +158,7 @@ export function LoginScreen({
               onChange={(event) => onEmailChange(event.target.value)}
               placeholder="admin@velora.app"
               autoComplete="email"
+              disabled={loading}
               required
             />
           </label>
@@ -167,11 +170,19 @@ export function LoginScreen({
               onChange={(event) => onPasswordChange(event.target.value)}
               placeholder="Enter your password"
               autoComplete="current-password"
+              disabled={loading}
               required
             />
           </label>
-          <button className="primary-button login-button" type="submit">
-            Sign in to dashboard
+          <button className="primary-button login-button" type="submit" disabled={loading}>
+            {loading ? (
+              <>
+                <span className="login-spinner" aria-hidden="true" />
+                <span>Signing in…</span>
+              </>
+            ) : (
+              'Sign in to dashboard'
+            )}
           </button>
           {error && <p className="error login-error">{error}</p>}
         </form>
