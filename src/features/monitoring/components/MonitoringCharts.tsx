@@ -1,10 +1,11 @@
 import type { MonitoringMetric, MonitoringPoint } from '../api'
-import type { MonitoringSeriesDefinition } from '../model'
+import type { MonitoringSeriesDefinition, MonitoringTooltipSnapshot } from '../model'
 import { MonitoringChart } from './MonitoringChart'
 
 type MonitoringChartsProps = {
   series: readonly MonitoringSeriesDefinition[]
   history: Partial<Record<MonitoringMetric, MonitoringPoint[]>>
+  snapshots?: Partial<Record<MonitoringMetric, MonitoringTooltipSnapshot>>
   className?: string
   initialLoading?: boolean
 }
@@ -12,6 +13,7 @@ type MonitoringChartsProps = {
 export function MonitoringCharts({
   series,
   history,
+  snapshots,
   className = '',
   initialLoading = false,
 }: MonitoringChartsProps) {
@@ -31,6 +33,7 @@ export function MonitoringCharts({
           emptyTitle={item.emptyTitle}
           emptyDescription={item.emptyDescription}
           yAxis={item.yAxis}
+          currentSnapshot={snapshots?.[item.metric]}
           loading={initialLoading}
         />
       ))}

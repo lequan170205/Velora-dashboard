@@ -24,6 +24,16 @@ export type MonitoringYAxisDefinition = {
   thresholds?: readonly MonitoringThresholdDefinition[]
 }
 
+export type MonitoringTooltipDetail = {
+  label: string
+  value: string
+}
+
+export type MonitoringTooltipSnapshot = {
+  title: string
+  details: readonly MonitoringTooltipDetail[]
+}
+
 export type MonitoringSeriesDefinition = {
   metric: MonitoringMetric
   title: string
