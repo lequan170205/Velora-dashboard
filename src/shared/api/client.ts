@@ -1,4 +1,4 @@
-const apiBaseUrl = import.meta.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '') ?? ''
+const apiBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? ''
 
 const fetchWithCredentials = (path: string, options?: RequestInit) =>
   fetch(`${apiBaseUrl}${path}`, {
