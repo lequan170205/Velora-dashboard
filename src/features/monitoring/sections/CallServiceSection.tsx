@@ -83,6 +83,7 @@ export function CallServiceSection() {
     error,
     initialLoading,
     refreshing,
+    historyRefreshing,
     hasData,
     refreshNow,
   } = useMonitoringView({
@@ -206,6 +207,7 @@ export function CallServiceSection() {
         historyErrors={historyErrors}
         currentValues={chartCurrentValues}
         initialLoading={initialLoading}
+        historyRefreshing={historyRefreshing}
       />
     </section>
   )

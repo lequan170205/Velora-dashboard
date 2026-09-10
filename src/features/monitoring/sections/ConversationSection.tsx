@@ -35,6 +35,7 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
     fill: 'rgba(69, 201, 184, .10)',
     emptyTitle: 'No message throughput yet',
     emptyDescription: 'Send a few messages and Prometheus will begin building this history.',
+    emptyStateKind: 'no-traffic',
   },
   {
     metric: 'conversation_send_rate',
@@ -47,6 +48,7 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
     fill: 'rgba(127, 141, 255, .12)',
     emptyTitle: 'No validated send traffic yet',
     emptyDescription: 'This chart appears after validated sends reach the persistence use case.',
+    emptyStateKind: 'no-traffic',
   },
   {
     metric: 'conversation_p95_send_latency',
@@ -59,6 +61,7 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
     fill: 'rgba(245, 154, 98, .10)',
     emptyTitle: 'No persistence latency samples yet',
     emptyDescription: 'Latency history requires validated send traffic.',
+    emptyStateKind: 'no-traffic',
   },
   {
     metric: 'conversation_sockets',
@@ -84,6 +87,7 @@ export function ConversationSection() {
     error,
     initialLoading,
     refreshing,
+    historyRefreshing,
     hasData,
     refreshNow,
   } = useMonitoringView({
@@ -273,6 +277,7 @@ export function ConversationSection() {
         historyErrors={historyErrors}
         currentValues={chartCurrentValues}
         initialLoading={initialLoading}
+        historyRefreshing={historyRefreshing}
       />
 
       <details className="technical-details">

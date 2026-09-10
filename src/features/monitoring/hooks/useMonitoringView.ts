@@ -28,6 +28,7 @@ export function useMonitoringView({ series, errorMessage }: UseMonitoringViewInp
   const [historyErrors, setHistoryErrors] = useState<Partial<Record<MonitoringMetric, string>>>({})
   const [rangeHours, setRangeHours] = useState<RangeHours>(1)
   const [pending, setPending] = useState(true)
+  const [historyPending, setHistoryPending] = useState(true)
   const [overviewError, setOverviewError] = useState<string | null>(null)
   const requestIdRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -45,6 +46,7 @@ export function useMonitoringView({ series, errorMessage }: UseMonitoringViewInp
       abortControllerRef.current = controller
       const requestId = ++requestIdRef.current
       setPending(true)
+      setHistoryPending(mode === 'all')
 
       try {
         if (mode === 'overview') {
@@ -108,6 +110,7 @@ export function useMonitoringView({ series, errorMessage }: UseMonitoringViewInp
       } finally {
         if (requestId === requestIdRef.current) {
           setPending(false)
+          setHistoryPending(false)
           if (abortControllerRef.current === controller) abortControllerRef.current = null
         }
       }
@@ -147,6 +150,7 @@ export function useMonitoringView({ series, errorMessage }: UseMonitoringViewInp
     error: overviewError,
     initialLoading: pending && overview === null,
     refreshing: pending && overview !== null,
+    historyRefreshing: historyPending,
     hasData: overview !== null,
     refreshNow: () => refresh('all'),
   }

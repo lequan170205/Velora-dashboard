@@ -16,6 +16,7 @@ import {
 } from '../fresshness'
 import type {
   MonitoringCurrentValue,
+  MonitoringEmptyStateKind,
   MonitoringThresholdDefinition,
   MonitoringTooltipSnapshot,
   MonitoringYAxisDefinition,
@@ -32,6 +33,7 @@ type Props = {
   fill: string
   emptyTitle: string
   emptyDescription: string
+  emptyStateKind?: MonitoringEmptyStateKind
   yAxis?: MonitoringYAxisDefinition
   currentValue?: MonitoringCurrentValue
   currentSnapshot?: MonitoringTooltipSnapshot
@@ -43,6 +45,14 @@ type Props = {
 type ThresholdState = {
   label: 'Healthy' | 'Watch' | 'High'
   tone: 'good' | 'warn' | 'bad'
+}
+
+type ChartEmptyState = {
+  kind: 'loading' | 'error' | MonitoringEmptyStateKind
+  label: 'Loading' | 'Failed to load' | 'No data yet' | 'No traffic data'
+  mark: '…' | '!' | '—' | '0'
+  title: string
+  description: string
 }
 
 const normalizeTimestamp = (timestamp: number) =>
@@ -168,6 +178,7 @@ export function MonitoringChart({
   fill,
   emptyTitle,
   emptyDescription,
+  emptyStateKind = 'no-data',
   yAxis,
   currentValue,
   currentSnapshot,
@@ -214,17 +225,37 @@ export function MonitoringChart({
     !yDomain || (threshold.value >= yDomain[0] && threshold.value <= yDomain[1]),
   ) ?? []
 
-  const emptyStateTitle = loading
-    ? 'Loading history…'
+  const emptyState: ChartEmptyState = loading
+    ? {
+        kind: 'loading',
+        label: 'Loading',
+        mark: '…',
+        title: 'Loading history…',
+        description: 'Fetching Prometheus samples for the selected range.',
+      }
     : hasHistoryError
-      ? 'History temporarily unavailable'
-      : emptyTitle
-
-  const emptyStateDescription = loading
-    ? 'Waiting for Prometheus samples.'
-    : hasHistoryError
-      ? `${historyError} Other charts can continue updating.`
-      : emptyDescription
+      ? {
+          kind: 'error',
+          label: 'Failed to load',
+          mark: '!',
+          title: 'History temporarily unavailable',
+          description: `${historyError} Other charts can continue updating.`,
+        }
+      : emptyStateKind === 'no-traffic'
+        ? {
+            kind: 'no-traffic',
+            label: 'No traffic data',
+            mark: '0',
+            title: emptyTitle,
+            description: emptyDescription,
+          }
+        : {
+            kind: 'no-data',
+            label: 'No data yet',
+            mark: '—',
+            title: emptyTitle,
+            description: emptyDescription,
+          }
 
   const freshnessLabel = historyFreshness === 'stale'
     ? `Stale · ${historyAge}`
@@ -281,10 +312,14 @@ export function MonitoringChart({
       </div>
 
       {data.length === 0 ? (
-        <div className={`chart-empty-state${hasHistoryError && !loading ? ' error' : ''}`}>
-          <div className="chart-empty-mark" aria-hidden="true">{hasHistoryError && !loading ? '!' : '—'}</div>
-          <strong>{emptyStateTitle}</strong>
-          <p>{emptyStateDescription}</p>
+        <div
+          className={`chart-empty-state ${emptyState.kind}`}
+          role={emptyState.kind === 'error' ? 'alert' : 'status'}
+        >
+          <div className="chart-empty-mark" aria-hidden="true">{emptyState.mark}</div>
+          <span className="chart-empty-label">{emptyState.label}</span>
+          <strong>{emptyState.title}</strong>
+          <p>{emptyState.description}</p>
         </div>
       ) : (
         <>

@@ -138,6 +138,7 @@ export function ServerSection() {
     error,
     initialLoading,
     refreshing,
+    historyRefreshing,
     hasData,
     refreshNow,
   } = useMonitoringView({
@@ -265,6 +266,7 @@ export function ServerSection() {
         snapshots={chartSnapshots}
         className="server-chart-grid"
         initialLoading={initialLoading}
+        historyRefreshing={historyRefreshing}
       />
     </section>
   )

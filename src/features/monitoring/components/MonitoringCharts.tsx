@@ -14,6 +14,7 @@ type MonitoringChartsProps = {
   snapshots?: Partial<Record<MonitoringMetric, MonitoringTooltipSnapshot>>
   className?: string
   initialLoading?: boolean
+  historyRefreshing?: boolean
 }
 
 export function MonitoringCharts({
@@ -24,6 +25,7 @@ export function MonitoringCharts({
   snapshots,
   className = '',
   initialLoading = false,
+  historyRefreshing = false,
 }: MonitoringChartsProps) {
   const now = Date.now()
 
@@ -42,12 +44,13 @@ export function MonitoringCharts({
           fill={item.fill}
           emptyTitle={item.emptyTitle}
           emptyDescription={item.emptyDescription}
+          emptyStateKind={item.emptyStateKind}
           yAxis={item.yAxis}
           currentValue={currentValues?.[item.metric]}
           currentSnapshot={snapshots?.[item.metric]}
           historyError={historyErrors?.[item.metric] ?? null}
           now={now}
-          loading={initialLoading}
+          loading={initialLoading || historyRefreshing}
         />
       ))}
     </div>
