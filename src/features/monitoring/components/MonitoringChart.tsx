@@ -183,7 +183,10 @@ export function MonitoringChart({
   const timestamps = data.map((point) => point.timestamp)
   const values = data.map((point) => point.value)
   const latestHistoryValue = values.at(-1)
-  const latestTimestamp = timestamps.at(-1)
+  const latestTimestampCandidate = timestamps.at(-1)
+  const latestTimestamp = latestTimestampCandidate !== undefined && Number.isFinite(latestTimestampCandidate)
+    ? latestTimestampCandidate
+    : undefined
   const sampleStepMs = inferSampleStepMs(timestamps)
   const hasHistoryError = Boolean(historyError)
   const historyFreshness = latestTimestamp === undefined
@@ -338,7 +341,7 @@ export function MonitoringChart({
 
                     const showCurrentSnapshot = Boolean(
                       currentSnapshot &&
-                      !hasStaleHistory &&
+                      historyFreshness === 'fresh' &&
                       latestTimestamp !== undefined &&
                       hoveredTimestamp === latestTimestamp,
                     )
