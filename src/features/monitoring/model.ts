@@ -39,6 +39,8 @@ export type MonitoringCurrentValue = {
   context?: string | null
 }
 
+export type MonitoringEmptyStateKind = 'no-data' | 'no-traffic'
+
 export type MonitoringSeriesDefinition = {
   metric: MonitoringMetric
   title: string
@@ -50,6 +52,7 @@ export type MonitoringSeriesDefinition = {
   fill: string
   emptyTitle: string
   emptyDescription: string
+  emptyStateKind?: MonitoringEmptyStateKind
   yAxis?: MonitoringYAxisDefinition
 }
 

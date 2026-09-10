@@ -123,6 +123,7 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
     fill: '#ccfbf1',
     emptyTitle: 'No monitoring traffic yet',
     emptyDescription: 'This chart starts filling when the dashboard or another service calls the monitoring APIs.',
+    emptyStateKind: 'no-traffic',
   },
   {
     metric: 'p95_rpc_latency',
@@ -135,6 +136,7 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
     fill: '#ffedd5',
     emptyTitle: 'No response-time samples yet',
     emptyDescription: 'There is no request history to measure yet. This is expected when traffic is zero.',
+    emptyStateKind: 'no-traffic',
   },
 ]
 
@@ -148,6 +150,7 @@ export function MonitoringSection() {
     error,
     initialLoading,
     refreshing,
+    historyRefreshing,
     hasData,
     refreshNow,
   } = useMonitoringView({
@@ -252,6 +255,7 @@ export function MonitoringSection() {
         historyErrors={historyErrors}
         currentValues={chartCurrentValues}
         initialLoading={initialLoading}
+        historyRefreshing={historyRefreshing}
       />
 
       <details className="technical-details">
