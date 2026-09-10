@@ -75,6 +75,25 @@ GET /monitoring/logs?...filters
 
 The dashboard uses the same ADMIN session cookie flow as the backend. Requests are sent with credentials enabled, and the client attempts `/auth/refresh` once when an authenticated request returns `401`.
 
+## Production origin and cookie configuration
+
+The API Gateway must allow the deployed dashboard origin because authenticated requests use cookies with CORS credentials.
+
+Add the dashboard URL to the backend `CALL_OPS_DASHBOARD_ORIGINS` setting, for example:
+
+```env
+CALL_OPS_DASHBOARD_ORIGINS=https://dashboard.example.com
+```
+
+The gateway already supports multiple comma-separated origins. Local development on `http://localhost:5173` is allowed by the backend outside production.
+
+Cookie `SameSite` requirements depend on how the dashboard and API are deployed:
+
+- If they are same-site (for example, subdomains under the same registrable domain), the backend default may be sufficient.
+- If they are truly cross-site, configure `AUTH_COOKIE_SAME_SITE=none` and serve both sides over HTTPS. Browsers require `Secure` cookies when `SameSite=None` is used.
+
+Do not use a wildcard CORS origin with credentialed requests.
+
 ## CI
 
 GitHub Actions runs on pushes and pull requests targeting `main`. CI installs the standalone lockfile and runs the TypeScript + Vite production build from the repository root.
