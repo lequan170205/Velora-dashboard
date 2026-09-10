@@ -25,6 +25,8 @@ export function MonitoringCharts({
   className = '',
   initialLoading = false,
 }: MonitoringChartsProps) {
+  const now = Date.now()
+
   return (
     <div className={`monitoring-grid ${className}`.trim()}>
       {series.map((item) => (
@@ -44,6 +46,7 @@ export function MonitoringCharts({
           currentValue={currentValues?.[item.metric]}
           currentSnapshot={snapshots?.[item.metric]}
           historyError={historyErrors?.[item.metric] ?? null}
+          now={now}
           loading={initialLoading}
         />
       ))}

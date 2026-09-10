@@ -7,10 +7,10 @@ import {
   type MonitoringOverview,
   type MonitoringPoint,
 } from '../api'
+import { HISTORY_REFRESH_INTERVAL_MS } from '../fresshness'
 import { RANGE_OPTIONS, type MonitoringSeriesDefinition, type RangeHours } from '../model'
 
 const OVERVIEW_REFRESH_INTERVAL_MS = 15_000
-const HISTORY_REFRESH_INTERVAL_MS = 60_000
 
 type RefreshMode = 'overview' | 'all'
 
