@@ -49,6 +49,10 @@
 .monitoring-chart-heading h3 { margin: 0; color: #e9edf3; font-size: .9rem; }
 .monitoring-chart-heading p { max-width: 470px; margin: 5px 0 0; color: #6d7a8f; font-size: .68rem; line-height: 1.45; }
 .chart-history-badge { padding: 3px 6px; border: 1px solid #58431d; border-radius: 999px; background: #241b0e; color: #efbd5d; font-size: .55rem; font-weight: 820; letter-spacing: .02em; white-space: nowrap; }
+.chart-history-freshness { display: block; margin-top: 5px; color: #66758b; font-size: .58rem; font-weight: 680; }
+.chart-history-freshness.fresh { color: #728197; }
+.chart-history-freshness.stale { color: #d3a74f; }
+.chart-history-freshness.unknown { color: #5f6d81; }
 .chart-current-value { flex-shrink: 0; text-align: right; }
 .chart-current-meta { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .chart-current-value span { display: block; color: #5f6d81; font-size: .58rem; font-weight: 750; text-transform: uppercase; }

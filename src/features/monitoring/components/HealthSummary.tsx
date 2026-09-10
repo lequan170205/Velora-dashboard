@@ -1,3 +1,4 @@
+import { formatMonitoringAge } from '../fresshness'
 import type { Tone } from '../formatters'
 
 type HealthSummaryProps = {
@@ -18,6 +19,11 @@ export function HealthSummary({
   refreshing = false,
 }: HealthSummaryProps) {
   const icon = tone === 'good' ? '✓' : tone === 'warn' || tone === 'bad' ? '!' : '…'
+  const generatedAtTimestamp = generatedAt ? new Date(generatedAt).getTime() : Number.NaN
+  const hasGeneratedAt = Number.isFinite(generatedAtTimestamp)
+  const generatedAtLabel = hasGeneratedAt
+    ? formatMonitoringAge(Date.now(), generatedAtTimestamp)
+    : 'Waiting'
 
   return (
     <div className={`health-summary ${tone}`}>
@@ -28,8 +34,12 @@ export function HealthSummary({
         <p>{detail}</p>
       </div>
       <div className="health-summary-time">
-        <span>{refreshing ? 'Refreshing' : 'Last checked'}</span>
-        <strong>{refreshing ? 'Updating…' : generatedAt ? new Date(generatedAt).toLocaleTimeString() : 'Waiting'}</strong>
+        <span>{refreshing ? 'Refreshing' : 'Overview updated'}</span>
+        <strong
+          title={hasGeneratedAt ? new Date(generatedAtTimestamp).toLocaleString() : undefined}
+        >
+          {refreshing ? 'Updating…' : generatedAtLabel}
+        </strong>
       </div>
     </div>
   )

@@ -10,6 +10,10 @@ import {
 } from 'recharts'
 
 import type { MonitoringPoint } from '../api'
+import {
+  formatMonitoringAge,
+  getMonitoringHistoryFreshnessState,
+} from '../fresshness'
 import type {
   MonitoringCurrentValue,
   MonitoringThresholdDefinition,
@@ -32,6 +36,7 @@ type Props = {
   currentValue?: MonitoringCurrentValue
   currentSnapshot?: MonitoringTooltipSnapshot
   historyError?: string | null
+  now: number
   loading?: boolean
 }
 
@@ -45,6 +50,24 @@ const normalizeTimestamp = (timestamp: number) =>
 
 const formatTime = (timestamp: number) =>
   new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+const inferSampleStepMs = (timestamps: number[]): number | null => {
+  const recent = timestamps.slice(-6)
+  const intervals: number[] = []
+
+  for (let index = 1; index < recent.length; index += 1) {
+    const interval = recent[index] - recent[index - 1]
+    if (Number.isFinite(interval) && interval > 0) intervals.push(interval)
+  }
+
+  if (intervals.length === 0) return null
+
+  intervals.sort((a, b) => a - b)
+  const middle = Math.floor(intervals.length / 2)
+  return intervals.length % 2 === 0
+    ? (intervals[middle - 1] + intervals[middle]) / 2
+    : intervals[middle]
+}
 
 const darkAccent = (accent: string) =>
   ({
@@ -149,6 +172,7 @@ export function MonitoringChart({
   currentValue,
   currentSnapshot,
   historyError,
+  now,
   loading = false,
 }: Props) {
   const data = points.map((point) => ({
@@ -156,9 +180,25 @@ export function MonitoringChart({
     value: point.value,
   }))
 
+  const timestamps = data.map((point) => point.timestamp)
   const values = data.map((point) => point.value)
   const latestHistoryValue = values.at(-1)
-  const latestTimestamp = data.at(-1)?.timestamp
+  const latestTimestampCandidate = timestamps.at(-1)
+  const latestTimestamp = latestTimestampCandidate !== undefined && Number.isFinite(latestTimestampCandidate)
+    ? latestTimestampCandidate
+    : undefined
+  const sampleStepMs = inferSampleStepMs(timestamps)
+  const hasHistoryError = Boolean(historyError)
+  const historyFreshness = latestTimestamp === undefined
+    ? null
+    : getMonitoringHistoryFreshnessState({
+        now,
+        lastSampleAt: latestTimestamp,
+        sampleStepMs,
+        hasError: hasHistoryError,
+      })
+  const hasStaleHistory = hasHistoryError || historyFreshness === 'stale'
+  const historyAge = latestTimestamp === undefined ? null : formatMonitoringAge(now, latestTimestamp)
   const liveValue = currentValue?.value
   const hasLiveCurrent = liveValue != null && Number.isFinite(liveValue)
   const headingValue = hasLiveCurrent ? liveValue : latestHistoryValue
@@ -170,7 +210,6 @@ export function MonitoringChart({
   const chartAccent = darkAccent(accent)
   const areaFill = fill === 'transparent' ? fill : `${chartAccent}18`
   const yDomain = calculateAdaptiveDomain(values, yAxis)
-  const hasHistoryError = Boolean(historyError)
   const visibleThresholds = yAxis?.thresholds?.filter((threshold) =>
     !yDomain || (threshold.value >= yDomain[0] && threshold.value <= yDomain[1]),
   ) ?? []
@@ -187,6 +226,14 @@ export function MonitoringChart({
       ? `${historyError} Other charts can continue updating.`
       : emptyDescription
 
+  const freshnessLabel = historyFreshness === 'stale'
+    ? `Stale · ${historyAge}`
+    : historyFreshness === 'fresh'
+      ? `Updated ${historyAge}`
+      : historyFreshness === 'unknown' && historyAge
+        ? `Last sample ${historyAge}`
+        : null
+
   return (
     <article className="monitoring-chart-card">
       <div className="monitoring-chart-heading">
@@ -194,11 +241,25 @@ export function MonitoringChart({
           <span className="chart-question">{question}</span>
           <div className="monitoring-chart-title-row">
             <h3>{title}</h3>
-            {hasHistoryError && data.length > 0 && (
-              <span className="chart-history-badge" title={historyError ?? undefined}>Stale history</span>
+            {hasStaleHistory && data.length > 0 && (
+              <span
+                className="chart-history-badge"
+                title={historyError ?? 'The last history sample is older than expected for this series.'}
+              >
+                Stale history
+              </span>
             )}
           </div>
           <p>{description}</p>
+          {freshnessLabel && latestTimestamp !== undefined && (
+            <time
+              className={`chart-history-freshness ${historyFreshness}`}
+              dateTime={new Date(latestTimestamp).toISOString()}
+              title={`Last history sample: ${new Date(latestTimestamp).toLocaleString()}`}
+            >
+              {freshnessLabel}
+            </time>
+          )}
         </div>
         {headingValue !== undefined && Number.isFinite(headingValue) && (
           <div className="chart-current-value">
@@ -280,7 +341,7 @@ export function MonitoringChart({
 
                     const showCurrentSnapshot = Boolean(
                       currentSnapshot &&
-                      !hasHistoryError &&
+                      historyFreshness === 'fresh' &&
                       latestTimestamp !== undefined &&
                       hoveredTimestamp === latestTimestamp,
                     )
@@ -324,7 +385,7 @@ export function MonitoringChart({
           </div>
           <div className="chart-range-summary" aria-label={`${title} range summary`}>
             <span><small>Low</small>{min === undefined ? '—' : valueFormatter(min)}</span>
-            <span><small>{hasHistoryError ? 'Last' : 'Latest'}</small>{latestHistoryValue === undefined ? '—' : valueFormatter(latestHistoryValue)}</span>
+            <span><small>{hasStaleHistory ? 'Last' : 'Latest'}</small>{latestHistoryValue === undefined ? '—' : valueFormatter(latestHistoryValue)}</span>
             <span><small>High</small>{max === undefined ? '—' : valueFormatter(max)}</span>
           </div>
         </>
