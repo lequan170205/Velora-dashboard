@@ -119,23 +119,19 @@ const thresholdStateForValue = (
 ): ThresholdState | null => {
   if (!Number.isFinite(value) || !thresholds?.length) return null
 
-  const orderedThresholds = thresholds
-    .filter((threshold) => Number.isFinite(threshold.value))
-    .slice()
-    .sort((a, b) => a.value - b.value)
+  const crossedThresholds = thresholds.filter(
+    (threshold) => Number.isFinite(threshold.value) && value >= threshold.value,
+  )
 
-  if (orderedThresholds.length === 0) return null
-
-  let state: ThresholdState = { label: 'Healthy', tone: 'good' }
-
-  for (const threshold of orderedThresholds) {
-    if (value < threshold.value) break
-    state = threshold.tone === 'bad'
-      ? { label: 'High', tone: 'bad' }
-      : { label: 'Watch', tone: 'warn' }
+  if (thresholds.every((threshold) => !Number.isFinite(threshold.value))) return null
+  if (crossedThresholds.some((threshold) => threshold.tone === 'bad')) {
+    return { label: 'High', tone: 'bad' }
+  }
+  if (crossedThresholds.some((threshold) => threshold.tone === 'warn')) {
+    return { label: 'Watch', tone: 'warn' }
   }
 
-  return state
+  return { label: 'Healthy', tone: 'good' }
 }
 
 export function MonitoringChart({
