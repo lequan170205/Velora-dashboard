@@ -10,7 +10,7 @@ import {
 } from 'recharts'
 
 import type { MonitoringPoint } from '../api'
-import type { MonitoringYAxisDefinition } from '../model'
+import type { MonitoringTooltipSnapshot, MonitoringYAxisDefinition } from '../model'
 
 type Props = {
   points: MonitoringPoint[]
@@ -24,6 +24,7 @@ type Props = {
   emptyTitle: string
   emptyDescription: string
   yAxis?: MonitoringYAxisDefinition
+  currentSnapshot?: MonitoringTooltipSnapshot
   loading?: boolean
 }
 
@@ -112,6 +113,7 @@ export function MonitoringChart({
   emptyTitle,
   emptyDescription,
   yAxis,
+  currentSnapshot,
   loading = false,
 }: Props) {
   const data = points.map((point) => ({
@@ -121,6 +123,7 @@ export function MonitoringChart({
 
   const values = data.map((point) => point.value)
   const current = values.at(-1)
+  const latestTimestamp = data.at(-1)?.timestamp
   const min = values.length ? Math.min(...values) : undefined
   const max = values.length ? Math.max(...values) : undefined
   const chartAccent = darkAccent(accent)
@@ -198,18 +201,42 @@ export function MonitoringChart({
                 <Tooltip
                   isAnimationActive={false}
                   cursor={{ stroke: '#526176', strokeDasharray: '4 4' }}
-                  contentStyle={{
-                    border: '1px solid #2a3545',
-                    borderRadius: 10,
-                    background: '#111823',
-                    color: '#f4f7fb',
-                    boxShadow: '0 14px 34px rgba(0, 0, 0, 0.32)',
-                    fontSize: 12,
+                  content={({ active, label, payload }) => {
+                    if (!active || label === undefined || label === null || !payload?.length) return null
+
+                    const hoveredTimestamp = Number(label)
+                    const hoveredValue = Number(payload[0]?.value)
+                    if (!Number.isFinite(hoveredTimestamp) || !Number.isFinite(hoveredValue)) return null
+
+                    const showCurrentSnapshot = Boolean(
+                      currentSnapshot &&
+                      latestTimestamp !== undefined &&
+                      hoveredTimestamp === latestTimestamp,
+                    )
+
+                    return (
+                      <div className="monitoring-chart-tooltip">
+                        <span className="monitoring-chart-tooltip-time">
+                          {new Date(hoveredTimestamp).toLocaleString()}
+                        </span>
+                        <div className="monitoring-chart-tooltip-value">
+                          <span>{title}</span>
+                          <strong>{valueFormatter(hoveredValue)}</strong>
+                        </div>
+                        {showCurrentSnapshot && currentSnapshot && (
+                          <div className="monitoring-chart-tooltip-snapshot">
+                            <span>{currentSnapshot.title}</span>
+                            {currentSnapshot.details.map((detail) => (
+                              <div key={detail.label}>
+                                <small>{detail.label}</small>
+                                <strong>{detail.value}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
                   }}
-                  labelStyle={{ color: '#8d9aaf', marginBottom: 4 }}
-                  itemStyle={{ color: '#f4f7fb' }}
-                  labelFormatter={(label) => new Date(Number(label)).toLocaleString()}
-                  formatter={(value) => [valueFormatter(Number(value)), title]}
                 />
                 <Area
                   type="monotone"

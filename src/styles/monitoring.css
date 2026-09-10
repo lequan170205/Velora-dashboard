@@ -51,6 +51,16 @@
 .chart-current-value span { display: block; color: #5f6d81; font-size: .58rem; font-weight: 750; text-transform: uppercase; }
 .chart-current-value strong { display: block; margin-top: 3px; color: #eef2f7; font-size: .85rem; }
 .metric-chart-canvas { width: 100%; height: 230px; margin-top: 5px; }
+.monitoring-chart-tooltip { min-width: 210px; max-width: 280px; padding: 10px 11px; border: 1px solid #2a3545; border-radius: 10px; background: #111823; color: #f4f7fb; box-shadow: 0 14px 34px rgba(0, 0, 0, .32); font-size: .72rem; }
+.monitoring-chart-tooltip-time { display: block; margin-bottom: 7px; color: #8d9aaf; font-size: .65rem; }
+.monitoring-chart-tooltip-value { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
+.monitoring-chart-tooltip-value span { color: #aeb8c7; }
+.monitoring-chart-tooltip-value strong { flex-shrink: 0; color: #f4f7fb; font-size: .76rem; }
+.monitoring-chart-tooltip-snapshot { margin-top: 9px; padding-top: 8px; border-top: 1px solid #253142; }
+.monitoring-chart-tooltip-snapshot > span { display: block; margin-bottom: 6px; color: #718096; font-size: .57rem; font-weight: 820; letter-spacing: .06em; text-transform: uppercase; }
+.monitoring-chart-tooltip-snapshot > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.monitoring-chart-tooltip-snapshot small { color: #7f8ca0; font-size: .62rem; }
+.monitoring-chart-tooltip-snapshot strong { color: #dce3ec; font-size: .68rem; font-weight: 720; text-align: right; }
 .chart-range-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 2px; padding-top: 10px; border-top: 1px solid #1c2634; }
 .chart-range-summary span { color: #b7c0cc; font-size: .69rem; font-weight: 720; }
 .chart-range-summary span:nth-child(2) { text-align: center; }

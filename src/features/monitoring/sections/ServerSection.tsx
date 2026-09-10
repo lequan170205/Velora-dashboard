@@ -1,3 +1,4 @@
+import type { MonitoringMetric } from '../api'
 import {
   badgeForThreshold,
   formatBytes,
@@ -15,7 +16,11 @@ import {
   MonitoringToolbar,
 } from '../components'
 import { useMonitoringView } from '../hooks/useMonitoringView'
-import type { MetricCardDefinition, MonitoringSeriesDefinition } from '../model'
+import type {
+  MetricCardDefinition,
+  MonitoringSeriesDefinition,
+  MonitoringTooltipSnapshot,
+} from '../model'
 
 const SERIES: readonly MonitoringSeriesDefinition[] = [
   {
@@ -101,6 +106,24 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
   },
 ]
 
+const capacitySnapshot = (
+  title: string,
+  used: number | null | undefined,
+  total: number | null | undefined,
+  available: number | null | undefined,
+): MonitoringTooltipSnapshot | undefined => {
+  if (used == null || total == null || available == null) return undefined
+  if (![used, total, available].every(Number.isFinite)) return undefined
+
+  return {
+    title,
+    details: [
+      { label: 'Used', value: `${formatBytes(used)} / ${formatBytes(total)} total` },
+      { label: 'Available', value: formatBytes(available) },
+    ],
+  }
+}
+
 export function ServerSection() {
   const {
     overview,
@@ -121,6 +144,20 @@ export function ServerSection() {
   const hostUp = host?.up ?? null
   const serverHealthy = hostUp === true
   const hostTone: Tone = hostUp === null ? 'neutral' : serverHealthy ? 'good' : 'bad'
+  const chartSnapshots: Partial<Record<MonitoringMetric, MonitoringTooltipSnapshot>> = {
+    host_memory: capacitySnapshot(
+      'Current overview snapshot',
+      host?.memoryUsedBytes,
+      host?.memoryTotalBytes,
+      host?.memoryAvailableBytes,
+    ),
+    host_disk: capacitySnapshot(
+      'Current overview snapshot',
+      host?.diskUsedBytes,
+      host?.diskTotalBytes,
+      host?.diskAvailableBytes,
+    ),
+  }
 
   const cards: readonly MetricCardDefinition[] = [
     {
@@ -203,7 +240,13 @@ export function ServerSection() {
         refreshing={refreshing}
       />
       <MetricCardGrid cards={cards} className="server-metric-grid" refreshing={refreshing} />
-      <MonitoringCharts series={SERIES} history={history} className="server-chart-grid" initialLoading={initialLoading} />
+      <MonitoringCharts
+        series={SERIES}
+        history={history}
+        snapshots={chartSnapshots}
+        className="server-chart-grid"
+        initialLoading={initialLoading}
+      />
     </section>
   )
 }
