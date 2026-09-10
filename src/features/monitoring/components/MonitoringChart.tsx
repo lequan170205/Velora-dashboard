@@ -197,7 +197,7 @@ export function MonitoringChart({
         sampleStepMs,
         hasError: hasHistoryError,
       })
-  const hasStaleHistory = historyFreshness === 'stale'
+  const hasStaleHistory = hasHistoryError || historyFreshness === 'stale'
   const historyAge = latestTimestamp === undefined ? null : formatMonitoringAge(now, latestTimestamp)
   const liveValue = currentValue?.value
   const hasLiveCurrent = liveValue != null && Number.isFinite(liveValue)
