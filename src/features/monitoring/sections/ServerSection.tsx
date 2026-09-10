@@ -128,6 +128,7 @@ export function ServerSection() {
   const {
     overview,
     history,
+    historyErrors,
     rangeHours,
     setRangeHours,
     error,
@@ -243,6 +244,7 @@ export function ServerSection() {
       <MonitoringCharts
         series={SERIES}
         history={history}
+        historyErrors={historyErrors}
         snapshots={chartSnapshots}
         className="server-chart-grid"
         initialLoading={initialLoading}

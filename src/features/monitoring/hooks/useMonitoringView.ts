@@ -25,10 +25,10 @@ const messageFromError = (error: unknown, fallback: string) =>
 export function useMonitoringView({ series, errorMessage }: UseMonitoringViewInput) {
   const [overview, setOverview] = useState<MonitoringOverview | null>(null)
   const [history, setHistory] = useState<Partial<Record<MonitoringMetric, MonitoringPoint[]>>>({})
+  const [historyErrors, setHistoryErrors] = useState<Partial<Record<MonitoringMetric, string>>>({})
   const [rangeHours, setRangeHours] = useState<RangeHours>(1)
   const [pending, setPending] = useState(true)
   const [overviewError, setOverviewError] = useState<string | null>(null)
-  const [historyError, setHistoryError] = useState<string | null>(null)
   const requestIdRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
   const lastHistoryRefreshRef = useRef(0)
@@ -86,7 +86,7 @@ export function useMonitoringView({ series, errorMessage }: UseMonitoringViewInp
         }
 
         const historyUpdates: Partial<Record<MonitoringMetric, MonitoringPoint[]>> = {}
-        const failedMetrics: MonitoringMetric[] = []
+        const nextHistoryErrors: Partial<Record<MonitoringMetric, string>> = {}
 
         seriesResults.forEach((result, index) => {
           const metric = series[index]?.metric
@@ -95,16 +95,15 @@ export function useMonitoringView({ series, errorMessage }: UseMonitoringViewInp
           if (result.status === 'fulfilled') {
             historyUpdates[metric] = result.value.points
           } else if (!(result.reason instanceof Error && result.reason.name === 'AbortError')) {
-            failedMetrics.push(metric)
+            nextHistoryErrors[metric] = messageFromError(
+              result.reason,
+              `Unable to refresh ${metric} history.`,
+            )
           }
         })
 
         setHistory((current) => ({ ...current, ...historyUpdates }))
-        setHistoryError(
-          failedMetrics.length > 0
-            ? `Unable to refresh history for ${failedMetrics.join(', ')}.`
-            : null,
-        )
+        setHistoryErrors(nextHistoryErrors)
         lastHistoryRefreshRef.current = Date.now()
       } finally {
         if (requestId === requestIdRef.current) {
@@ -139,14 +138,13 @@ export function useMonitoringView({ series, errorMessage }: UseMonitoringViewInp
     }
   }, [refresh])
 
-  const error = overviewError ?? historyError
-
   return {
     overview,
     history,
+    historyErrors,
     rangeHours,
     setRangeHours,
-    error,
+    error: overviewError,
     initialLoading: pending && overview === null,
     refreshing: pending && overview !== null,
     hasData: overview !== null,

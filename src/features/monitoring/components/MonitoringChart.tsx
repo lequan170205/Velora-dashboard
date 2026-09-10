@@ -25,6 +25,7 @@ type Props = {
   emptyDescription: string
   yAxis?: MonitoringYAxisDefinition
   currentSnapshot?: MonitoringTooltipSnapshot
+  historyError?: string | null
   loading?: boolean
 }
 
@@ -114,6 +115,7 @@ export function MonitoringChart({
   emptyDescription,
   yAxis,
   currentSnapshot,
+  historyError,
   loading = false,
 }: Props) {
   const data = points.map((point) => ({
@@ -129,31 +131,49 @@ export function MonitoringChart({
   const chartAccent = darkAccent(accent)
   const areaFill = fill === 'transparent' ? fill : `${chartAccent}18`
   const yDomain = calculateAdaptiveDomain(values, yAxis)
+  const hasHistoryError = Boolean(historyError)
   const visibleThresholds = yAxis?.thresholds?.filter((threshold) =>
     !yDomain || (threshold.value >= yDomain[0] && threshold.value <= yDomain[1]),
   ) ?? []
+
+  const emptyStateTitle = loading
+    ? 'Loading history…'
+    : hasHistoryError
+      ? 'History temporarily unavailable'
+      : emptyTitle
+
+  const emptyStateDescription = loading
+    ? 'Waiting for Prometheus samples.'
+    : hasHistoryError
+      ? `${historyError} Other charts can continue updating.`
+      : emptyDescription
 
   return (
     <article className="monitoring-chart-card">
       <div className="monitoring-chart-heading">
         <div>
           <span className="chart-question">{question}</span>
-          <h3>{title}</h3>
+          <div className="monitoring-chart-title-row">
+            <h3>{title}</h3>
+            {hasHistoryError && data.length > 0 && (
+              <span className="chart-history-badge" title={historyError ?? undefined}>Stale history</span>
+            )}
+          </div>
           <p>{description}</p>
         </div>
         {current !== undefined && (
           <div className="chart-current-value">
-            <span>Current</span>
+            <span>{hasHistoryError ? 'Last sample' : 'Current'}</span>
             <strong>{valueFormatter(current)}</strong>
           </div>
         )}
       </div>
 
       {data.length === 0 ? (
-        <div className="chart-empty-state">
-          <div className="chart-empty-mark" aria-hidden="true">—</div>
-          <strong>{loading ? 'Loading history…' : emptyTitle}</strong>
-          <p>{loading ? 'Waiting for Prometheus samples.' : emptyDescription}</p>
+        <div className={`chart-empty-state${hasHistoryError && !loading ? ' error' : ''}`}>
+          <div className="chart-empty-mark" aria-hidden="true">{hasHistoryError && !loading ? '!' : '—'}</div>
+          <strong>{emptyStateTitle}</strong>
+          <p>{emptyStateDescription}</p>
         </div>
       ) : (
         <>
@@ -210,6 +230,7 @@ export function MonitoringChart({
 
                     const showCurrentSnapshot = Boolean(
                       currentSnapshot &&
+                      !hasHistoryError &&
                       latestTimestamp !== undefined &&
                       hoveredTimestamp === latestTimestamp,
                     )
@@ -253,7 +274,7 @@ export function MonitoringChart({
           </div>
           <div className="chart-range-summary" aria-label={`${title} range summary`}>
             <span><small>Low</small>{min === undefined ? '—' : valueFormatter(min)}</span>
-            <span><small>Current</small>{current === undefined ? '—' : valueFormatter(current)}</span>
+            <span><small>{hasHistoryError ? 'Last' : 'Current'}</small>{current === undefined ? '—' : valueFormatter(current)}</span>
             <span><small>High</small>{max === undefined ? '—' : valueFormatter(max)}</span>
           </div>
         </>

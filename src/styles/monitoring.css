@@ -45,8 +45,10 @@
 .monitoring-chart-card { min-width: 0; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .monitoring-chart-heading { display: flex; min-height: 85px; justify-content: space-between; gap: 16px; }
 .chart-question { display: block; margin-bottom: 4px; color: #66758b; font-size: .61rem; font-weight: 820; letter-spacing: .06em; text-transform: uppercase; }
+.monitoring-chart-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
 .monitoring-chart-heading h3 { margin: 0; color: #e9edf3; font-size: .9rem; }
 .monitoring-chart-heading p { max-width: 470px; margin: 5px 0 0; color: #6d7a8f; font-size: .68rem; line-height: 1.45; }
+.chart-history-badge { padding: 3px 6px; border: 1px solid #58431d; border-radius: 999px; background: #241b0e; color: #efbd5d; font-size: .55rem; font-weight: 820; letter-spacing: .02em; white-space: nowrap; }
 .chart-current-value { flex-shrink: 0; text-align: right; }
 .chart-current-value span { display: block; color: #5f6d81; font-size: .58rem; font-weight: 750; text-transform: uppercase; }
 .chart-current-value strong { display: block; margin-top: 3px; color: #eef2f7; font-size: .85rem; }
@@ -68,7 +70,9 @@
 .chart-range-summary small { display: block; margin-bottom: 2px; color: #5d6a7d; font-size: .58rem; font-weight: 650; }
 .chart-empty-state { display: grid; min-height: 230px; place-items: center; align-content: center; padding: 30px; text-align: center; }
 .chart-empty-mark { display: grid; width: 38px; height: 38px; place-items: center; margin-bottom: 9px; border: 1px solid #273244; border-radius: 10px; background: #121a25; color: #69778b; }
+.chart-empty-state.error .chart-empty-mark { border-color: #55313a; background: #1a1014; color: #ff8390; }
 .chart-empty-state strong { color: #aab4c2; font-size: .78rem; }
+.chart-empty-state.error strong { color: #e6b0b7; }
 .chart-empty-state p { max-width: 340px; margin: 5px 0 0; color: #667388; font-size: .68rem; line-height: 1.45; }
 .technical-details { margin-top: 10px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: #0d131c; }
 .technical-details summary { padding: 10px 0; color: #8491a4; cursor: pointer; font-size: .7rem; font-weight: 760; }

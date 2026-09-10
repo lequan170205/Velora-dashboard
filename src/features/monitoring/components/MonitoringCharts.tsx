@@ -5,6 +5,7 @@ import { MonitoringChart } from './MonitoringChart'
 type MonitoringChartsProps = {
   series: readonly MonitoringSeriesDefinition[]
   history: Partial<Record<MonitoringMetric, MonitoringPoint[]>>
+  historyErrors?: Partial<Record<MonitoringMetric, string>>
   snapshots?: Partial<Record<MonitoringMetric, MonitoringTooltipSnapshot>>
   className?: string
   initialLoading?: boolean
@@ -13,6 +14,7 @@ type MonitoringChartsProps = {
 export function MonitoringCharts({
   series,
   history,
+  historyErrors,
   snapshots,
   className = '',
   initialLoading = false,
@@ -34,6 +36,7 @@ export function MonitoringCharts({
           emptyDescription={item.emptyDescription}
           yAxis={item.yAxis}
           currentSnapshot={snapshots?.[item.metric]}
+          historyError={historyErrors?.[item.metric] ?? null}
           loading={initialLoading}
         />
       ))}
