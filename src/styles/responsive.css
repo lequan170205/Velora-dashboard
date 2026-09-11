@@ -39,18 +39,46 @@
   .quality-item:last-child { border-bottom: 0; }
   .monitoring-actions { width: 100%; align-items: stretch; flex-direction: column; }
   .range-switcher { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .range-button { min-width: 0; padding: 8px 7px; }
   .secondary-button { width: 100%; }
   .health-summary, .monitoring-scope-note { grid-template-columns: 1fr; }
   .health-summary-time, .monitoring-scope-badge { grid-column: auto; }
   .monitoring-scope-mark { width: 26px; height: 26px; }
   .monitoring-explainer { display: block; }
   .monitoring-explainer strong { display: block; margin-bottom: 4px; }
-  .monitoring-chart-heading { min-height: 0; }
-  .chart-current-value { display: none; }
-  .metric-chart-canvas { height: 210px; }
+
+  .monitoring-chart-heading { min-height: 0; flex-direction: column; gap: 10px; }
+  .monitoring-chart-heading > div:first-child { min-width: 0; }
+  .monitoring-chart-title-row { align-items: flex-start; }
+  .chart-current-value { display: block; width: 100%; text-align: left; }
+  .chart-current-meta { justify-content: flex-start; flex-wrap: wrap; }
+  .chart-current-value small { white-space: normal; overflow-wrap: anywhere; }
+  .chart-history-freshness { line-height: 1.35; }
+
+  .metric-chart-canvas { height: 205px; margin-top: 12px; }
+  .monitoring-chart-tooltip { width: min(240px, calc(100vw - 64px)); min-width: 0; max-width: calc(100vw - 64px); }
+  .monitoring-chart-tooltip-value, .monitoring-chart-tooltip-snapshot > div { flex-wrap: wrap; }
+  .monitoring-chart-tooltip-value span, .monitoring-chart-tooltip-snapshot small { min-width: 0; }
+  .monitoring-chart-tooltip-value strong, .monitoring-chart-tooltip-snapshot strong { min-width: 0; overflow-wrap: anywhere; }
+
+  .chart-range-summary { gap: 4px; }
+  .chart-range-summary span { min-width: 0; overflow-wrap: anywhere; }
+  .chart-empty-state { min-height: 205px; padding: 24px 18px; }
+
   .filter-grid { grid-template-columns: 1fr; }
   .filter-refresh { width: 100%; align-self: stretch; }
   .timeline-search { align-items: stretch; flex-direction: column; }
   .timeline-search label { min-width: 0; }
   .timeline-search .primary-button { width: 100%; }
+}
+
+@media (max-width: 420px) {
+  .monitoring-chart-card { padding: 12px; }
+  .monitoring-chart-heading { gap: 9px; }
+  .chart-current-value strong { font-size: .82rem; }
+  .metric-chart-canvas { height: 190px; }
+  .chart-empty-state { min-height: 190px; padding: 22px 14px; }
+  .monitoring-chart-tooltip { width: min(228px, calc(100vw - 52px)); max-width: calc(100vw - 52px); padding: 9px 10px; }
+  .chart-range-summary span { font-size: .64rem; }
+  .chart-range-summary small { font-size: .55rem; }
 }
