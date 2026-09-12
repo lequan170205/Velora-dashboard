@@ -24,6 +24,7 @@ const SERVICE_OPTIONS = [
   'rabbitmq',
   'prometheus',
   'node-exporter',
+  'cadvisor',
   'grafana',
   'loki',
   'alloy',

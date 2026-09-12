@@ -44,7 +44,7 @@
 
 /* Initial Prometheus fetches take a moment after changing dashboard tabs.
    Mask the uninitialized cards so "Unavailable" / placeholder values never
-   flash before the first real overview arrives. Refreshes after data exists do
+   flash before the first real snapshot arrives. Refreshes after data exists do
    not trigger this state because the section only marks itself busy on initial load. */
 .server-observability[aria-busy="true"],
 .system-observability[aria-busy="true"] {

@@ -2,7 +2,6 @@ import type { FormEvent, ReactNode } from 'react'
 import type { MonitoringConnectionState } from '../features/monitoring/fresshness'
 
 export type ViewId =
-  | 'overview'
   | 'server'
   | 'service'
   | 'conversation'
@@ -12,7 +11,7 @@ export type ViewId =
   | 'call-quality'
   | 'recent-calls'
   | 'timeline'
-type ViewGroup = 'Overview' | 'Infrastructure' | 'Observability' | 'Calls'
+type ViewGroup = 'Infrastructure' | 'Observability' | 'Calls'
 
 export const VIEWS: Array<{
   id: ViewId
@@ -21,13 +20,6 @@ export const VIEWS: Array<{
   title: string
   kicker: string
 }> = [
-  {
-    id: 'overview',
-    group: 'Overview',
-    label: 'Overview',
-    title: 'Operations overview',
-    kicker: 'Operations / At a glance',
-  },
   {
     id: 'server',
     group: 'Infrastructure',
@@ -93,11 +85,11 @@ export const VIEWS: Array<{
   },
 ]
 
-const VIEW_GROUPS: readonly ViewGroup[] = ['Overview', 'Infrastructure', 'Observability', 'Calls']
+const VIEW_GROUPS: readonly ViewGroup[] = ['Infrastructure', 'Observability', 'Calls']
 
 export const viewFromHash = (): ViewId => {
   const hash = window.location.hash.replace(/^#/, '') as ViewId
-  return VIEWS.some((view) => view.id === hash) ? hash : 'overview'
+  return VIEWS.some((view) => view.id === hash) ? hash : 'server'
 }
 
 export function SessionLoader() {

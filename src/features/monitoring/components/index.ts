@@ -1,5 +1,5 @@
 export { HealthSummary } from './HealthSummary'
-export { HealthMatrix } from './HealthMatrix'
+export { ContainerResourcesPanel } from './ContainerResourcesPanel'
 export { MetricCardGrid } from './MetricCardGrid'
 export { MonitoringCharts } from './MonitoringCharts'
 export { MonitoringError } from './MonitoringError'

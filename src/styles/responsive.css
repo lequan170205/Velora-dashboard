@@ -30,6 +30,8 @@
   .monitoring-scope-note { grid-template-columns: auto 1fr; }
   .monitoring-scope-badge { grid-column: 2; justify-self: start; }
   .system-toolbar, .section-header-row { align-items: flex-start; flex-direction: column; }
+  .container-resources-heading { align-items: stretch; flex-direction: column; }
+  .container-resources-actions { justify-content: space-between; width: 100%; }
 }
 
 @media (max-width: 620px) {
@@ -70,6 +72,8 @@
   .timeline-search { align-items: stretch; flex-direction: column; }
   .timeline-search label { min-width: 0; }
   .timeline-search .primary-button { width: 100%; }
+  .container-resources-actions { align-items: stretch; flex-direction: column; }
+  .container-resources-actions .secondary-button { width: 100%; }
 }
 
 @media (max-width: 420px) {

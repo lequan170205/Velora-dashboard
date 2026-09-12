@@ -8,7 +8,7 @@ export function MonitoringError({ error, title, hasData }: MonitoringErrorProps)
   if (!error) return null
 
   return (
-    <div className="monitoring-warning" role="status">
+    <div className="monitoring-warning" role="alert">
       <strong>{title}</strong>
       <span>{hasData ? `${error} Showing the last successful metrics while the dashboard retries.` : error}</span>
     </div>

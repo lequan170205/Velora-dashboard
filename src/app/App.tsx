@@ -14,7 +14,6 @@ import {
   ConversationSection,
   LogsSection,
   MonitoringSection,
-  OverviewSection,
   ServerSection,
 } from '../features/monitoring'
 import { getMonitoringConnectionState } from '../features/monitoring/fresshness'
@@ -62,7 +61,15 @@ export function App() {
   }, [authenticated, calls.reset])
 
   useEffect(() => {
-    const onHashChange = () => setActiveView(viewFromHash())
+    const onHashChange = () => {
+      const nextView = viewFromHash()
+      setActiveView(nextView)
+      if (window.location.hash && window.location.hash !== `#${nextView}`) {
+        window.history.replaceState(null, '', `#${nextView}`)
+      }
+    }
+
+    onHashChange()
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
@@ -175,17 +182,7 @@ export function App() {
       onLogout={() => void logout()}
       connectionState={connectionState}
     >
-      {activeView === 'overview' && (
-        <OverviewSection
-          overview={heartbeat.overview}
-          callSummary={calls.summary}
-          monitoringError={heartbeat.error}
-          callError={calls.error}
-          onNavigate={navigate}
-          onOpenLogs={(service) => openLogs(service, service === 'all' ? 'all' : 'error')}
-        />
-      )}
-      {activeView === 'server' && <ServerSection />}
+      {activeView === 'server' && <ServerSection onOpenLogs={(service) => openLogs(service, 'error')} />}
       {activeView === 'service' && <MonitoringSection />}
       {activeView === 'conversation' && <ConversationSection />}
       {activeView === 'call-service' && <CallServiceSection />}

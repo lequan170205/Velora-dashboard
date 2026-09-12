@@ -68,6 +68,8 @@ Key monitoring endpoints currently include:
 
 ```text
 GET /monitoring/overview
+GET /monitoring/status
+GET /monitoring/containers
 GET /monitoring/timeseries?metric=...&from=...&to=...&stepSeconds=...
 GET /monitoring/alerts
 GET /monitoring/logs?...filters

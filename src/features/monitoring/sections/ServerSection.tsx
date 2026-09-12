@@ -10,12 +10,14 @@ import {
 } from '../formatters'
 import {
   HealthSummary,
+  ContainerResourcesPanel,
   MetricCardGrid,
   MonitoringCharts,
   MonitoringError,
   MonitoringToolbar,
 } from '../components'
 import { useMonitoringView } from '../hooks/useMonitoringView'
+import { useContainerResources } from '../hooks/useContainerResources'
 import type {
   MetricCardDefinition,
   MonitoringCurrentValue,
@@ -128,7 +130,11 @@ const capacitySnapshot = (
 const usedContext = (used: number | null | undefined) =>
   used != null && Number.isFinite(used) ? `${formatBytes(used)} used` : null
 
-export function ServerSection() {
+type ServerSectionProps = {
+  onOpenLogs?: (service: string) => void
+}
+
+export function ServerSection({ onOpenLogs }: ServerSectionProps) {
   const {
     overview,
     history,
@@ -145,6 +151,7 @@ export function ServerSection() {
     series: SERIES,
     errorMessage: 'Unable to load server metrics',
   })
+  const containerResources = useContainerResources()
 
   const host = overview?.host
   const hostUp = host?.up ?? null
@@ -164,13 +171,13 @@ export function ServerSection() {
   }
   const chartSnapshots: Partial<Record<MonitoringMetric, MonitoringTooltipSnapshot>> = {
     host_memory: capacitySnapshot(
-      'Current overview snapshot',
+      'Current host snapshot',
       host?.memoryUsedBytes,
       host?.memoryTotalBytes,
       host?.memoryAvailableBytes,
     ),
     host_disk: capacitySnapshot(
-      'Current overview snapshot',
+      'Current host snapshot',
       host?.diskUsedBytes,
       host?.diskTotalBytes,
       host?.diskAvailableBytes,
@@ -258,6 +265,15 @@ export function ServerSection() {
         refreshing={refreshing}
       />
       <MetricCardGrid cards={cards} className="server-metric-grid" refreshing={refreshing} />
+      <ContainerResourcesPanel
+        containers={containerResources.containers}
+        generatedAt={containerResources.response?.generatedAt}
+        error={containerResources.error}
+        initialLoading={containerResources.initialLoading}
+        refreshing={containerResources.refreshing}
+        onRefresh={() => void containerResources.refreshNow()}
+        onOpenLogs={onOpenLogs}
+      />
       <MonitoringCharts
         series={SERIES}
         history={history}

@@ -57,6 +57,28 @@ export type MonitoringOverview = {
   }
 }
 
+export type MonitoringStatus = {
+  generatedAt: string
+  source: 'prometheus'
+  monitoringUp: boolean | null
+  hostUp: boolean | null
+}
+
+export type ContainerResource = {
+  service: string
+  container: string
+  cpuCores: NullableMetric
+  memoryWorkingSetBytes: NullableMetric
+  memoryLimitBytes: NullableMetric
+  filesystemUsageBytes: NullableMetric
+}
+
+export type MonitoringContainers = {
+  generatedAt: string
+  source: 'cadvisor'
+  containers: ContainerResource[]
+}
+
 export type MonitoringMetric =
   | 'memory'
   | 'heap'
@@ -99,6 +121,18 @@ export const fetchMonitoringOverview = async (signal?: AbortSignal) => {
   const response = await fetchApi('/monitoring/overview', { signal })
   if (!response.ok) throw new Error(`Unable to load system monitoring (${response.status})`)
   return (await response.json()) as MonitoringOverview
+}
+
+export const fetchMonitoringStatus = async (signal?: AbortSignal) => {
+  const response = await fetchApi('/monitoring/status', { signal })
+  if (!response.ok) throw new Error(`Unable to load monitoring status (${response.status})`)
+  return (await response.json()) as MonitoringStatus
+}
+
+export const fetchMonitoringContainers = async (signal?: AbortSignal) => {
+  const response = await fetchApi('/monitoring/containers', { signal })
+  if (!response.ok) throw new Error(`Unable to load container resources (${response.status})`)
+  return (await response.json()) as MonitoringContainers
 }
 
 export const fetchMonitoringTimeseries = async ({

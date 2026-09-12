@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchMonitoringOverview, type MonitoringOverview } from '../api'
+import { fetchMonitoringStatus } from '../api'
 
 export function useMonitoringHeartbeat(enabled: boolean) {
-  const [overview, setOverview] = useState<MonitoringOverview | null>(null)
   const [lastSuccessfulAt, setLastSuccessfulAt] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -17,9 +16,8 @@ export function useMonitoringHeartbeat(enabled: boolean) {
     setRefreshing(true)
 
     try {
-      const nextOverview = await fetchMonitoringOverview(controller.signal)
+      await fetchMonitoringStatus(controller.signal)
       if (abortControllerRef.current !== controller) return
-      setOverview(nextOverview)
       setLastSuccessfulAt(Date.now())
       setError(null)
     } catch (cause) {
@@ -38,7 +36,6 @@ export function useMonitoringHeartbeat(enabled: boolean) {
     if (!enabled) {
       abortControllerRef.current?.abort()
       abortControllerRef.current = null
-      setOverview(null)
       setLastSuccessfulAt(null)
       setError(null)
       setRefreshing(false)
@@ -61,7 +58,6 @@ export function useMonitoringHeartbeat(enabled: boolean) {
   }, [enabled, refresh])
 
   return {
-    overview,
     lastSuccessfulAt,
     refreshing,
     error,

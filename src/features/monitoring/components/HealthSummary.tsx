@@ -34,7 +34,7 @@ export function HealthSummary({
         <p>{detail}</p>
       </div>
       <div className="health-summary-time">
-        <span>{refreshing ? 'Refreshing' : 'Overview updated'}</span>
+        <span>{refreshing ? 'Refreshing' : 'Snapshot updated'}</span>
         <strong
           title={hasGeneratedAt ? new Date(generatedAtTimestamp).toLocaleString() : undefined}
         >
