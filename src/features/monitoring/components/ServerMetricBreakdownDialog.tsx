@@ -186,6 +186,10 @@ export function ServerMetricBreakdownDialog({
       : metric === 'memory'
         ? host?.memoryUsedBytes ?? null
         : host?.diskUsedBytes ?? null
+    const hasAttributedData = attributedRows.some((row) => finite(row.value))
+
+    if (!finite(total) && !hasAttributedData) return []
+
     const remainder = hostOtherValue(total, sumValues(attributedRows))
     const mismatch = finite(total) && remainder === null && sumValues(attributedRows) > total
 
