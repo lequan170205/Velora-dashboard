@@ -196,9 +196,11 @@ export function ContainerResourcesPanel({
                 title={`View ${METRIC_LABELS[metric]} usage by container`}
                 onClick={(event) => openMetric(metric, event)}
               >
-                <span>{METRIC_LABELS[metric]}</span>
+                <div className="container-metric-card-topline">
+                  <span>{METRIC_LABELS[metric]}</span>
+                  <small>{containers.length} containers</small>
+                </div>
                 <strong>{total}</strong>
-                <small>{containers.length} containers</small>
               </button>
             )
           })}

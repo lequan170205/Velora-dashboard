@@ -1025,11 +1025,11 @@ code {
 .container-metric-card {
   display: block;
   min-width: 0;
-  min-height: 82px;
-  padding: 11px 12px;
+  min-height: 96px;
+  padding: 13px 14px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 7px;
-  background: #111215;
+  border-radius: var(--radius-md);
+  background: var(--color-card);
   color: inherit;
   cursor: pointer;
   text-align: left;
@@ -1041,31 +1041,44 @@ code {
   background: #17191c;
 }
 
-.container-metric-card > span,
-.container-metric-card > small {
-  display: block;
+.container-metric-card-topline {
+  display: flex;
+  min-height: 22px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.container-metric-card-topline > span {
   color: #85858e;
-  font-size: .66rem;
+  font-size: .72rem;
   font-weight: 550;
+}
+
+.container-metric-card-topline > small {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 5px;
+  background: #202226;
+  color: #a1a1aa;
+  font-family: var(--font-body);
+  font-size: .6rem;
+  font-weight: 600;
 }
 
 .container-metric-card > strong {
   display: block;
-  margin: 7px 0 5px;
+  margin: 9px 0 0;
   overflow: hidden;
   color: #f4f4f5;
   font-family: var(--font-data);
-  font-size: 1.02rem;
+  font-size: 1.25rem;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -.025em;
+  font-weight: 600;
+  letter-spacing: -.035em;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.container-metric-card > small {
-  font-family: var(--font-data);
-  font-size: .6rem;
-  font-weight: 500;
 }
 
 .container-identity {
