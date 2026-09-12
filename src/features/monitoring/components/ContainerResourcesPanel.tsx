@@ -6,6 +6,7 @@ import { UiIcon } from '../../../shared/components/UiIcon'
 type ContainerResourcesPanelProps = {
   containers: readonly ContainerResource[]
   generatedAt?: string
+  cadvisorUp?: boolean | null
   error: string | null
   initialLoading: boolean
   refreshing: boolean
@@ -30,7 +31,8 @@ const formatMemory = (container: ContainerResource) => {
   return `${usage} · ${formatPercent(ratio ?? Number.NaN, 0)}`
 }
 
-const updatedLabel = (generatedAt?: string) => {
+const updatedLabel = (generatedAt?: string, cadvisorUp?: boolean | null) => {
+  if (cadvisorUp === false) return 'cAdvisor offline'
   if (!generatedAt) return 'Waiting for cAdvisor'
   const timestamp = Date.parse(generatedAt)
   return Number.isFinite(timestamp)
@@ -41,12 +43,28 @@ const updatedLabel = (generatedAt?: string) => {
 export function ContainerResourcesPanel({
   containers,
   generatedAt,
+  cadvisorUp,
   error,
   initialLoading,
   refreshing,
   onRefresh,
   onOpenLogs,
 }: ContainerResourcesPanelProps) {
+  const emptyState = cadvisorUp === false
+    ? {
+      title: 'cAdvisor is offline',
+      description: 'Prometheus cannot reach cAdvisor. Start it or set CADVISOR_ENABLED=true on a compatible Linux Docker host.',
+    }
+    : cadvisorUp === true
+      ? {
+        title: 'No container samples yet',
+        description: 'cAdvisor is reachable, but Prometheus has not collected container samples yet. Check the cAdvisor target and wait for the next scrape.',
+      }
+      : {
+        title: 'No container metrics yet',
+        description: 'Check that cAdvisor is UP and that Prometheus has collected Docker container samples.',
+      }
+
   return (
     <section className="dashboard-panel container-resources-panel" aria-labelledby="container-resources-title" aria-busy={initialLoading}>
       <div className="panel-heading container-resources-heading">
@@ -56,7 +74,7 @@ export function ContainerResourcesPanel({
           <p>Find which Docker service is consuming CPU, RAM, or filesystem space. CPU is shown against one core; Root disk above remains the host-level total.</p>
         </div>
         <div className="container-resources-actions">
-          <span className="container-resources-updated">{updatedLabel(generatedAt)}</span>
+          <span className="container-resources-updated">{updatedLabel(generatedAt, cadvisorUp)}</span>
           <button className="secondary-button" type="button" disabled={refreshing} onClick={onRefresh}>
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
@@ -79,8 +97,8 @@ export function ContainerResourcesPanel({
       ) : containers.length === 0 ? (
         <div className="empty-state container-resources-empty">
           <span className="empty-state-icon"><UiIcon name="minus" size={18} /></span>
-          <strong>No labeled containers yet</strong>
-          <p>Check that cAdvisor is UP and that Prometheus has collected Docker Compose labels.</p>
+          <strong>{emptyState.title}</strong>
+          <p>{emptyState.description}</p>
         </div>
       ) : (
         <div className="table-shell container-resources-table-shell">

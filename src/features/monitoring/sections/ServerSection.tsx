@@ -268,6 +268,7 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
       <ContainerResourcesPanel
         containers={containerResources.containers}
         generatedAt={containerResources.response?.generatedAt}
+        cadvisorUp={containerResources.response?.cadvisorUp}
         error={containerResources.error}
         initialLoading={containerResources.initialLoading}
         refreshing={containerResources.refreshing}

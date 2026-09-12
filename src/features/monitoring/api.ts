@@ -76,6 +76,7 @@ export type ContainerResource = {
 export type MonitoringContainers = {
   generatedAt: string
   source: 'cadvisor'
+  cadvisorUp?: boolean | null
   containers: ContainerResource[]
 }
 
