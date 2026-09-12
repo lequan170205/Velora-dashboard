@@ -75,8 +75,8 @@ export type ContainerResource = {
 
 export type MonitoringContainers = {
   generatedAt: string
-  source: 'cadvisor'
-  cadvisorUp?: boolean | null
+  source: 'docker'
+  dockerEngineUp?: boolean | null
   containers: ContainerResource[]
 }
 

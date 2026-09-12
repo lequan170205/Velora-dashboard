@@ -6,7 +6,7 @@ import { UiIcon } from '../../../shared/components/UiIcon'
 type ContainerResourcesPanelProps = {
   containers: readonly ContainerResource[]
   generatedAt?: string
-  cadvisorUp?: boolean | null
+  dockerEngineUp?: boolean | null
   error: string | null
   initialLoading: boolean
   refreshing: boolean
@@ -31,9 +31,9 @@ const formatMemory = (container: ContainerResource) => {
   return `${usage} · ${formatPercent(ratio ?? Number.NaN, 0)}`
 }
 
-const updatedLabel = (generatedAt?: string, cadvisorUp?: boolean | null) => {
-  if (cadvisorUp === false) return 'cAdvisor offline'
-  if (!generatedAt) return 'Waiting for cAdvisor'
+const updatedLabel = (generatedAt?: string, dockerEngineUp?: boolean | null) => {
+  if (dockerEngineUp === false) return 'Docker Engine offline'
+  if (!generatedAt) return 'Waiting for Docker Engine'
   const timestamp = Date.parse(generatedAt)
   return Number.isFinite(timestamp)
     ? `Updated ${formatMonitoringAge(Date.now(), timestamp)}`
@@ -43,26 +43,26 @@ const updatedLabel = (generatedAt?: string, cadvisorUp?: boolean | null) => {
 export function ContainerResourcesPanel({
   containers,
   generatedAt,
-  cadvisorUp,
+  dockerEngineUp,
   error,
   initialLoading,
   refreshing,
   onRefresh,
   onOpenLogs,
 }: ContainerResourcesPanelProps) {
-  const emptyState = cadvisorUp === false
+  const emptyState = dockerEngineUp === false
     ? {
-      title: 'cAdvisor is offline',
-      description: 'Prometheus cannot reach cAdvisor. Start it or set CADVISOR_ENABLED=true on a compatible Linux Docker host.',
+      title: 'Docker Engine unavailable',
+      description: 'Monitoring service cannot read the Docker Engine socket.',
     }
-    : cadvisorUp === true
+    : dockerEngineUp === true
       ? {
-        title: 'No container samples yet',
-        description: 'cAdvisor is reachable, but Prometheus has not collected container samples yet. Check the cAdvisor target and wait for the next scrape.',
+        title: 'No running containers',
+        description: 'Docker Engine returned no running containers.',
       }
       : {
         title: 'No container metrics yet',
-        description: 'Check that cAdvisor is UP and that Prometheus has collected Docker container samples.',
+        description: 'Waiting for Docker Engine container stats.',
       }
 
   return (
@@ -72,7 +72,7 @@ export function ContainerResourcesPanel({
           <h3 id="container-resources-title">Container resources</h3>
         </div>
         <div className="container-resources-actions">
-          <span className="container-resources-updated">{updatedLabel(generatedAt, cadvisorUp)}</span>
+          <span className="container-resources-updated">{updatedLabel(generatedAt, dockerEngineUp)}</span>
           <button className="secondary-button" type="button" disabled={refreshing} onClick={onRefresh}>
             {refreshing ? 'Refreshing…' : 'Refresh'}
           </button>
@@ -90,7 +90,7 @@ export function ContainerResourcesPanel({
         <div className="empty-state container-resources-empty">
           <span className="empty-state-icon"><UiIcon name="loader" size={18} /></span>
           <strong>Loading container resources</strong>
-          <p>Waiting for Prometheus to return the latest cAdvisor samples.</p>
+          <p>Waiting for the latest Docker Engine stats.</p>
         </div>
       ) : containers.length === 0 ? (
         <div className="empty-state container-resources-empty">
@@ -101,7 +101,7 @@ export function ContainerResourcesPanel({
       ) : (
         <div className="table-shell container-resources-table-shell">
           <table>
-            <caption className="sr-only">Current cAdvisor container resource snapshot</caption>
+            <caption className="sr-only">Current Docker container resource snapshot</caption>
             <thead>
               <tr>
                 <th scope="col">Service</th>
@@ -109,7 +109,7 @@ export function ContainerResourcesPanel({
                 <th scope="col">CPU</th>
                 <th scope="col">RAM working set</th>
                 <th scope="col">RAM limit</th>
-                <th scope="col">Filesystem usage</th>
+                <th scope="col">Writable layer</th>
                 {onOpenLogs && <th scope="col" aria-label="Actions" />}
               </tr>
             </thead>
@@ -138,7 +138,7 @@ export function ContainerResourcesPanel({
 
       <details className="container-resources-note">
         <summary>About metrics</summary>
-        <p>RAM shows the working set. Filesystem is the largest cAdvisor sample per container.</p>
+        <p>RAM is working set after cache. Writable layer is container disk growth.</p>
       </details>
     </section>
   )
