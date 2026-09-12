@@ -184,7 +184,7 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
     ),
   }
 
-  const cards: readonly MetricCardDefinition[] = [
+  const primaryCards: readonly MetricCardDefinition[] = [
     {
       label: 'CPU usage',
       value: formatPercent(host?.cpuUsageRatio ?? Number.NaN),
@@ -200,39 +200,27 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
       tone: toneForThreshold(host?.memoryUsageRatio ?? null, 0.75, 0.9),
     },
     {
-      label: 'Swap used',
-      value: `${formatBytes(host?.swapUsedBytes ?? Number.NaN)} / ${formatBytes(host?.swapTotalBytes ?? Number.NaN)}`,
-      helper: `${formatBytes(host?.swapFreeBytes ?? Number.NaN)} swap still free.`,
-      badge: badgeForThreshold(host?.swapUsageRatio ?? null, 0.25, 0.5),
-      tone: toneForThreshold(host?.swapUsageRatio ?? null, 0.25, 0.5),
-    },
-    {
       label: 'Root disk',
       value: `${formatBytes(host?.diskUsedBytes ?? Number.NaN)} / ${formatBytes(host?.diskTotalBytes ?? Number.NaN)}`,
       helper: `${formatBytes(host?.diskAvailableBytes ?? Number.NaN)} available on /.`,
       badge: badgeForThreshold(host?.diskUsageRatio ?? null, 0.8, 0.92),
       tone: toneForThreshold(host?.diskUsageRatio ?? null, 0.8, 0.92),
     },
-    {
-      label: 'Load average',
-      value: formatLoad(host?.load1 ?? Number.NaN),
-      helper: 'Linux load over the last minute.',
-      badge: '1 minute',
-      tone: 'neutral',
-    },
-    {
-      label: 'Server uptime',
-      value: formatUptime(host?.uptimeSeconds ?? Number.NaN),
-      helper: 'Time since the Ubuntu host last booted.',
-      badge: hostUp === null ? 'Waiting' : serverHealthy ? 'Online' : 'Unavailable',
-      tone: hostUp === null ? 'neutral' : serverHealthy ? 'good' : 'bad',
-    },
   ]
+
+  const secondaryFacts = [
+    {
+      label: 'Swap',
+      value: `${formatBytes(host?.swapUsedBytes ?? Number.NaN)} / ${formatBytes(host?.swapTotalBytes ?? Number.NaN)}`,
+    },
+    { label: 'Load', value: formatLoad(host?.load1 ?? Number.NaN) },
+    { label: 'Uptime', value: formatUptime(host?.uptimeSeconds ?? Number.NaN) },
+  ] as const
 
   const healthTitle = hostUp === null
     ? 'Host status is unavailable'
     : serverHealthy
-      ? 'Homelab server is reporting normally'
+      ? 'Host online'
       : 'Host metrics are unavailable'
 
   const healthDetail = hostUp === null
@@ -243,17 +231,7 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
 
   return (
     <section className="server-observability" aria-labelledby="server-observability-title" aria-busy={initialLoading}>
-      <MonitoringToolbar
-        eyebrow="Ubuntu host · live"
-        title="Server resources"
-        titleId="server-observability-title"
-        description="Real CPU, RAM, swap, disk, load, and uptime from the homelab host via Prometheus node exporter."
-        rangeLabel="Server history range"
-        rangeHours={rangeHours}
-        onRangeChange={setRangeHours}
-        refreshing={refreshing}
-        onRefresh={() => void refreshNow()}
-      />
+      <h2 className="sr-only" id="server-observability-title">Server resources</h2>
 
       <MonitoringError error={error} title="Server metrics are temporarily unavailable." hasData={hasData} />
       <HealthSummary
@@ -264,7 +242,15 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
         generatedAt={overview?.generatedAt}
         refreshing={refreshing}
       />
-      <MetricCardGrid cards={cards} className="server-metric-grid" refreshing={refreshing} />
+      <MetricCardGrid cards={primaryCards} className="server-metric-grid" refreshing={refreshing} />
+      <dl className="server-facts" aria-label="Additional host metrics">
+        {secondaryFacts.map((fact) => (
+          <div key={fact.label}>
+            <dt>{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
       <ContainerResourcesPanel
         containers={containerResources.containers}
         generatedAt={containerResources.response?.generatedAt}
@@ -275,16 +261,35 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
         onRefresh={() => void containerResources.refreshNow()}
         onOpenLogs={onOpenLogs}
       />
-      <MonitoringCharts
-        series={SERIES}
-        history={history}
-        historyErrors={historyErrors}
-        currentValues={chartCurrentValues}
-        snapshots={chartSnapshots}
-        className="server-chart-grid"
-        initialLoading={initialLoading}
-        historyRefreshing={historyRefreshing}
-      />
+      <details className="server-history">
+        <summary>
+          <span>History</span>
+          <small>CPU · RAM · Disk · Load</small>
+        </summary>
+        <div className="server-history-content">
+          <MonitoringToolbar
+            eyebrow="Host history"
+            title="Resource history"
+            titleId="server-history-title"
+            description="Historical host metrics from Prometheus node exporter."
+            rangeLabel="Server history range"
+            rangeHours={rangeHours}
+            onRangeChange={setRangeHours}
+            refreshing={refreshing}
+            onRefresh={() => void refreshNow()}
+          />
+          <MonitoringCharts
+            series={SERIES}
+            history={history}
+            historyErrors={historyErrors}
+            currentValues={chartCurrentValues}
+            snapshots={chartSnapshots}
+            className="server-chart-grid"
+            initialLoading={initialLoading}
+            historyRefreshing={historyRefreshing}
+          />
+        </div>
+      </details>
     </section>
   )
 }

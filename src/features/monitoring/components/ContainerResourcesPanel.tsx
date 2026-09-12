@@ -23,12 +23,17 @@ const formatCpu = (cores: number | null) => {
 const formatMemory = (container: ContainerResource) => {
   const usage = formatBytes(container.memoryWorkingSetBytes ?? Number.NaN)
   const limit = container.memoryLimitBytes
-  if (limit === null || !Number.isFinite(limit) || limit <= 0) return usage
+  if (limit === null || !Number.isFinite(limit) || limit <= 0) {
+    return { usage, detail: null }
+  }
 
   const ratio = container.memoryWorkingSetBytes === null
     ? null
     : container.memoryWorkingSetBytes / limit
-  return `${usage} · ${formatPercent(ratio ?? Number.NaN, 0)}`
+  return {
+    usage,
+    detail: `${formatPercent(ratio ?? Number.NaN, 0)} of ${formatBytes(limit)}`,
+  }
 }
 
 const updatedLabel = (generatedAt?: string, dockerEngineUp?: boolean | null) => {
@@ -104,33 +109,39 @@ export function ContainerResourcesPanel({
             <caption className="sr-only">Current Docker container resource snapshot</caption>
             <thead>
               <tr>
-                <th scope="col">Service</th>
                 <th scope="col">Container</th>
                 <th scope="col">CPU</th>
-                <th scope="col">RAM working set</th>
-                <th scope="col">RAM limit</th>
-                <th scope="col">Writable layer</th>
+                <th scope="col">RAM</th>
+                <th scope="col">Disk</th>
                 {onOpenLogs && <th scope="col" aria-label="Actions" />}
               </tr>
             </thead>
             <tbody>
-              {containers.map((container) => (
-                <tr key={`${container.service}:${container.container}`}>
-                  <td><strong className="container-service-name">{container.service}</strong></td>
-                  <td><code className="container-name">{container.container}</code></td>
-                  <td className="container-number">{formatCpu(container.cpuCores)}</td>
-                  <td className="container-number">{formatMemory(container)}</td>
-                  <td className="container-number">{formatBytes(container.memoryLimitBytes ?? Number.NaN)}</td>
-                  <td className="container-number">{formatBytes(container.filesystemUsageBytes ?? Number.NaN)}</td>
-                  {onOpenLogs && (
-                    <td>
-                      <button className="table-action" type="button" onClick={() => onOpenLogs(container.service)}>
-                        Logs
-                      </button>
+              {containers.map((container) => {
+                const memory = formatMemory(container)
+
+                return (
+                  <tr key={`${container.service}:${container.container}`}>
+                    <td className="container-identity">
+                      <strong className="container-service-name">{container.service}</strong>
+                      <code className="container-name" title={container.container}>{container.container}</code>
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td className="container-number">{formatCpu(container.cpuCores)}</td>
+                    <td className="container-number container-memory">
+                      <span>{memory.usage}</span>
+                      {memory.detail && <small>{memory.detail}</small>}
+                    </td>
+                    <td className="container-number">{formatBytes(container.filesystemUsageBytes ?? Number.NaN)}</td>
+                    {onOpenLogs && (
+                      <td>
+                        <button className="table-action" type="button" onClick={() => onOpenLogs(container.service)}>
+                          Logs
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
