@@ -26,6 +26,7 @@ export function useCallTelemetry(enabled: boolean) {
     ])
     setSummary(nextSummary)
     setRecentCallLegs(nextRecentCallLegs)
+    setError(null)
   }, [filters])
 
   useEffect(() => {

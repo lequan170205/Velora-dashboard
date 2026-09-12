@@ -14,10 +14,12 @@ import {
   ConversationSection,
   LogsSection,
   MonitoringSection,
+  OverviewSection,
   ServerSection,
 } from '../features/monitoring'
 import { getMonitoringConnectionState } from '../features/monitoring/fresshness'
 import { useMonitoringHeartbeat } from '../features/monitoring/hooks/useMonitoringHeartbeat'
+import type { LogsPreset } from '../features/monitoring/hooks/useLogsView'
 import { fetchApi, subscribeToSessionExpired } from '../shared/api/client'
 import {
   DashboardShell,
@@ -35,6 +37,7 @@ export function App() {
   const [password, setPassword] = useState('')
   const [loginError, setLoginError] = useState<string | null>(null)
   const [loginPending, setLoginPending] = useState(false)
+  const [logsPreset, setLogsPreset] = useState<LogsPreset | null>(null)
   const calls = useCallTelemetry(authenticated)
   const [now, setNow] = useState(Date.now())
   const heartbeat = useMonitoringHeartbeat(authenticated)
@@ -134,8 +137,14 @@ export function App() {
   }
 
   const navigate = (view: ViewId) => {
+    if (view !== 'logs') setLogsPreset(null)
     if (window.location.hash !== `#${view}`) window.location.hash = view
     setActiveView(view)
+  }
+
+  const openLogs = (service: string, level: LogsPreset['level'] = 'error') => {
+    setLogsPreset({ service, level })
+    navigate('logs')
   }
 
   const inspectCall = (callId: string) => {
@@ -166,12 +175,22 @@ export function App() {
       onLogout={() => void logout()}
       connectionState={connectionState}
     >
+      {activeView === 'overview' && (
+        <OverviewSection
+          overview={heartbeat.overview}
+          callSummary={calls.summary}
+          monitoringError={heartbeat.error}
+          callError={calls.error}
+          onNavigate={navigate}
+          onOpenLogs={(service) => openLogs(service, service === 'all' ? 'all' : 'error')}
+        />
+      )}
       {activeView === 'server' && <ServerSection />}
       {activeView === 'service' && <MonitoringSection />}
       {activeView === 'conversation' && <ConversationSection />}
       {activeView === 'call-service' && <CallServiceSection />}
-      {activeView === 'alerts' && <AlertsSection />}
-      {activeView === 'logs' && <LogsSection />}
+      {activeView === 'alerts' && <AlertsSection onNavigate={navigate} onOpenLogs={openLogs} />}
+      {activeView === 'logs' && <LogsSection preset={logsPreset} />}
       {activeView === 'call-quality' && (
         <CallQualitySection
           summary={calls.summary}

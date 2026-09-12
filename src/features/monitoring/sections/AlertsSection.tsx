@@ -1,5 +1,6 @@
 import { useAlertsView } from '../hooks/useAlertsView'
 import type { MonitoringAlert } from '../alertsApi'
+import { alertServiceForRouting, metricViewForAlert } from '../alertRouting'
 
 const formatTimestamp = (value: string) => {
   const date = new Date(value)
@@ -29,7 +30,12 @@ const alertKey = (alert: MonitoringAlert) => {
   return `${alert.name}:${alert.activeAt ?? 'unknown'}:${labelKey}`
 }
 
-export function AlertsSection() {
+type AlertsSectionProps = {
+  onNavigate?: (view: import('../alertRouting').AlertMetricView) => void
+  onOpenLogs?: (service: string) => void
+}
+
+export function AlertsSection({ onNavigate, onOpenLogs }: AlertsSectionProps) {
   const {
     response,
     alerts,
@@ -79,27 +85,50 @@ export function AlertsSection() {
           <div className="empty-state alerts-clear"><i>✓</i><strong>No active alerts</strong><p>No rule is currently pending or firing. This view is live state, not alert history.</p></div>
         ) : (
           <div className="alerts-list">
-            {alerts.map((alert) => (
-              <article className={`alert-row severity-${alert.severity} state-${alert.state}`} key={alertKey(alert)}>
-                <div className="alert-row-topline">
-                  <div className="alert-badges">
-                    <span className={`alert-severity severity-${alert.severity}`}>{alert.severity}</span>
-                    <span className={`alert-state state-${alert.state}`}>{alert.state}</span>
-                    <span className="alert-service">{alert.service}</span>
+            {alerts.map((alert) => {
+              const routingService = alertServiceForRouting(alert)
+              const metricView = metricViewForAlert(alert)
+
+              return (
+                <article className={`alert-row severity-${alert.severity} state-${alert.state}`} key={alertKey(alert)}>
+                  <div className="alert-row-topline">
+                    <div className="alert-badges">
+                      <span className={`alert-severity severity-${alert.severity}`}>{alert.severity}</span>
+                      <span className={`alert-state state-${alert.state}`}>{alert.state}</span>
+                      <span className="alert-service">{alert.service === 'unknown' ? routingService : alert.service}</span>
+                    </div>
+                    <time dateTime={alert.activeAt ?? undefined} title={alert.activeAt ? formatTimestamp(alert.activeAt) : undefined}>{formatActiveFor(alert.activeAt)}</time>
                   </div>
-                  <time dateTime={alert.activeAt ?? undefined} title={alert.activeAt ? formatTimestamp(alert.activeAt) : undefined}>{formatActiveFor(alert.activeAt)}</time>
-                </div>
-                <h3>{alert.summary}</h3>
-                {alert.description && <p>{alert.description}</p>}
-                <details>
-                  <summary>Rule details</summary>
-                  <div className="alert-technical-grid">
-                    <span><b>Rule</b>{alert.name}</span>
-                    <span><b>Current value</b>{alert.value === null ? 'Unavailable' : alert.value.toPrecision(4)}</span>
-                  </div>
-                </details>
-              </article>
-            ))}
+                  <h3>{alert.summary}</h3>
+                  {alert.description && <p>{alert.description}</p>}
+                  <details>
+                    <summary>Rule details</summary>
+                    <div className="alert-technical-grid">
+                      <span><b>Rule</b>{alert.name}</span>
+                      <span><b>Current value</b>{alert.value === null ? 'Unavailable' : alert.value.toPrecision(4)}</span>
+                    </div>
+                  </details>
+                  {(onNavigate || onOpenLogs) && (
+                    <div className="alert-row-actions">
+                      {onNavigate && metricView && (
+                        <button
+                          className="table-action"
+                          type="button"
+                          onClick={() => onNavigate(metricView)}
+                        >
+                          View metrics
+                        </button>
+                      )}
+                      {onOpenLogs && (
+                        <button className="table-action" type="button" onClick={() => onOpenLogs(routingService)}>
+                          View logs
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </article>
+              )
+            })}
           </div>
         )}
       </div>

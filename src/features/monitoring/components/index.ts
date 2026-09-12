@@ -1,4 +1,5 @@
 export { HealthSummary } from './HealthSummary'
+export { HealthMatrix } from './HealthMatrix'
 export { MetricCardGrid } from './MetricCardGrid'
 export { MonitoringCharts } from './MonitoringCharts'
 export { MonitoringError } from './MonitoringError'

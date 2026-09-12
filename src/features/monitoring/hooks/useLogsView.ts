@@ -15,6 +15,8 @@ export type LogsFilters = {
   rangeMinutes: LogsRangeMinutes
 }
 
+export type LogsPreset = Pick<LogsFilters, 'service' | 'level'>
+
 const DEFAULT_FILTERS: LogsFilters = {
   service: 'all',
   level: 'all',
@@ -25,8 +27,10 @@ const DEFAULT_FILTERS: LogsFilters = {
 const AUTO_REFRESH_INTERVAL_MS = 10_000
 const SEARCH_DEBOUNCE_MS = 400
 
-export function useLogsView() {
-  const [filters, setFilters] = useState<LogsFilters>(DEFAULT_FILTERS)
+export function useLogsView(preset?: LogsPreset | null) {
+  const [filters, setFilters] = useState<LogsFilters>(() => (
+    preset ? { ...DEFAULT_FILTERS, ...preset } : DEFAULT_FILTERS
+  ))
   const [debouncedSearch, setDebouncedSearch] = useState(DEFAULT_FILTERS.search)
   const [response, setResponse] = useState<MonitoringLogsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -92,6 +96,12 @@ export function useLogsView() {
 
     return () => window.clearTimeout(timer)
   }, [filters.search])
+
+  useEffect(() => {
+    if (!preset) return
+    setFilters((current) => ({ ...current, service: preset.service, level: preset.level }))
+    setDebouncedSearch('')
+  }, [preset?.level, preset?.service])
 
   useEffect(() => {
     void load(effectiveFilters, hasLoadedRef.current)

@@ -1,4 +1,4 @@
-import { useLogsView, type LogsRangeMinutes } from '../hooks/useLogsView'
+import { useLogsView, type LogsPreset, type LogsRangeMinutes } from '../hooks/useLogsView'
 import type { MonitoringLogEntry, MonitoringLogLevel } from '../logsApi'
 
 const SERVICE_OPTIONS = [
@@ -23,6 +23,7 @@ const SERVICE_OPTIONS = [
   'nginx',
   'rabbitmq',
   'prometheus',
+  'node-exporter',
   'grafana',
   'loki',
   'alloy',
@@ -51,7 +52,11 @@ const formatTimestamp = (value: string) => {
 const levelLabel = (level: MonitoringLogEntry['level']) =>
   level === 'warn' ? 'WARN' : level.toUpperCase()
 
-export function LogsSection() {
+type LogsSectionProps = {
+  preset?: LogsPreset | null
+}
+
+export function LogsSection({ preset = null }: LogsSectionProps) {
   const {
     filters,
     appliedFilters,
@@ -64,7 +69,7 @@ export function LogsSection() {
     live,
     setLive,
     refreshNow,
-  } = useLogsView()
+  } = useLogsView(preset)
 
   return (
     <section className="logs-observability dashboard-view" aria-labelledby="logs-title" aria-busy={initialLoading || refreshing}>

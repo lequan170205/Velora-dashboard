@@ -2,6 +2,7 @@ import type { FormEvent, ReactNode } from 'react'
 import type { MonitoringConnectionState } from '../features/monitoring/fresshness'
 
 export type ViewId =
+  | 'overview'
   | 'server'
   | 'service'
   | 'conversation'
@@ -11,7 +12,7 @@ export type ViewId =
   | 'call-quality'
   | 'recent-calls'
   | 'timeline'
-type ViewGroup = 'Infrastructure' | 'Observability' | 'Calls'
+type ViewGroup = 'Overview' | 'Infrastructure' | 'Observability' | 'Calls'
 
 export const VIEWS: Array<{
   id: ViewId
@@ -20,6 +21,13 @@ export const VIEWS: Array<{
   title: string
   kicker: string
 }> = [
+  {
+    id: 'overview',
+    group: 'Overview',
+    label: 'Overview',
+    title: 'Operations overview',
+    kicker: 'Operations / At a glance',
+  },
   {
     id: 'server',
     group: 'Infrastructure',
@@ -85,11 +93,11 @@ export const VIEWS: Array<{
   },
 ]
 
-const VIEW_GROUPS: readonly ViewGroup[] = ['Infrastructure', 'Observability', 'Calls']
+const VIEW_GROUPS: readonly ViewGroup[] = ['Overview', 'Infrastructure', 'Observability', 'Calls']
 
 export const viewFromHash = (): ViewId => {
   const hash = window.location.hash.replace(/^#/, '') as ViewId
-  return VIEWS.some((view) => view.id === hash) ? hash : 'server'
+  return VIEWS.some((view) => view.id === hash) ? hash : 'overview'
 }
 
 export function SessionLoader() {
@@ -242,6 +250,7 @@ export function DashboardShell({
                   className={activeView === view.id ? 'nav-tab-button active' : 'nav-tab-button'}
                   type="button"
                   key={view.id}
+                  aria-current={activeView === view.id ? 'page' : undefined}
                   onClick={() => onNavigate(view.id)}
                 >
                   <i aria-hidden="true" />
