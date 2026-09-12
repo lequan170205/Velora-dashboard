@@ -592,6 +592,20 @@ label,
   transition: border-color var(--transition-fast);
 }
 
+.friendly-metric-card.is-interactive {
+  width: 100%;
+  appearance: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.friendly-metric-card.is-interactive:focus-visible {
+  outline: 2px solid #8fa0ff;
+  outline-offset: 2px;
+}
+
 .friendly-metric-card::before,
 .metric-card::before {
   display: none;
@@ -802,8 +816,7 @@ label,
   padding: 0 12px;
 }
 
-.technical-details summary,
-.container-resources-note summary {
+.technical-details summary {
   padding: 10px 0;
   color: #a1a1aa;
   font-size: .7rem;
@@ -839,8 +852,7 @@ label,
 .dashboard-alert,
 .monitoring-warning,
 .alerts-error,
-.logs-error,
-.container-resources-error {
+.logs-error {
   padding: 9px 11px;
   border: 1px solid rgba(245, 158, 11, .35);
   border-radius: 7px;
@@ -932,8 +944,7 @@ code {
 }
 
 .table-shell,
-.table-scroll,
-.container-resources-table-shell {
+.table-scroll {
   width: 100%;
   overflow-x: auto;
   overscroll-behavior-inline: contain;
@@ -948,11 +959,7 @@ code {
   border-bottom-color: var(--color-border-subtle);
 }
 
-/* Containers */
-.container-resources-panel {
-  margin-top: 12px;
-}
-
+/* Server */
 .server-observability,
 .server-observability > * {
   min-width: 0;
@@ -993,126 +1000,6 @@ code {
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.container-resources-heading {
-  align-items: center;
-}
-
-.container-resources-heading .container-resources-updated {
-  color: #85858e;
-  font-size: .66rem;
-}
-
-.container-service-name {
-  color: #d4d4d8;
-  font-size: .72rem;
-}
-
-.container-number,
-.container-name {
-  font-family: var(--font-data);
-  font-variant-numeric: tabular-nums;
-}
-
-.container-metric-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  padding: 10px 12px 12px;
-}
-
-.container-metric-card {
-  display: block;
-  min-width: 0;
-  min-height: 96px;
-  padding: 13px 14px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-card);
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color var(--transition-fast), background var(--transition-fast);
-}
-
-.container-metric-card:hover {
-  border-color: var(--color-border-strong);
-  background: #17191c;
-}
-
-.container-metric-card-topline {
-  display: flex;
-  min-height: 22px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.container-metric-card-topline > span {
-  color: #85858e;
-  font-size: .72rem;
-  font-weight: 550;
-}
-
-.container-metric-card-topline > small {
-  flex: 0 0 auto;
-  padding: 3px 6px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 5px;
-  background: #202226;
-  color: #a1a1aa;
-  font-family: var(--font-body);
-  font-size: .6rem;
-  font-weight: 600;
-}
-
-.container-metric-card > strong {
-  display: block;
-  margin: 9px 0 0;
-  overflow: hidden;
-  color: #f4f4f5;
-  font-family: var(--font-data);
-  font-size: 1.25rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  letter-spacing: -.035em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.container-identity {
-  max-width: 300px;
-}
-
-.container-identity .container-name {
-  display: block;
-  margin-top: 4px;
-  overflow: hidden;
-  border: 0;
-  background: transparent;
-  color: #85858e;
-  font-size: .64rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.container-dialog-value small {
-  display: block;
-  margin-top: 3px;
-  color: #85858e;
-  font-size: .62rem;
-}
-
-.container-resources-note {
-  padding: 0 13px;
-  border-top: 1px solid var(--color-border-subtle);
-  color: #85858e;
-}
-
-.container-resources-note p {
-  margin: 0 0 10px;
-  font-size: .68rem;
 }
 
 .server-history {
@@ -1160,7 +1047,7 @@ code {
   margin: 12px;
 }
 
-.container-metric-dialog {
+.server-metric-breakdown-dialog {
   width: min(720px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);
   max-height: calc(100dvh - 24px);
@@ -1171,11 +1058,11 @@ code {
   color: #d4d4d8;
 }
 
-.container-metric-dialog::backdrop {
+.server-metric-breakdown-dialog::backdrop {
   background: rgba(0, 0, 0, .7);
 }
 
-.container-metric-dialog-header {
+.server-metric-dialog-header {
   display: flex;
   min-height: 68px;
   align-items: center;
@@ -1185,7 +1072,7 @@ code {
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.container-metric-dialog .eyebrow {
+.server-metric-dialog-header .eyebrow {
   display: block;
   margin: 0 0 4px;
   color: #85858e;
@@ -1193,7 +1080,7 @@ code {
   letter-spacing: .04em;
 }
 
-.container-metric-dialog h2 {
+.server-metric-dialog-header h2 {
   margin: 0;
   color: #f4f4f5;
   font-family: var(--font-body);
@@ -1201,28 +1088,139 @@ code {
   font-weight: 650;
 }
 
-.container-metric-dialog-close {
+.server-metric-dialog-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.server-metric-dialog-actions .secondary-button,
+.server-metric-dialog-actions .ghost-button {
+  min-height: 40px;
+}
+
+.server-metric-dialog-close {
   flex: 0 0 auto;
 }
 
-.container-metric-dialog-body {
+.server-metric-dialog-body {
   max-height: calc(100dvh - 112px);
   padding: 12px 15px 15px;
   overflow: auto;
 }
 
-.container-metric-dialog-table-shell {
+.server-metric-dialog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  color: #85858e;
+  font-size: .66rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.server-metric-dialog-note {
+  margin: 8px 0 12px;
+  color: #85858e;
+  font-size: .68rem;
+  line-height: 1.45;
+}
+
+.server-metric-dialog-error {
+  margin: 0 0 12px;
+  padding: 9px 10px;
+  border: 1px solid rgba(245, 158, 11, .35);
+  border-radius: 7px;
+  background: rgba(245, 158, 11, .07);
+  color: #fcd34d;
+  font-size: .68rem;
+  line-height: 1.45;
+}
+
+.server-metric-dialog-error strong {
+  color: #ffe29a;
+}
+
+.server-metric-dialog-table-shell {
   width: 100%;
   overflow-x: auto;
 }
 
-.container-metric-dialog-table-shell table {
+.server-metric-dialog-table-shell table {
   min-width: 430px;
 }
 
-.container-metric-dialog-table-shell th:nth-child(n + 2),
-.container-metric-dialog-table-shell td:nth-child(n + 2) {
+.server-metric-dialog-table-shell th:nth-child(n + 2),
+.server-metric-dialog-table-shell td:nth-child(n + 2) {
   text-align: right;
+}
+
+.server-metric-dialog-source {
+  min-width: 230px;
+}
+
+.server-metric-dialog-source strong,
+.server-metric-dialog-source small,
+.server-metric-dialog-value strong,
+.server-metric-dialog-value small {
+  display: block;
+}
+
+.server-metric-dialog-source strong {
+  color: #d4d4d8;
+  font-size: .72rem;
+}
+
+.server-metric-dialog-source small,
+.server-metric-dialog-value small {
+  margin-top: 3px;
+  color: #85858e;
+  font-size: .62rem;
+}
+
+.server-metric-dialog-value {
+  color: #f4f4f5;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.server-metric-dialog-value strong {
+  font-size: .76rem;
+  font-weight: 650;
+}
+
+.server-metric-dialog-group-row {
+  background: rgba(255, 255, 255, .018);
+}
+
+.server-metric-dialog-group-row .server-metric-dialog-source strong {
+  color: #b7c0cc;
+}
+
+.server-metric-dialog-empty {
+  display: grid;
+  min-height: 160px;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 24px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  color: #85858e;
+  text-align: center;
+}
+
+.server-metric-dialog-empty strong {
+  color: #d4d4d8;
+  font-size: .78rem;
+}
+
+.server-metric-dialog-empty span {
+  max-width: 360px;
+  font-size: .68rem;
+  line-height: 1.45;
 }
 
 /* Alerts and logs */
@@ -1598,31 +1596,6 @@ code {
   .server-facts dd {
     margin-top: 0;
     text-align: right;
-  }
-
-  .container-resources-heading {
-    align-items: center;
-    flex-direction: row;
-  }
-
-  .container-resources-actions {
-    width: auto;
-    align-items: center;
-    flex-direction: row;
-  }
-
-  .container-resources-updated {
-    display: none;
-  }
-
-  .container-resources-actions .secondary-button {
-    width: auto;
-  }
-
-  .container-metric-card > strong {
-    font-size: .84rem;
-    line-height: 1.15;
-    white-space: normal;
   }
 
   .server-history > .system-toolbar {

@@ -77,6 +77,14 @@ export type MonitoringContainers = {
   generatedAt: string
   source: 'docker'
   dockerEngineUp?: boolean | null
+  runningContainers?: number | null
+  sampledContainers?: number | null
+  hostCpuCount?: NullableMetric
+  storage?: {
+    imagesBytes: NullableMetric
+    volumesBytes: NullableMetric
+    buildCacheBytes: NullableMetric
+  } | null
   containers: ContainerResource[]
 }
 

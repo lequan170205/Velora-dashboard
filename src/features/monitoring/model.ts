@@ -62,4 +62,5 @@ export type MetricCardDefinition = {
   helper: string
   badge: string
   tone: Tone
+  onClick?: () => void
 }

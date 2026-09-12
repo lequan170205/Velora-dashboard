@@ -1,6 +1,6 @@
 export { HealthSummary } from './HealthSummary'
-export { ContainerResourcesPanel } from './ContainerResourcesPanel'
 export { MetricCardGrid } from './MetricCardGrid'
 export { MonitoringCharts } from './MonitoringCharts'
 export { MonitoringError } from './MonitoringError'
 export { MonitoringToolbar } from './MonitoringToolbar'
+export { ServerMetricBreakdownDialog, type ServerMetric } from './ServerMetricBreakdownDialog'

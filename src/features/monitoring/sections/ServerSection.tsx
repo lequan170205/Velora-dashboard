@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import type { MonitoringMetric } from '../api'
 import {
   badgeForThreshold,
@@ -10,11 +12,12 @@ import {
 } from '../formatters'
 import {
   HealthSummary,
-  ContainerResourcesPanel,
   MetricCardGrid,
   MonitoringCharts,
   MonitoringError,
   MonitoringToolbar,
+  ServerMetricBreakdownDialog,
+  type ServerMetric,
 } from '../components'
 import { useMonitoringView } from '../hooks/useMonitoringView'
 import { useContainerResources } from '../hooks/useContainerResources'
@@ -30,7 +33,7 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
     metric: 'host_cpu',
     title: 'Server CPU usage',
     question: 'How busy is the server?',
-    description: 'CPU usage across the Ubuntu host. Sustained high usage can slow every Velora service.',
+    description: 'CPU usage across the monitored host. Sustained high usage can slow every Velora service.',
     formatter: formatPercent,
     axisFormatter: formatPercent,
     accent: '#7f8dff',
@@ -53,7 +56,7 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
     metric: 'host_memory',
     title: 'Server RAM usage',
     question: 'Is the host running out of memory?',
-    description: 'Real Ubuntu memory pressure based on MemAvailable, matching the useful view behind free -h.',
+    description: 'Host memory pressure based on MemAvailable, matching the useful view behind free -h.',
     formatter: formatPercent,
     axisFormatter: formatPercent,
     accent: '#42d392',
@@ -74,15 +77,15 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
   },
   {
     metric: 'host_disk',
-    title: 'Root disk usage',
-    question: 'How full is the server disk?',
-    description: 'Usage of the Ubuntu root filesystem. Disk pressure can break deployments, logs, and databases.',
+    title: 'Server disk usage',
+    question: 'How full is the monitored storage?',
+    description: 'Usage of the filesystem reported by node exporter for the Docker host.',
     formatter: formatPercent,
     axisFormatter: formatPercent,
     accent: '#f5b84b',
     fill: 'rgba(245, 184, 75, .10)',
     emptyTitle: 'No disk history yet',
-    emptyDescription: 'Root filesystem samples will appear after node exporter is available.',
+    emptyDescription: 'Monitored filesystem samples will appear after node exporter is available.',
     yAxis: {
       mode: 'adaptive',
       min: 0,
@@ -152,6 +155,7 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
     errorMessage: 'Unable to load server metrics',
   })
   const containerResources = useContainerResources()
+  const [activeMetric, setActiveMetric] = useState<ServerMetric | null>(null)
 
   const host = overview?.host
   const hostUp = host?.up ?? null
@@ -184,27 +188,34 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
     ),
   }
 
+  const cpuCardValue = formatPercent(host?.cpuUsageRatio ?? Number.NaN)
+  const memoryCardValue = `${formatBytes(host?.memoryUsedBytes ?? Number.NaN)} / ${formatBytes(host?.memoryTotalBytes ?? Number.NaN)}`
+  const diskCardValue = `${formatBytes(host?.diskUsedBytes ?? Number.NaN)} / ${formatBytes(host?.diskTotalBytes ?? Number.NaN)}`
+
   const primaryCards: readonly MetricCardDefinition[] = [
     {
       label: 'CPU usage',
-      value: formatPercent(host?.cpuUsageRatio ?? Number.NaN),
-      helper: 'Real CPU usage across the Ubuntu host.',
+      value: cpuCardValue,
+      helper: 'Real CPU usage across the monitored host.',
       badge: badgeForThreshold(host?.cpuUsageRatio ?? null, 0.7, 0.9),
       tone: toneForThreshold(host?.cpuUsageRatio ?? null, 0.7, 0.9),
+      onClick: () => setActiveMetric('cpu'),
     },
     {
       label: 'RAM used',
-      value: `${formatBytes(host?.memoryUsedBytes ?? Number.NaN)} / ${formatBytes(host?.memoryTotalBytes ?? Number.NaN)}`,
+      value: memoryCardValue,
       helper: `${formatBytes(host?.memoryAvailableBytes ?? Number.NaN)} available · comparable to free -h.`,
       badge: badgeForThreshold(host?.memoryUsageRatio ?? null, 0.75, 0.9),
       tone: toneForThreshold(host?.memoryUsageRatio ?? null, 0.75, 0.9),
+      onClick: () => setActiveMetric('memory'),
     },
     {
-      label: 'Root disk',
-      value: `${formatBytes(host?.diskUsedBytes ?? Number.NaN)} / ${formatBytes(host?.diskTotalBytes ?? Number.NaN)}`,
-      helper: `${formatBytes(host?.diskAvailableBytes ?? Number.NaN)} available on /.`,
+      label: 'Disk used',
+      value: diskCardValue,
+      helper: `${formatBytes(host?.diskAvailableBytes ?? Number.NaN)} available on the monitored filesystem.`,
       badge: badgeForThreshold(host?.diskUsageRatio ?? null, 0.8, 0.92),
       tone: toneForThreshold(host?.diskUsageRatio ?? null, 0.8, 0.92),
+      onClick: () => setActiveMetric('disk'),
     },
   ]
 
@@ -226,7 +237,7 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
   const healthDetail = hostUp === null
     ? 'Prometheus returned no host status sample, so the dashboard will not guess that the server is offline.'
     : serverHealthy
-      ? 'These values describe the whole Ubuntu machine, not a single container or Node.js process.'
+      ? 'These values describe the whole monitored host, not a single container or Node.js process.'
       : 'Prometheus can see node-exporter but cannot currently scrape it. Check the exporter target and deployment.'
 
   return (
@@ -251,14 +262,20 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
           </div>
         ))}
       </dl>
-      <ContainerResourcesPanel
+      <ServerMetricBreakdownDialog
+        metric={activeMetric}
+        overallValue={activeMetric === 'cpu'
+          ? cpuCardValue
+          : activeMetric === 'memory'
+            ? memoryCardValue
+            : diskCardValue}
+        host={host}
+        response={containerResources.response}
         containers={containerResources.containers}
-        generatedAt={containerResources.response?.generatedAt}
-        dockerEngineUp={containerResources.response?.dockerEngineUp}
         error={containerResources.error}
-        initialLoading={containerResources.initialLoading}
         refreshing={containerResources.refreshing}
         onRefresh={() => void containerResources.refreshNow()}
+        onClose={() => setActiveMetric(null)}
         onOpenLogs={onOpenLogs}
       />
       <section className="server-history" aria-labelledby="server-history-title">
