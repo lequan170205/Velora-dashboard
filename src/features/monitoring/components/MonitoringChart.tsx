@@ -268,10 +268,9 @@ export function MonitoringChart({
         : null
 
   return (
-    <article className="monitoring-chart-card">
+    <article className="monitoring-chart-card" aria-label={`${title}. ${question}. ${description}`}>
       <div className="monitoring-chart-heading">
         <div>
-          <span className="chart-question">{question}</span>
           <div className="monitoring-chart-title-row">
             <h3>{title}</h3>
             {hasStaleHistory && data.length > 0 && (
@@ -283,7 +282,6 @@ export function MonitoringChart({
               </span>
             )}
           </div>
-          <p>{description}</p>
           {freshnessLabel && latestTimestamp !== undefined && (
             <time
               className={`chart-history-freshness ${historyFreshness}`}
@@ -328,7 +326,7 @@ export function MonitoringChart({
           <div className="metric-chart-canvas" role="img" aria-label={`${title} history`}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#2a3650" strokeDasharray="3 5" vertical={false} />
+                <CartesianGrid stroke="#27292d" vertical={false} />
                 <XAxis
                   dataKey="timestamp"
                   type="number"
@@ -337,7 +335,7 @@ export function MonitoringChart({
                   axisLine={false}
                   tickLine={false}
                   minTickGap={32}
-                  tick={{ fill: '#94a3b8', fontSize: 11 }}
+                  tick={{ fill: '#85858e', fontSize: 11 }}
                   tickFormatter={(value) => formatTime(Number(value))}
                 />
                 <YAxis
@@ -347,7 +345,7 @@ export function MonitoringChart({
                   tickCount={5}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 11 }}
+                  tick={{ fill: '#85858e', fontSize: 11 }}
                   tickFormatter={(value) => axisFormatter(Number(value))}
                 />
                 {visibleThresholds.map((threshold) => (
@@ -368,7 +366,7 @@ export function MonitoringChart({
                 ))}
                 <Tooltip
                   isAnimationActive={false}
-                  cursor={{ stroke: '#64748b', strokeDasharray: '4 4' }}
+                  cursor={{ stroke: '#52525b', strokeDasharray: '4 4' }}
                   content={({ active, label, payload }) => {
                     if (!active || label === undefined || label === null || !payload?.length) return null
 

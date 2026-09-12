@@ -25,10 +25,10 @@ export function MonitoringToolbar({
 }: MonitoringToolbarProps) {
   return (
     <div className="system-toolbar">
-      <div>
-        <p className="eyebrow">{eyebrow}</p>
+      <div className="sr-only">
+        <p>{eyebrow}</p>
         <h2 id={titleId}>{title}</h2>
-        <p className="section-description">{description}</p>
+        <p>{description}</p>
       </div>
       <div className="monitoring-actions">
         <div className="range-switcher" aria-label={rangeLabel}>
@@ -37,6 +37,7 @@ export function MonitoringToolbar({
               className={option.hours === rangeHours ? 'range-button active' : 'range-button'}
               key={option.label}
               type="button"
+              aria-pressed={option.hours === rangeHours}
               aria-label={option.accessibleLabel}
               title={option.accessibleLabel}
               onClick={() => onRangeChange(option.hours)}
@@ -52,7 +53,7 @@ export function MonitoringToolbar({
           aria-busy={refreshing}
           onClick={onRefresh}
         >
-          {refreshing ? 'Refreshing…' : 'Refresh now'}
+          {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
     </div>

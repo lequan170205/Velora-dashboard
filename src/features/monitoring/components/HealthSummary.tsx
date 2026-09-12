@@ -30,12 +30,10 @@ export function HealthSummary({
     <div className={`health-summary ${tone}`}>
       <div className="health-summary-icon"><UiIcon name={icon} size={18} /></div>
       <div className="health-summary-copy">
-        <span>{label}</span>
         <strong>{title}</strong>
-        <p>{detail}</p>
+        <p className="sr-only">{label}. {detail}</p>
       </div>
       <div className="health-summary-time">
-        <span>{refreshing ? 'Refreshing' : 'Snapshot updated'}</span>
         <strong
           title={hasGeneratedAt ? new Date(generatedAtTimestamp).toLocaleString() : undefined}
         >

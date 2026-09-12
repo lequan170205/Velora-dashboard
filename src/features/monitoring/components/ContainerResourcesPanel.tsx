@@ -69,9 +69,7 @@ export function ContainerResourcesPanel({
     <section className="dashboard-panel container-resources-panel" aria-labelledby="container-resources-title" aria-busy={initialLoading}>
       <div className="panel-heading container-resources-heading">
         <div>
-          <span>cAdvisor · live container snapshot</span>
           <h3 id="container-resources-title">Container resources</h3>
-          <p>Find which Docker service is consuming CPU, RAM, or filesystem space. CPU is shown against one core; Root disk above remains the host-level total.</p>
         </div>
         <div className="container-resources-actions">
           <span className="container-resources-updated">{updatedLabel(generatedAt, cadvisorUp)}</span>
@@ -138,7 +136,10 @@ export function ContainerResourcesPanel({
         </div>
       )}
 
-      <p className="container-resources-footnote">RAM is the current working set. Filesystem usage is the largest cAdvisor filesystem sample for each container and is not a replacement for host Root disk usage.</p>
+      <details className="container-resources-note">
+        <summary>About metrics</summary>
+        <p>RAM shows the working set. Filesystem is the largest cAdvisor sample per container.</p>
+      </details>
     </section>
   )
 }

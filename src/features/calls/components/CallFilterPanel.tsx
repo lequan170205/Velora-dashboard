@@ -48,7 +48,7 @@ export function CallFilterPanel({ filters, onChange, onApply }: Props) {
         </label>
       </div>
       <button className="primary-button filter-refresh" type="button" onClick={onApply}>
-        Apply filters
+        Apply
       </button>
     </div>
   )

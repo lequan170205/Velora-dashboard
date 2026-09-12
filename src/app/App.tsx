@@ -75,6 +75,12 @@ export function App() {
   }, [])
 
   useEffect(() => {
+    if (!authenticated) return
+    window.scrollTo({ top: 0, behavior: 'auto' })
+    document.getElementById('dashboard-main')?.focus({ preventScroll: true })
+  }, [activeView, authenticated])
+
+  useEffect(() => {
     void (async () => {
       try {
         const response = await fetchApi('/auth/me')

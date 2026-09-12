@@ -67,10 +67,10 @@ export function CallQualitySection({
 
       <div className="metric-grid call-kpi-grid">
         {callCards.map((card) => (
-          <article className="metric-card" key={card.label}>
+          <article className="metric-card" key={card.label} title={card.helper}>
             <span>{card.label}</span>
             <strong>{card.value}</strong>
-            <p>{card.helper}</p>
+            <p className="sr-only">{card.helper}</p>
           </article>
         ))}
       </div>
@@ -80,7 +80,7 @@ export function CallQualitySection({
           <div className="panel-heading"><div><p className="eyebrow">Network experience</p><h2>Average quality</h2></div><span className="section-meta">Client reported</span></div>
           <div className="quality-grid">
             {qualityCards.map(([label, value, helper]) => (
-              <div className="quality-item" key={label}><span>{label}</span><strong>{value}</strong><small>{helper}</small></div>
+              <div className="quality-item" key={label} title={helper}><span>{label}</span><strong>{value}</strong><small className="sr-only">{helper}</small></div>
             ))}
           </div>
         </section>

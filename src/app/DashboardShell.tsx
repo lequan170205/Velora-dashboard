@@ -19,7 +19,6 @@ export const VIEWS: Array<{
   group: ViewGroup
   label: string
   title: string
-  kicker: string
   icon: UiIconName
 }> = [
   {
@@ -27,23 +26,20 @@ export const VIEWS: Array<{
     group: 'Infrastructure',
     label: 'Server',
     title: 'Server resources',
-    kicker: 'Infrastructure / Host',
     icon: 'server',
   },
   {
     id: 'service',
     group: 'Infrastructure',
-    label: 'Monitoring service',
+    label: 'Monitoring',
     title: 'Monitoring service',
-    kicker: 'Infrastructure / Service',
     icon: 'activity',
   },
   {
     id: 'conversation',
     group: 'Infrastructure',
-    label: 'Conversation service',
+    label: 'Conversation',
     title: 'Conversation service',
-    kicker: 'Infrastructure / Realtime chat',
     icon: 'message',
   },
   {
@@ -51,47 +47,41 @@ export const VIEWS: Array<{
     group: 'Infrastructure',
     label: 'Call service',
     title: 'Call service',
-    kicker: 'Infrastructure / Call signaling',
     icon: 'phone',
   },
   {
     id: 'alerts',
     group: 'Observability',
-    label: 'Active alerts',
+    label: 'Alerts',
     title: 'Active alerts',
-    kicker: 'Observability / Prometheus rules',
     icon: 'bell',
   },
   {
     id: 'logs',
     group: 'Observability',
-    label: 'Service logs',
+    label: 'Logs',
     title: 'Service logs',
-    kicker: 'Observability / Loki',
     icon: 'terminal',
   },
   {
     id: 'call-quality',
     group: 'Calls',
-    label: 'Call quality',
+    label: 'Quality',
     title: 'Call quality',
-    kicker: 'Calls / Quality',
     icon: 'gauge',
   },
   {
     id: 'recent-calls',
     group: 'Calls',
-    label: 'Recent calls',
+    label: 'Recent',
     title: 'Recent calls',
-    kicker: 'Calls / Explorer',
     icon: 'list',
   },
   {
     id: 'timeline',
     group: 'Calls',
-    label: 'Call timeline',
+    label: 'Timeline',
     title: 'Call timeline',
-    kicker: 'Calls / Timeline',
     icon: 'timeline',
   },
 ]
@@ -107,7 +97,7 @@ export function SessionLoader() {
   return (
     <main className="session-loader">
       <div className="brand-mark">V</div>
-      <span>Checking admin session…</span>
+      <span>Loading…</span>
     </main>
   )
 }
@@ -133,38 +123,12 @@ export function LoginScreen({
 }: LoginProps) {
   return (
     <main className="login-shell">
-      <section className="login-brand-panel">
-        <div className="brand-lockup">
-          <div className="brand-mark">V</div>
-          <div>
-            <strong>Velora</strong>
-            <span>Operations Console</span>
-          </div>
-        </div>
-        <div className="login-brand-copy">
-          <span className="status-chip">
-            <UiIcon name="activity" size={15} /> Internal operations
-          </span>
-          <h1>Observe infrastructure and call quality from one focused console.</h1>
-          <p>
-            Host resources, service health, call QoE, failures, and per-call timelines for Velora
-            administrators.
-          </p>
-          <div className="login-proof-grid" aria-label="Console capabilities">
-            <span><UiIcon name="activity" size={15} /> Live telemetry</span>
-            <span><UiIcon name="server" size={15} /> Container resources</span>
-            <span><UiIcon name="bell" size={15} /> Alert-aware views</span>
-          </div>
-        </div>
-        <p className="login-footnote">Restricted access · Administrator accounts only</p>
-      </section>
-
       <section className="login-form-panel">
         <form className="login-card" onSubmit={onSubmit} aria-busy={loading} aria-labelledby="login-title">
           <div className="login-heading">
-            <span>Admin sign in</span>
-            <h2 id="login-title">Welcome back</h2>
-            <p>Use your Velora administrator account to continue.</p>
+            <div className="brand-mark" aria-hidden="true">V</div>
+            <h1 id="login-title">Velora</h1>
+            <p>Operations</p>
           </div>
           <label>
             Email address
@@ -201,7 +165,7 @@ export function LoginScreen({
                 <span>Signing in…</span>
               </>
             ) : (
-              'Sign in to dashboard'
+              'Sign in'
             )}
           </button>
           {error && <p className="error login-error" role="alert">{error}</p>}
@@ -227,13 +191,6 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   const connectionLabel = {
-    live: 'Live data',
-    refreshing: 'Refreshing',
-    stale: 'Stale data',
-    disconnected: 'Disconnected',
-  }[connectionState]
-
-  const connectionShortLabel = {
     live: 'Live',
     refreshing: 'Refreshing',
     stale: 'Stale',
@@ -279,33 +236,19 @@ export function DashboardShell({
             <span>
               <UiIcon name="check" size={14} /> Production
             </span>
-            <strong>{connectionShortLabel}</strong>
+            <strong>{connectionLabel}</strong>
           </div>
-          <p>
-            Prometheus metrics and alerts plus Loki logs refresh automatically. Admin authentication
-            refreshes in the background.
-          </p>
         </div>
       </aside>
 
       <div className="admin-main">
         <header className="admin-topbar">
-          <div>
-            <span className="topbar-kicker">{currentView.kicker}</span>
-            <h1>{currentView.title}</h1>
-          </div>
+          <h1>{currentView.title}</h1>
           <div className="topbar-actions">
             <span className={`live-indicator state-${connectionState}`} role="status" aria-live="polite">
               <span className="live-indicator-dot" aria-hidden="true" />
               {connectionLabel}
             </span>
-            <div className="admin-user">
-              <span>AD</span>
-              <div>
-                <strong>Administrator</strong>
-                <small>Admin session</small>
-              </div>
-            </div>
             <button className="ghost-button" type="button" onClick={onLogout}>
               Sign out
             </button>

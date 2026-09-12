@@ -84,7 +84,7 @@ export function LogsSection({ preset = null }: LogsSectionProps) {
         <div className="logs-live-controls">
           <span className={live ? 'logs-live-state active' : 'logs-live-state'}><span className="status-dot" aria-hidden="true" />{live ? 'Live · 10s' : 'Paused'}</span>
           <button className="ghost-button" type="button" onClick={() => setLive(!live)}>{live ? 'Pause' : 'Resume'}</button>
-          <button className="secondary-button" type="button" disabled={refreshing} onClick={() => void refreshNow()}>{refreshing ? 'Refreshing…' : 'Refresh now'}</button>
+          <button className="secondary-button" type="button" disabled={refreshing} onClick={() => void refreshNow()}>{refreshing ? 'Refreshing…' : 'Refresh'}</button>
         </div>
       </div>
 

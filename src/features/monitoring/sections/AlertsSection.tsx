@@ -56,7 +56,7 @@ export function AlertsSection({ onNavigate, onOpenLogs }: AlertsSectionProps) {
           <p>Pending and firing conditions from host, Conversation, Call, and monitoring-service rules. Resolved alerts disappear from this live view.</p>
         </div>
         <button className="secondary-button" type="button" disabled={refreshing} onClick={() => void refreshNow()}>
-          {refreshing ? 'Refreshing…' : 'Refresh now'}
+          {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
 
