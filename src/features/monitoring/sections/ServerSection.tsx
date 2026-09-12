@@ -261,35 +261,29 @@ export function ServerSection({ onOpenLogs }: ServerSectionProps) {
         onRefresh={() => void containerResources.refreshNow()}
         onOpenLogs={onOpenLogs}
       />
-      <details className="server-history">
-        <summary>
-          <span>History</span>
-          <small>CPU · RAM · Disk · Load</small>
-        </summary>
-        <div className="server-history-content">
-          <MonitoringToolbar
-            eyebrow="Host history"
-            title="Resource history"
-            titleId="server-history-title"
-            description="Historical host metrics from Prometheus node exporter."
-            rangeLabel="Server history range"
-            rangeHours={rangeHours}
-            onRangeChange={setRangeHours}
-            refreshing={refreshing}
-            onRefresh={() => void refreshNow()}
-          />
-          <MonitoringCharts
-            series={SERIES}
-            history={history}
-            historyErrors={historyErrors}
-            currentValues={chartCurrentValues}
-            snapshots={chartSnapshots}
-            className="server-chart-grid"
-            initialLoading={initialLoading}
-            historyRefreshing={historyRefreshing}
-          />
-        </div>
-      </details>
+      <section className="server-history" aria-labelledby="server-history-title">
+        <MonitoringToolbar
+          eyebrow="Host history"
+          title="History"
+          titleId="server-history-title"
+          description="Historical host metrics from Prometheus node exporter."
+          rangeLabel="Server history range"
+          rangeHours={rangeHours}
+          onRangeChange={setRangeHours}
+          refreshing={refreshing}
+          onRefresh={() => void refreshNow()}
+        />
+        <MonitoringCharts
+          series={SERIES}
+          history={history}
+          historyErrors={historyErrors}
+          currentValues={chartCurrentValues}
+          snapshots={chartSnapshots}
+          className="server-chart-grid"
+          initialLoading={initialLoading}
+          historyRefreshing={historyRefreshing}
+        />
+      </section>
     </section>
   )
 }
