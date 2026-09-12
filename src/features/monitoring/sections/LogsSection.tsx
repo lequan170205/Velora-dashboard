@@ -1,5 +1,6 @@
 import { useLogsView, type LogsPreset, type LogsRangeMinutes } from '../hooks/useLogsView'
 import type { MonitoringLogEntry, MonitoringLogLevel } from '../logsApi'
+import { UiIcon } from '../../../shared/components/UiIcon'
 
 const SERVICE_OPTIONS = [
   'all',
@@ -81,7 +82,7 @@ export function LogsSection({ preset = null }: LogsSectionProps) {
           <p>Search recent backend logs without exposing Loki or arbitrary LogQL to the browser.</p>
         </div>
         <div className="logs-live-controls">
-          <span className={live ? 'logs-live-state active' : 'logs-live-state'}><i />{live ? 'Live · 10s' : 'Paused'}</span>
+          <span className={live ? 'logs-live-state active' : 'logs-live-state'}><span className="status-dot" aria-hidden="true" />{live ? 'Live · 10s' : 'Paused'}</span>
           <button className="ghost-button" type="button" onClick={() => setLive(!live)}>{live ? 'Pause' : 'Resume'}</button>
           <button className="secondary-button" type="button" disabled={refreshing} onClick={() => void refreshNow()}>{refreshing ? 'Refreshing…' : 'Refresh now'}</button>
         </div>
@@ -131,9 +132,9 @@ export function LogsSection({ preset = null }: LogsSectionProps) {
 
       <div className="dashboard-panel logs-panel">
         {initialLoading && entries.length === 0 ? (
-          <div className="empty-state logs-loading"><i>…</i><strong>Loading recent logs</strong><p>Querying the bounded Loki window through monitoring-service.</p></div>
+          <div className="empty-state logs-loading"><span className="empty-state-icon"><UiIcon name="loader" size={18} /></span><strong>Loading recent logs</strong><p>Querying the bounded Loki window through monitoring-service.</p></div>
         ) : entries.length === 0 ? (
-          <div className="empty-state"><i>0</i><strong>No matching logs</strong><p>Try a wider time range, another service, or clear the text and level filters.</p></div>
+          <div className="empty-state"><span className="empty-state-icon"><UiIcon name="zero" size={18} /></span><strong>No matching logs</strong><p>Try a wider time range, another service, or clear the text and level filters.</p></div>
         ) : (
           <div className="logs-list" role="log" aria-live="off">
             {entries.map((entry) => (

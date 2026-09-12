@@ -10,10 +10,10 @@ export function MetricCardGrid({ cards, className = '', refreshing = false }: Me
   return (
     <div className={`friendly-metric-grid ${className}`.trim()} aria-busy={refreshing}>
       {cards.map((card) => (
-        <article className="friendly-metric-card" key={card.label}>
+        <article className={`friendly-metric-card tone-${card.tone}`} key={card.label}>
           <div className="friendly-metric-topline">
             <span>{card.label}</span>
-            <i className={`metric-badge ${card.tone}`}>{card.badge}</i>
+            <span className={`metric-badge ${card.tone}`}>{card.badge}</span>
           </div>
           <strong>{card.value}</strong>
           <p>{card.helper}</p>

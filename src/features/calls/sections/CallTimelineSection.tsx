@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react'
 
 import { formatTimelineMetrics, milliseconds, type CallTimelineEvent } from '../api'
+import { UiIcon } from '../../../shared/components/UiIcon'
 
 type Props = {
   callId: string
@@ -34,21 +35,22 @@ export function CallTimelineSection({
 
       <section className="panel timeline-panel">
         <form className="timeline-search" onSubmit={submit}>
-          <div>
+          <label>
             <span className="timeline-search-label">Call ID</span>
-            <input value={callId} onChange={(event) => onCallIdChange(event.target.value)} placeholder="Paste a call ID" />
-          </div>
+            <input id="timeline-call-id" name="callId" value={callId} onChange={(event) => onCallIdChange(event.target.value)} placeholder="Paste a call ID" />
+          </label>
           <button className="primary-button" type="submit">Load timeline</button>
         </form>
 
         {error && <div className="dashboard-alert"><strong>Unable to load timeline.</strong><span>{error}</span></div>}
 
         {timeline.length === 0 ? (
-          <div className="empty-panel-state large"><span>⌕</span><strong>Select a call to inspect</strong><p>Open a recent call or paste a call ID above.</p></div>
+          <div className="empty-panel-state large"><span className="empty-state-icon"><UiIcon name="search" size={18} /></span><strong>Select a call to inspect</strong><p>Open a recent call or paste a call ID above.</p></div>
         ) : (
           <div className="table-shell timeline-table-shell">
             <table>
-              <thead><tr><th>Time</th><th>Role</th><th>Stage</th><th>Outcome</th><th>Elapsed</th><th>Error</th><th>Metrics</th></tr></thead>
+              <caption className="sr-only">Timeline events for the selected call</caption>
+              <thead><tr><th scope="col">Time</th><th scope="col">Role</th><th scope="col">Stage</th><th scope="col">Outcome</th><th scope="col">Elapsed</th><th scope="col">Error</th><th scope="col">Metrics</th></tr></thead>
               <tbody>
                 {timeline.map((item) => (
                   <tr key={item.eventId}>

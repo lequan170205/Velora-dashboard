@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 
 import { CallFilterPanel } from '../components/CallFilterPanel'
 import { milliseconds, percent, type CallSummary, type CallTelemetryFilters } from '../api'
+import { UiIcon } from '../../../shared/components/UiIcon'
 
 type Props = {
   summary: CallSummary | null
@@ -87,7 +88,7 @@ export function CallQualitySection({
         <section className="panel failures-panel">
           <div className="panel-heading"><div><p className="eyebrow">Reliability</p><h2>Failures</h2></div><span className={failureCount > 0 ? 'count-badge bad' : 'count-badge good'}>{failureCount}</span></div>
           {Object.keys(summary?.failures ?? {}).length === 0 ? (
-            <div className="empty-panel-state"><span>✓</span><strong>No failures in this range</strong><p>Nothing needs attention for the selected filters.</p></div>
+            <div className="empty-panel-state"><span className="empty-state-icon"><UiIcon name="check" size={18} /></span><strong>No failures in this range</strong><p>Nothing needs attention for the selected filters.</p></div>
           ) : (
             <ul className="failure-list">
               {Object.entries(summary?.failures ?? {}).map(([reason, count]) => (

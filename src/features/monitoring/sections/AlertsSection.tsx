@@ -1,6 +1,7 @@
 import { useAlertsView } from '../hooks/useAlertsView'
 import type { MonitoringAlert } from '../alertsApi'
 import { alertServiceForRouting, metricViewForAlert } from '../alertRouting'
+import { UiIcon } from '../../../shared/components/UiIcon'
 
 const formatTimestamp = (value: string) => {
   const date = new Date(value)
@@ -80,9 +81,9 @@ export function AlertsSection({ onNavigate, onOpenLogs }: AlertsSectionProps) {
 
       <div className="dashboard-panel alerts-panel">
         {initialLoading && alerts.length === 0 ? (
-          <div className="empty-state alerts-loading"><i>…</i><strong>Loading active alerts</strong><p>Reading evaluated Prometheus rule state through monitoring-service.</p></div>
+          <div className="empty-state alerts-loading"><span className="empty-state-icon"><UiIcon name="loader" size={18} /></span><strong>Loading active alerts</strong><p>Reading evaluated Prometheus rule state through monitoring-service.</p></div>
         ) : alerts.length === 0 ? (
-          <div className="empty-state alerts-clear"><i>✓</i><strong>No active alerts</strong><p>No rule is currently pending or firing. This view is live state, not alert history.</p></div>
+          <div className="empty-state alerts-clear"><span className="empty-state-icon"><UiIcon name="check" size={18} /></span><strong>No active alerts</strong><p>No rule is currently pending or firing. This view is live state, not alert history.</p></div>
         ) : (
           <div className="alerts-list">
             {alerts.map((alert) => {

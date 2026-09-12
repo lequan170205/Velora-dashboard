@@ -21,6 +21,7 @@ import type {
   MonitoringTooltipSnapshot,
   MonitoringYAxisDefinition,
 } from '../model'
+import { UiIcon, type UiIconName } from '../../../shared/components/UiIcon'
 
 type Props = {
   points: MonitoringPoint[]
@@ -50,7 +51,7 @@ type ThresholdState = {
 type ChartEmptyState = {
   kind: 'loading' | 'error' | MonitoringEmptyStateKind
   label: 'Loading' | 'Failed to load' | 'No data yet' | 'No traffic data'
-  mark: '…' | '!' | '—' | '0'
+  icon: UiIconName
   title: string
   description: string
 }
@@ -81,10 +82,11 @@ const inferSampleStepMs = (timestamps: number[]): number | null => {
 
 const darkAccent = (accent: string) =>
   ({
-    '#7c3aed': '#9b8cff',
-    '#2563eb': '#6f91ff',
-    '#0f766e': '#45c9b8',
-    '#c2410c': '#f59a62',
+    '#7c3aed': '#a78bfa',
+    '#2563eb': '#60a5fa',
+    '#0f766e': '#2dd4bf',
+    '#c2410c': '#fb923c',
+    '#7f8dff': '#8b9cff',
   })[accent] ?? accent
 
 const clamp = (value: number, min: number, max: number) =>
@@ -144,7 +146,7 @@ const calculateAdaptiveDomain = (
 }
 
 const thresholdColor = (tone: 'warn' | 'bad') =>
-  tone === 'bad' ? '#ff6b6b' : '#f5b84b'
+  tone === 'bad' ? '#f87171' : '#fbbf24'
 
 const thresholdStateForValue = (
   value: number,
@@ -229,7 +231,7 @@ export function MonitoringChart({
     ? {
         kind: 'loading',
         label: 'Loading',
-        mark: '…',
+        icon: 'loader',
         title: 'Loading history…',
         description: 'Fetching Prometheus samples for the selected range.',
       }
@@ -237,7 +239,7 @@ export function MonitoringChart({
       ? {
           kind: 'error',
           label: 'Failed to load',
-          mark: '!',
+          icon: 'alert',
           title: 'History temporarily unavailable',
           description: `${historyError} Other charts can continue updating.`,
         }
@@ -245,14 +247,14 @@ export function MonitoringChart({
         ? {
             kind: 'no-traffic',
             label: 'No traffic data',
-            mark: '0',
+            icon: 'zero',
             title: emptyTitle,
             description: emptyDescription,
           }
         : {
             kind: 'no-data',
             label: 'No data yet',
-            mark: '—',
+            icon: 'minus',
             title: emptyTitle,
             description: emptyDescription,
           }
@@ -316,7 +318,7 @@ export function MonitoringChart({
           className={`chart-empty-state ${emptyState.kind}`}
           role={emptyState.kind === 'error' ? 'alert' : 'status'}
         >
-          <div className="chart-empty-mark" aria-hidden="true">{emptyState.mark}</div>
+          <div className="chart-empty-mark"><UiIcon name={emptyState.icon} size={18} /></div>
           <span className="chart-empty-label">{emptyState.label}</span>
           <strong>{emptyState.title}</strong>
           <p>{emptyState.description}</p>
@@ -326,7 +328,7 @@ export function MonitoringChart({
           <div className="metric-chart-canvas" role="img" aria-label={`${title} history`}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#202a38" strokeDasharray="3 5" vertical={false} />
+                <CartesianGrid stroke="#2a3650" strokeDasharray="3 5" vertical={false} />
                 <XAxis
                   dataKey="timestamp"
                   type="number"
@@ -335,7 +337,7 @@ export function MonitoringChart({
                   axisLine={false}
                   tickLine={false}
                   minTickGap={32}
-                  tick={{ fill: '#738197', fontSize: 11 }}
+                  tick={{ fill: '#94a3b8', fontSize: 11 }}
                   tickFormatter={(value) => formatTime(Number(value))}
                 />
                 <YAxis
@@ -345,7 +347,7 @@ export function MonitoringChart({
                   tickCount={5}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#738197', fontSize: 11 }}
+                  tick={{ fill: '#94a3b8', fontSize: 11 }}
                   tickFormatter={(value) => axisFormatter(Number(value))}
                 />
                 {visibleThresholds.map((threshold) => (
@@ -366,7 +368,7 @@ export function MonitoringChart({
                 ))}
                 <Tooltip
                   isAnimationActive={false}
-                  cursor={{ stroke: '#526176', strokeDasharray: '4 4' }}
+                  cursor={{ stroke: '#64748b', strokeDasharray: '4 4' }}
                   content={({ active, label, payload }) => {
                     if (!active || label === undefined || label === null || !payload?.length) return null
 

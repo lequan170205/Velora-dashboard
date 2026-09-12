@@ -1,5 +1,6 @@
 import { formatMonitoringAge } from '../fresshness'
 import type { Tone } from '../formatters'
+import { UiIcon, type UiIconName } from '../../../shared/components/UiIcon'
 
 type HealthSummaryProps = {
   tone: Tone
@@ -18,7 +19,7 @@ export function HealthSummary({
   generatedAt,
   refreshing = false,
 }: HealthSummaryProps) {
-  const icon = tone === 'good' ? '✓' : tone === 'warn' || tone === 'bad' ? '!' : '…'
+  const icon: UiIconName = tone === 'good' ? 'check' : tone === 'warn' || tone === 'bad' ? 'alert' : 'loader'
   const generatedAtTimestamp = generatedAt ? new Date(generatedAt).getTime() : Number.NaN
   const hasGeneratedAt = Number.isFinite(generatedAtTimestamp)
   const generatedAtLabel = hasGeneratedAt
@@ -27,7 +28,7 @@ export function HealthSummary({
 
   return (
     <div className={`health-summary ${tone}`}>
-      <div className="health-summary-icon" aria-hidden="true">{icon}</div>
+      <div className="health-summary-icon"><UiIcon name={icon} size={18} /></div>
       <div className="health-summary-copy">
         <span>{label}</span>
         <strong>{title}</strong>

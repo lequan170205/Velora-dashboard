@@ -1,6 +1,7 @@
 import type { ContainerResource } from '../api'
 import { formatBytes, formatPercent } from '../formatters'
 import { formatMonitoringAge } from '../fresshness'
+import { UiIcon } from '../../../shared/components/UiIcon'
 
 type ContainerResourcesPanelProps = {
   containers: readonly ContainerResource[]
@@ -71,13 +72,13 @@ export function ContainerResourcesPanel({
 
       {initialLoading && containers.length === 0 ? (
         <div className="empty-state container-resources-empty">
-          <i aria-hidden="true">…</i>
+          <span className="empty-state-icon"><UiIcon name="loader" size={18} /></span>
           <strong>Loading container resources</strong>
           <p>Waiting for Prometheus to return the latest cAdvisor samples.</p>
         </div>
       ) : containers.length === 0 ? (
         <div className="empty-state container-resources-empty">
-          <i aria-hidden="true">—</i>
+          <span className="empty-state-icon"><UiIcon name="minus" size={18} /></span>
           <strong>No labeled containers yet</strong>
           <p>Check that cAdvisor is UP and that Prometheus has collected Docker Compose labels.</p>
         </div>

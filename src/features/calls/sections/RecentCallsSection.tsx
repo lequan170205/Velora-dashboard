@@ -1,5 +1,6 @@
 import { CallFilterPanel } from '../components/CallFilterPanel'
 import type { CallTelemetryFilters, RecentCallLeg } from '../api'
+import { UiIcon } from '../../../shared/components/UiIcon'
 
 type Props = {
   recentCallLegs: RecentCallLeg[]
@@ -37,11 +38,12 @@ export function RecentCallsSection({
 
       <section className="panel data-panel">
         {recentCallLegs.length === 0 ? (
-          <div className="empty-panel-state large"><span>—</span><strong>No calls in this range</strong><p>Adjust the filters or wait for new call telemetry.</p></div>
+          <div className="empty-panel-state large"><span className="empty-state-icon"><UiIcon name="minus" size={18} /></span><strong>No calls in this range</strong><p>Adjust the filters or wait for new call telemetry.</p></div>
         ) : (
           <div className="table-shell">
             <table>
-              <thead><tr><th>Started</th><th>Call ID</th><th>Client</th><th>Role / direction</th><th>Control-plane</th><th>Media</th><th>Failure</th><th /></tr></thead>
+              <caption className="sr-only">Recent call legs matching the selected filters</caption>
+              <thead><tr><th scope="col">Started</th><th scope="col">Call ID</th><th scope="col">Client</th><th scope="col">Role / direction</th><th scope="col">Control-plane</th><th scope="col">Media</th><th scope="col">Failure</th><th scope="col" aria-label="Actions" /></tr></thead>
               <tbody>
                 {recentCallLegs.map((leg) => (
                   <tr key={`${leg.callId}:${leg.attemptId}`}>

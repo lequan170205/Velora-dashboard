@@ -1,5 +1,6 @@
 import type { FormEvent, ReactNode } from 'react'
 import type { MonitoringConnectionState } from '../features/monitoring/fresshness'
+import { UiIcon, type UiIconName } from '../shared/components/UiIcon'
 
 export type ViewId =
   | 'server'
@@ -19,6 +20,7 @@ export const VIEWS: Array<{
   label: string
   title: string
   kicker: string
+  icon: UiIconName
 }> = [
   {
     id: 'server',
@@ -26,6 +28,7 @@ export const VIEWS: Array<{
     label: 'Server',
     title: 'Server resources',
     kicker: 'Infrastructure / Host',
+    icon: 'server',
   },
   {
     id: 'service',
@@ -33,6 +36,7 @@ export const VIEWS: Array<{
     label: 'Monitoring service',
     title: 'Monitoring service',
     kicker: 'Infrastructure / Service',
+    icon: 'activity',
   },
   {
     id: 'conversation',
@@ -40,6 +44,7 @@ export const VIEWS: Array<{
     label: 'Conversation service',
     title: 'Conversation service',
     kicker: 'Infrastructure / Realtime chat',
+    icon: 'message',
   },
   {
     id: 'call-service',
@@ -47,6 +52,7 @@ export const VIEWS: Array<{
     label: 'Call service',
     title: 'Call service',
     kicker: 'Infrastructure / Call signaling',
+    icon: 'phone',
   },
   {
     id: 'alerts',
@@ -54,6 +60,7 @@ export const VIEWS: Array<{
     label: 'Active alerts',
     title: 'Active alerts',
     kicker: 'Observability / Prometheus rules',
+    icon: 'bell',
   },
   {
     id: 'logs',
@@ -61,6 +68,7 @@ export const VIEWS: Array<{
     label: 'Service logs',
     title: 'Service logs',
     kicker: 'Observability / Loki',
+    icon: 'terminal',
   },
   {
     id: 'call-quality',
@@ -68,6 +76,7 @@ export const VIEWS: Array<{
     label: 'Call quality',
     title: 'Call quality',
     kicker: 'Calls / Quality',
+    icon: 'gauge',
   },
   {
     id: 'recent-calls',
@@ -75,6 +84,7 @@ export const VIEWS: Array<{
     label: 'Recent calls',
     title: 'Recent calls',
     kicker: 'Calls / Explorer',
+    icon: 'list',
   },
   {
     id: 'timeline',
@@ -82,6 +92,7 @@ export const VIEWS: Array<{
     label: 'Call timeline',
     title: 'Call timeline',
     kicker: 'Calls / Timeline',
+    icon: 'timeline',
   },
 ]
 
@@ -122,7 +133,7 @@ export function LoginScreen({
 }: LoginProps) {
   return (
     <main className="login-shell">
-      <section className="login-brand-panel" aria-hidden="true">
+      <section className="login-brand-panel">
         <div className="brand-lockup">
           <div className="brand-mark">V</div>
           <div>
@@ -132,27 +143,34 @@ export function LoginScreen({
         </div>
         <div className="login-brand-copy">
           <span className="status-chip">
-            <i /> Internal operations
+            <UiIcon name="activity" size={15} /> Internal operations
           </span>
           <h1>Observe infrastructure and call quality from one focused console.</h1>
           <p>
             Host resources, service health, call QoE, failures, and per-call timelines for Velora
             administrators.
           </p>
+          <div className="login-proof-grid" aria-label="Console capabilities">
+            <span><UiIcon name="activity" size={15} /> Live telemetry</span>
+            <span><UiIcon name="server" size={15} /> Container resources</span>
+            <span><UiIcon name="bell" size={15} /> Alert-aware views</span>
+          </div>
         </div>
         <p className="login-footnote">Restricted access · Administrator accounts only</p>
       </section>
 
       <section className="login-form-panel">
-        <form className="login-card" onSubmit={onSubmit} aria-busy={loading}>
+        <form className="login-card" onSubmit={onSubmit} aria-busy={loading} aria-labelledby="login-title">
           <div className="login-heading">
             <span>Admin sign in</span>
-            <h2>Welcome back</h2>
+            <h2 id="login-title">Welcome back</h2>
             <p>Use your Velora administrator account to continue.</p>
           </div>
           <label>
             Email address
             <input
+              id="login-email"
+              name="email"
               type="email"
               value={email}
               onChange={(event) => onEmailChange(event.target.value)}
@@ -165,6 +183,8 @@ export function LoginScreen({
           <label>
             Password
             <input
+              id="login-password"
+              name="password"
               type="password"
               value={password}
               onChange={(event) => onPasswordChange(event.target.value)}
@@ -184,7 +204,7 @@ export function LoginScreen({
               'Sign in to dashboard'
             )}
           </button>
-          {error && <p className="error login-error">{error}</p>}
+          {error && <p className="error login-error" role="alert">{error}</p>}
         </form>
       </section>
     </main>
@@ -224,6 +244,7 @@ export function DashboardShell({
 
   return (
     <div className="admin-shell">
+      <a className="skip-link" href="#dashboard-main">Skip to dashboard content</a>
       <aside className="admin-sidebar">
         <div className="brand-lockup sidebar-brand">
           <div className="brand-mark">V</div>
@@ -245,7 +266,7 @@ export function DashboardShell({
                   aria-current={activeView === view.id ? 'page' : undefined}
                   onClick={() => onNavigate(view.id)}
                 >
-                  <i aria-hidden="true" />
+                  <UiIcon name={view.icon} size={17} />
                   <span>{view.label}</span>
                 </button>
               ))}
@@ -256,7 +277,7 @@ export function DashboardShell({
         <div className="sidebar-status">
           <div className="sidebar-status-line">
             <span>
-              <i /> Production
+              <UiIcon name="check" size={14} /> Production
             </span>
             <strong>{connectionShortLabel}</strong>
           </div>
@@ -274,8 +295,8 @@ export function DashboardShell({
             <h1>{currentView.title}</h1>
           </div>
           <div className="topbar-actions">
-            <span className={`live-indicator state-${connectionState}`}>
-              <i />
+            <span className={`live-indicator state-${connectionState}`} role="status" aria-live="polite">
+              <span className="live-indicator-dot" aria-hidden="true" />
               {connectionLabel}
             </span>
             <div className="admin-user">
@@ -291,7 +312,7 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="dashboard-content tabbed-dashboard-content">{children}</main>
+        <main id="dashboard-main" className="dashboard-content tabbed-dashboard-content" tabIndex={-1}>{children}</main>
       </div>
     </div>
   )
