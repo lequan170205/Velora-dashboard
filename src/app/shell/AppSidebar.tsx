@@ -3,7 +3,7 @@ import { NavLink } from 'react-router'
 
 import { NAV_GROUPS } from '../navigation'
 import { LiveIndicator } from './LiveIndicator'
-import type { MonitoringConnectionState } from '@/features/monitoring/fresshness'
+import type { MonitoringConnectionState } from '@/features/monitoring/freshness'
 import { cn } from '@/shared/lib/cn'
 
 const navLinkClassName = (isActive: boolean) =>

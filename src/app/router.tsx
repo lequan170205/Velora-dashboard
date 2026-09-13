@@ -6,14 +6,14 @@ import {
   useSearchParams,
 } from 'react-router'
 
+import { AlertsSection, LogsSection } from '../features/monitoring'
+import { InfraDashboard } from '../features/monitoring/dashboard/InfraDashboard'
 import {
-  AlertsSection,
-  CallServiceSection,
-  ConversationSection,
-  LogsSection,
-  MonitoringSection,
-  ServerSection,
-} from '../features/monitoring'
+  callServiceConfig,
+  conversationConfig,
+  monitoringServiceConfig,
+  serverConfig,
+} from '../features/monitoring/dashboard/configs'
 import type { LogsPreset } from '../features/monitoring/hooks/useLogsView'
 import {
   CallQualitySection,
@@ -42,7 +42,7 @@ function AuthGate() {
 
 function ServerRoute() {
   const navigate = useNavigate()
-  return <ServerSection onOpenLogs={(service) => openLogs(navigate, service)} />
+  return <InfraDashboard config={serverConfig} onOpenLogs={(service) => openLogs(navigate, service)} />
 }
 
 function AlertsRoute() {
@@ -133,9 +133,9 @@ export const router = createHashRouter([
     children: [
       { index: true, element: <Navigate to="/server" replace /> },
       { path: 'server', element: <ServerRoute /> },
-      { path: 'service', element: <MonitoringSection /> },
-      { path: 'conversation', element: <ConversationSection /> },
-      { path: 'call-service', element: <CallServiceSection /> },
+      { path: 'service', element: <InfraDashboard config={monitoringServiceConfig} /> },
+      { path: 'conversation', element: <InfraDashboard config={conversationConfig} /> },
+      { path: 'call-service', element: <InfraDashboard config={callServiceConfig} /> },
       { path: 'alerts', element: <AlertsRoute /> },
       { path: 'logs', element: <LogsRoute /> },
       { path: 'call-quality', element: <CallQualityRoute /> },

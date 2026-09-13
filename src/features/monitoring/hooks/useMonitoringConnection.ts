@@ -5,7 +5,7 @@ import { fetchMonitoringStatus } from '../api'
 import {
   getMonitoringConnectionState,
   type MonitoringConnectionState,
-} from '../fresshness'
+} from '../freshness'
 
 const STATUS_REFRESH_INTERVAL_MS = 15_000
 const NOW_TICK_MS = 5_000

@@ -1,3 +1,4 @@
+import { useId, type ReactNode } from 'react'
 import {
   Area,
   AreaChart,
@@ -8,30 +9,27 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { CircleOff, Loader2, Minus, TriangleAlert } from 'lucide-react'
 
-import type { MonitoringPoint } from '../api'
+import type { MonitoringPoint } from '../../api'
 import {
   formatMonitoringAge,
   getMonitoringHistoryFreshnessState,
-} from '../fresshness'
-import type {
-  MonitoringCurrentValue,
-  MonitoringEmptyStateKind,
-  MonitoringThresholdDefinition,
-  MonitoringTooltipSnapshot,
-  MonitoringYAxisDefinition,
-} from '../model'
-import { UiIcon, type UiIconName } from '../../../shared/components/UiIcon'
+} from '../../freshness'
+import type { MonitoringEmptyStateKind, MonitoringThresholdDefinition, MonitoringTooltipSnapshot, MonitoringCurrentValue, MonitoringYAxisDefinition } from '../../model'
+import type { ChartSeriesToken } from '@/shared/lib/chartTheme'
+import { useChartTheme } from '@/shared/lib/chartTheme'
+import { cn } from '@/shared/lib/cn'
 
-type Props = {
+type HistoryChartProps = {
   points: MonitoringPoint[]
+  metric: string
   title: string
   question: string
   description: string
   valueFormatter: (value: number) => string
   axisFormatter: (value: number) => string
-  accent: string
-  fill: string
+  accentToken: ChartSeriesToken
   emptyTitle: string
   emptyDescription: string
   emptyStateKind?: MonitoringEmptyStateKind
@@ -51,7 +49,7 @@ type ThresholdState = {
 type ChartEmptyState = {
   kind: 'loading' | 'error' | MonitoringEmptyStateKind
   label: 'Loading' | 'Failed to load' | 'No data yet' | 'No traffic data'
-  icon: UiIconName
+  icon: typeof Minus
   title: string
   description: string
 }
@@ -79,15 +77,6 @@ const inferSampleStepMs = (timestamps: number[]): number | null => {
     ? (intervals[middle - 1] + intervals[middle]) / 2
     : intervals[middle]
 }
-
-const darkAccent = (accent: string) =>
-  ({
-    '#7c3aed': '#a78bfa',
-    '#2563eb': '#60a5fa',
-    '#0f766e': '#2dd4bf',
-    '#c2410c': '#fb923c',
-    '#7f8dff': '#8b9cff',
-  })[accent] ?? accent
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value))
@@ -145,9 +134,6 @@ const calculateAdaptiveDomain = (
   return [lower, upper]
 }
 
-const thresholdColor = (tone: 'warn' | 'bad') =>
-  tone === 'bad' ? '#f87171' : '#fbbf24'
-
 const thresholdStateForValue = (
   value: number,
   thresholds?: readonly MonitoringThresholdDefinition[],
@@ -169,15 +155,15 @@ const thresholdStateForValue = (
   return { label: 'Healthy', tone: 'good' }
 }
 
-export function MonitoringChart({
+export function HistoryChart({
   points,
+  metric,
   title,
   question,
   description,
   valueFormatter,
   axisFormatter,
-  accent,
-  fill,
+  accentToken,
   emptyTitle,
   emptyDescription,
   emptyStateKind = 'no-data',
@@ -187,7 +173,11 @@ export function MonitoringChart({
   historyError,
   now,
   loading = false,
-}: Props) {
+}: HistoryChartProps) {
+  const chartTheme = useChartTheme()
+  const gradientId = useId()
+  const seriesColor = chartTheme.series[accentToken]
+
   const data = points.map((point) => ({
     timestamp: normalizeTimestamp(point.timestamp),
     value: point.value,
@@ -220,8 +210,6 @@ export function MonitoringChart({
     : null
   const min = values.length ? Math.min(...values) : undefined
   const max = values.length ? Math.max(...values) : undefined
-  const chartAccent = darkAccent(accent)
-  const areaFill = fill === 'transparent' ? fill : `${chartAccent}18`
   const yDomain = calculateAdaptiveDomain(values, yAxis)
   const visibleThresholds = yAxis?.thresholds?.filter((threshold) =>
     !yDomain || (threshold.value >= yDomain[0] && threshold.value <= yDomain[1]),
@@ -231,7 +219,7 @@ export function MonitoringChart({
     ? {
         kind: 'loading',
         label: 'Loading',
-        icon: 'loader',
+        icon: Loader2,
         title: 'Loading history…',
         description: 'Fetching Prometheus samples for the selected range.',
       }
@@ -239,7 +227,7 @@ export function MonitoringChart({
       ? {
           kind: 'error',
           label: 'Failed to load',
-          icon: 'alert',
+          icon: TriangleAlert,
           title: 'History temporarily unavailable',
           description: `${historyError} Other charts can continue updating.`,
         }
@@ -247,14 +235,14 @@ export function MonitoringChart({
         ? {
             kind: 'no-traffic',
             label: 'No traffic data',
-            icon: 'zero',
+            icon: CircleOff,
             title: emptyTitle,
             description: emptyDescription,
           }
         : {
             kind: 'no-data',
             label: 'No data yet',
-            icon: 'minus',
+            icon: Minus,
             title: emptyTitle,
             description: emptyDescription,
           }
@@ -267,15 +255,20 @@ export function MonitoringChart({
         ? `Last sample ${historyAge}`
         : null
 
+  const EmptyIcon = emptyState.icon
+
   return (
-    <article className="monitoring-chart-card" aria-label={`${title}. ${question}. ${description}`}>
-      <div className="monitoring-chart-heading">
-        <div>
-          <div className="monitoring-chart-title-row">
-            <h3>{title}</h3>
+    <article
+      className="flex flex-col gap-3 rounded-card border border-line bg-panel p-4"
+      aria-label={`${title}. ${question}. ${description}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-ink">{title}</h3>
             {hasStaleHistory && data.length > 0 && (
               <span
-                className="chart-history-badge"
+                className="rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-medium text-warn"
                 title={historyError ?? 'The last history sample is older than expected for this series.'}
               >
                 Stale history
@@ -284,7 +277,10 @@ export function MonitoringChart({
           </div>
           {freshnessLabel && latestTimestamp !== undefined && (
             <time
-              className={`chart-history-freshness ${historyFreshness}`}
+              className={cn(
+                'mt-0.5 block text-[11px] tabular-nums',
+                historyFreshness === 'stale' ? 'text-warn' : 'text-ink-3',
+              )}
               dateTime={new Date(latestTimestamp).toISOString()}
               title={`Last history sample: ${new Date(latestTimestamp).toLocaleString()}`}
             >
@@ -292,41 +288,66 @@ export function MonitoringChart({
             </time>
           )}
         </div>
+
         {headingValue !== undefined && Number.isFinite(headingValue) && (
-          <div className="chart-current-value">
-            <div className="chart-current-meta">
-              <span>{hasLiveCurrent ? 'Current' : 'Latest sample'}</span>
+          <div className="shrink-0 text-right">
+            <div className="flex items-center justify-end gap-1.5">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
+                {hasLiveCurrent ? 'Current' : 'Latest sample'}
+              </span>
               {currentThresholdState && (
-                <em
-                  className={`chart-threshold-status ${currentThresholdState.tone}`}
+                <span
+                  className={cn(
+                    'rounded-full px-1.5 py-px text-[10px] font-medium',
+                    currentThresholdState.tone === 'good' && 'bg-ok-soft text-ok',
+                    currentThresholdState.tone === 'warn' && 'bg-warn-soft text-warn',
+                    currentThresholdState.tone === 'bad' && 'bg-bad-soft text-bad',
+                  )}
                   aria-label={`${currentThresholdState.label} threshold status`}
                 >
                   {currentThresholdState.label}
-                </em>
+                </span>
               )}
             </div>
-            <strong>{valueFormatter(headingValue)}</strong>
-            {hasLiveCurrent && currentValue?.context && <small>{currentValue.context}</small>}
+            <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-ink">
+              {valueFormatter(headingValue)}
+            </p>
+            {hasLiveCurrent && currentValue?.context && (
+              <p className="text-[11px] text-ink-3">{currentValue.context}</p>
+            )}
           </div>
         )}
       </div>
 
       {data.length === 0 ? (
         <div
-          className={`chart-empty-state ${emptyState.kind}`}
+          className={cn(
+            'flex h-44 flex-col items-center justify-center gap-1.5 rounded-control border border-dashed border-line px-4 text-center',
+            emptyState.kind === 'error' && 'border-warn-soft',
+          )}
           role={emptyState.kind === 'error' ? 'alert' : 'status'}
         >
-          <div className="chart-empty-mark"><UiIcon name={emptyState.icon} size={18} /></div>
-          <span className="chart-empty-label">{emptyState.label}</span>
-          <strong>{emptyState.title}</strong>
-          <p>{emptyState.description}</p>
+          <EmptyIcon
+            size={18}
+            aria-hidden="true"
+            className={cn('mb-0.5 text-ink-3', emptyState.kind === 'loading' && 'animate-spin')}
+          />
+          <span className="text-[11px] font-medium uppercase tracking-wider text-ink-3">{emptyState.label}</span>
+          <strong className="text-[13px] font-semibold text-ink">{emptyState.title}</strong>
+          <p className="max-w-xs text-xs leading-relaxed text-ink-2">{emptyState.description}</p>
         </div>
       ) : (
         <>
-          <div className="metric-chart-canvas" role="img" aria-label={`${title} history`}>
+          <div className="au-chart h-44" role="img" aria-label={`${title} history`}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#27292d" vertical={false} />
+                <defs>
+                  <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={seriesColor} stopOpacity={0.26} />
+                    <stop offset="100%" stopColor={seriesColor} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={chartTheme.grid} vertical={false} />
                 <XAxis
                   dataKey="timestamp"
                   type="number"
@@ -335,7 +356,7 @@ export function MonitoringChart({
                   axisLine={false}
                   tickLine={false}
                   minTickGap={32}
-                  tick={{ fill: '#85858e', fontSize: 11 }}
+                  tick={{ fill: chartTheme.tick, fontSize: 11 }}
                   tickFormatter={(value) => formatTime(Number(value))}
                 />
                 <YAxis
@@ -345,28 +366,28 @@ export function MonitoringChart({
                   tickCount={5}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#85858e', fontSize: 11 }}
+                  tick={{ fill: chartTheme.tick, fontSize: 11 }}
                   tickFormatter={(value) => axisFormatter(Number(value))}
                 />
                 {visibleThresholds.map((threshold) => (
                   <ReferenceLine
                     key={`${threshold.tone}-${threshold.value}`}
                     y={threshold.value}
-                    stroke={thresholdColor(threshold.tone)}
+                    stroke={threshold.tone === 'bad' ? chartTheme.thresholdBad : chartTheme.thresholdWarn}
                     strokeDasharray="5 5"
                     strokeOpacity={0.7}
                     ifOverflow="hidden"
                     label={{
                       value: threshold.label,
                       position: 'insideTopRight',
-                      fill: thresholdColor(threshold.tone),
+                      fill: threshold.tone === 'bad' ? chartTheme.thresholdBad : chartTheme.thresholdWarn,
                       fontSize: 10,
                     }}
                   />
                 ))}
                 <Tooltip
                   isAnimationActive={false}
-                  cursor={{ stroke: '#52525b', strokeDasharray: '4 4' }}
+                  cursor={{ stroke: chartTheme.cursor, strokeDasharray: '4 4' }}
                   content={({ active, label, payload }) => {
                     if (!active || label === undefined || label === null || !payload?.length) return null
 
@@ -382,21 +403,25 @@ export function MonitoringChart({
                     )
 
                     return (
-                      <div className="monitoring-chart-tooltip">
-                        <span className="monitoring-chart-tooltip-time">
+                      <div className="rounded-control border border-line bg-panel px-3 py-2 shadow-modal">
+                        <span className="block text-[11px] text-ink-3">
                           {new Date(hoveredTimestamp).toLocaleString()}
                         </span>
-                        <div className="monitoring-chart-tooltip-value">
-                          <span>{title}</span>
-                          <strong>{valueFormatter(hoveredValue)}</strong>
+                        <div className="mt-1 flex items-center justify-between gap-4">
+                          <span className="text-xs text-ink-2">{title}</span>
+                          <strong className="font-mono text-sm tabular-nums text-ink">
+                            {valueFormatter(hoveredValue)}
+                          </strong>
                         </div>
                         {showCurrentSnapshot && currentSnapshot && (
-                          <div className="monitoring-chart-tooltip-snapshot">
-                            <span>{currentSnapshot.title}</span>
+                          <div className="mt-2 border-t border-line pt-2">
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-ink-3">
+                              {currentSnapshot.title}
+                            </span>
                             {currentSnapshot.details.map((detail) => (
-                              <div key={detail.label}>
-                                <small>{detail.label}</small>
-                                <strong>{detail.value}</strong>
+                              <div key={detail.label} className="mt-0.5 flex items-center justify-between gap-4">
+                                <small className="text-[11px] text-ink-3">{detail.label}</small>
+                                <strong className="font-mono text-xs tabular-nums text-ink">{detail.value}</strong>
                               </div>
                             ))}
                           </div>
@@ -408,23 +433,35 @@ export function MonitoringChart({
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke={chartAccent}
-                  fill={areaFill}
-                  strokeWidth={2.25}
+                  stroke={seriesColor}
+                  fill={`url(#${gradientId})`}
+                  strokeWidth={2}
                   dot={false}
-                  activeDot={{ r: 4, strokeWidth: 0, fill: chartAccent }}
+                  activeDot={{ r: 4, strokeWidth: 0, fill: seriesColor }}
                   isAnimationActive={false}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="chart-range-summary" aria-label={`${title} range summary`}>
-            <span><small>Low</small>{min === undefined ? '—' : valueFormatter(min)}</span>
-            <span><small>{hasStaleHistory ? 'Last' : 'Latest'}</small>{latestHistoryValue === undefined ? '—' : valueFormatter(latestHistoryValue)}</span>
-            <span><small>High</small>{max === undefined ? '—' : valueFormatter(max)}</span>
+          <div className="flex items-center justify-between gap-3 border-t border-line pt-2.5" aria-label={`${title} range summary`}>
+            <span className="text-xs text-ink-3"><span className="mr-1.5 text-[10px] font-medium uppercase tracking-wide">Low</span><span className="font-mono tabular-nums text-ink-2">{min === undefined ? '—' : valueFormatter(min)}</span></span>
+            <span className="text-xs text-ink-3"><span className="mr-1.5 text-[10px] font-medium uppercase tracking-wide">{hasStaleHistory ? 'Last' : 'Latest'}</span><span className="font-mono tabular-nums text-ink-2">{latestHistoryValue === undefined ? '—' : valueFormatter(latestHistoryValue)}</span></span>
+            <span className="text-xs text-ink-3"><span className="mr-1.5 text-[10px] font-medium uppercase tracking-wide">High</span><span className="font-mono tabular-nums text-ink-2">{max === undefined ? '—' : valueFormatter(max)}</span></span>
           </div>
         </>
       )}
     </article>
+  )
+}
+
+export function HistoryChartGrid({
+  charts,
+}: {
+  charts: readonly ReactNode[]
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      {charts}
+    </div>
   )
 }
