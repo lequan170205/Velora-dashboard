@@ -107,7 +107,9 @@ export const formatTimelineMetrics = (value: Record<string, unknown> | null) => 
 
   return entries
     .map(([name, metric]) => {
-      if (typeof metric === 'number') return `${name}: ${metric.toFixed(3)}`
+      if (typeof metric === 'number') {
+        return Number.isInteger(metric) ? `${name}: ${metric}` : `${name}: ${metric.toFixed(3)}`
+      }
       return `${name}: ${JSON.stringify(metric)}`
     })
     .join(' · ')

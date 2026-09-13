@@ -169,6 +169,7 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
         cards && (
           <StatCardGrid
             cards={cards}
+            gridClassName={config.cardsGridClassName}
             refreshing={refreshing}
             onDialog={config.breakdown ? (metric) => setActiveMetric(metric ?? null) : undefined}
           />

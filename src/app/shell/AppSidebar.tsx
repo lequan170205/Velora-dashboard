@@ -2,7 +2,6 @@ import { CheckCircle2, X } from 'lucide-react'
 import { NavLink } from 'react-router'
 
 import { NAV_GROUPS } from '../navigation'
-import { LiveIndicator } from './LiveIndicator'
 import type { MonitoringConnectionState } from '@/features/monitoring/freshness'
 import { cn } from '@/shared/lib/cn'
 
@@ -48,7 +47,6 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function SidebarContent({
-  connectionState,
   onNavigate,
 }: {
   connectionState: MonitoringConnectionState
@@ -71,12 +69,11 @@ function SidebarContent({
 
       <SidebarNav onNavigate={onNavigate} />
 
-      <div className="flex items-center justify-between gap-2 border-t border-line px-4 py-3">
+      <div className="flex items-center gap-1.5 border-t border-line px-4 py-3">
         <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
           <CheckCircle2 size={13} aria-hidden="true" className="text-ok" />
           Production
         </span>
-        <LiveIndicator state={connectionState} />
       </div>
     </div>
   )
