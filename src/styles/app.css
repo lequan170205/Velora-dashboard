@@ -127,3 +127,86 @@
 
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* Unlayered overrides that must win over the legacy sheets:
+   - the document background follows the active theme
+   - focus rings use the Aurora accent instead of the legacy green
+   - form fields/labels styled by legacy element selectors get an Aurora class
+     that out-specifies them (utilities are layered and would lose until cleanup) */
+body {
+  background-color: var(--au-bg);
+  color: var(--au-text);
+}
+
+:root :focus-visible {
+  outline-color: var(--au-accent);
+}
+
+/* Sidebar navigation links — legacy `a { color: inherit }` (unlayered) would beat
+   layered color utilities, so the states live here instead. */
+.au-nav-link {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--au-text-2);
+  font-size: 14px;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.au-nav-link:hover {
+  background-color: var(--au-raised);
+  color: var(--au-text);
+}
+
+.au-nav-link[data-status='active'] {
+  background-color: var(--au-accent-soft);
+  color: var(--au-text);
+  font-weight: 500;
+}
+
+.au-field {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--au-border);
+  border-radius: 8px;
+  background-color: var(--au-inset);
+  color: var(--au-text);
+  font-size: 14px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.au-field::placeholder {
+  color: var(--au-text-3);
+}
+
+.au-field:hover:not(:disabled):not(:focus) {
+  border-color: var(--au-border-strong);
+}
+
+.au-field:focus {
+  border-color: var(--au-accent);
+  box-shadow: 0 0 0 3px var(--au-accent-soft);
+  outline: none;
+}
+
+.au-field:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.au-field--multiline {
+  height: auto;
+  min-height: 80px;
+  padding: 8px 12px;
+  resize: vertical;
+}
+
+.au-label {
+  color: var(--au-text-2);
+  font-size: 13px;
+  font-weight: 500;
+}
