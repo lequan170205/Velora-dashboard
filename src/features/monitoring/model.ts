@@ -59,6 +59,7 @@ export type MonitoringSeriesDefinition = {
 export type MetricCardDefinition = {
   label: string
   value: string
+  detail?: string
   helper: string
   badge: string
   tone: Tone

@@ -648,6 +648,87 @@ label,
   font-size: 1.25rem;
 }
 
+/* Conversation metrics are grouped by time scope so a zero rate is
+ * understandable without reading Prometheus terminology. */
+.conversation-window-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0 0 14px;
+  padding: 8px 11px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: #101114;
+  color: #a1a1aa;
+  font-size: .68rem;
+}
+
+.conversation-window-note strong {
+  color: #d4d4d8;
+  font-weight: 600;
+}
+
+.conversation-window-note span + span {
+  padding-left: 12px;
+  border-left: 1px solid var(--color-border-subtle);
+}
+
+.conversation-metric-groups {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.conversation-metric-group-heading,
+.conversation-history-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 2px 7px;
+}
+
+.conversation-metric-group-heading h3,
+.conversation-history-heading h3 {
+  margin: 0;
+  color: #d4d4d8;
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+.conversation-metric-group-heading span,
+.conversation-history-heading span {
+  color: #85858e;
+  font-size: .64rem;
+}
+
+.conversation-metric-group .friendly-metric-grid {
+  margin-bottom: 0;
+}
+
+.conversation-live-grid,
+.conversation-traffic-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.conversation-outcomes-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.friendly-metric-detail {
+  display: block;
+  margin-top: 5px;
+  color: #85858e;
+  font-size: .64rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.conversation-history-heading {
+  margin-top: 2px;
+}
+
 .server-metric-grid .friendly-metric-card > strong {
   font-size: 1.3rem;
 }

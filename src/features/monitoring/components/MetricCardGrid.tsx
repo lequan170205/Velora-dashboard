@@ -18,6 +18,7 @@ export function MetricCardGrid({ cards, className = '', refreshing = false }: Me
               <span className={`metric-badge ${card.tone}`}>{card.badge}</span>
             </div>
             <strong>{card.value}</strong>
+            {card.detail && <small className="friendly-metric-detail">{card.detail}</small>}
             <p className="sr-only">{card.helper}</p>
           </>
         )

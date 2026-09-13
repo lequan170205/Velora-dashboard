@@ -23,14 +23,23 @@ import type {
   MonitoringSeriesDefinition,
 } from '../model'
 
+const CONVERSATION_WINDOW = 'rolling 5 min'
+
+const formatConversationRate = (value: number) => {
+  if (!Number.isFinite(value)) return '—'
+  if (value === 0) return '0/s'
+  if (value < 0.01) return '<0.01/s'
+  return formatRate(value)
+}
+
 const SERIES: readonly MonitoringSeriesDefinition[] = [
   {
     metric: 'conversation_message_rate',
-    title: 'New messages per second',
+    title: 'New messages / second',
     question: 'How much real chat throughput is being created?',
     description: 'New user messages persisted per second. Idempotent retries are excluded.',
-    formatter: formatRate,
-    axisFormatter: formatRate,
+    formatter: formatConversationRate,
+    axisFormatter: formatConversationRate,
     accent: '#45c9b8',
     fill: 'rgba(69, 201, 184, .10)',
     emptyTitle: 'No message throughput yet',
@@ -39,15 +48,15 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
   },
   {
     metric: 'conversation_send_rate',
-    title: 'Validated send attempts per second',
-    question: 'How many validated sends are reaching message persistence?',
-    description: 'Send attempts that reached SendMessageUseCase after gateway validation. Gateway-level rejects are not included yet.',
-    formatter: formatRate,
-    axisFormatter: formatRate,
+    title: 'Send attempts / second',
+    question: 'How many send_message requests are arriving?',
+    description: 'All send_message outcomes: successful, rejected, and failed attempts.',
+    formatter: formatConversationRate,
+    axisFormatter: formatConversationRate,
     accent: '#7f8dff',
     fill: 'rgba(127, 141, 255, .12)',
-    emptyTitle: 'No validated send traffic yet',
-    emptyDescription: 'This chart appears after validated sends reach the persistence use case.',
+    emptyTitle: 'No send attempts yet',
+    emptyDescription: 'This chart appears after the conversation gateway receives a send_message request.',
     emptyStateKind: 'no-traffic',
   },
   {
@@ -65,7 +74,7 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
   },
   {
     metric: 'conversation_sockets',
-    title: 'Active Socket.IO connections',
+    title: 'Connected clients',
     question: 'How many realtime clients are connected?',
     description: 'Current Socket.IO clients across the scraped conversation-service instances.',
     formatter: formatCount,
@@ -102,15 +111,26 @@ export function ConversationSection() {
   const errorRate = conversation?.errorRate ?? null
   const p95Latency = conversation?.p95SendLatencySeconds ?? null
   const sendRequestsPerSecond = conversation?.sendRequestsPerSecond ?? null
-  const hasTraffic = sendRequestsPerSecond !== null && sendRequestsPerSecond > 0.001
+  const hasTraffic = sendRequestsPerSecond !== null && sendRequestsPerSecond > 0
+  const rateDetail = (value: number | null | undefined, noun: string) => {
+    if (!hasData) return 'Waiting for data'
+    if (value == null || !Number.isFinite(value)) return 'Unavailable'
+    return value === 0 ? `No ${noun} · ${CONVERSATION_WINDOW}` : `${CONVERSATION_WINDOW} average`
+  }
+  const outcomeDetail = (value: number | null, noun: string) => {
+    if (!hasData) return 'Waiting for data'
+    if (!hasTraffic) return `No ${noun} · ${CONVERSATION_WINDOW}`
+    if (value === null) return 'Unavailable'
+    return `${CONVERSATION_WINDOW} share`
+  }
   const measuredFailureRate = errorRate === null
     ? null
     : errorRate + (rejectRate ?? 0)
   const chartCurrentValues: Partial<Record<MonitoringMetric, MonitoringCurrentValue>> = {
-    conversation_message_rate: { value: conversation?.messagesPerSecond },
-    conversation_send_rate: { value: conversation?.sendRequestsPerSecond },
-    conversation_p95_send_latency: { value: conversation?.p95SendLatencySeconds },
-    conversation_sockets: { value: conversation?.socketConnections },
+    conversation_message_rate: { value: conversation?.messagesPerSecond, context: CONVERSATION_WINDOW },
+    conversation_send_rate: { value: conversation?.sendRequestsPerSecond, context: CONVERSATION_WINDOW },
+    conversation_p95_send_latency: { value: conversation?.p95SendLatencySeconds, context: CONVERSATION_WINDOW },
+    conversation_sockets: { value: conversation?.socketConnections, context: 'connected now' },
   }
 
   const reliabilityTone: Tone = serviceUp !== true
@@ -123,6 +143,7 @@ export function ConversationSection() {
     {
       label: 'Service status',
       value: serviceUp === true ? 'Online' : serviceUp === false ? 'Offline' : '—',
+      detail: hasData ? 'Prometheus scrape' : 'Waiting for data',
       helper: 'Can Prometheus scrape conversation-service?',
       badge: serviceUp === true ? 'Reachable' : serviceUp === false ? 'Unreachable' : 'Waiting',
       tone: serviceUp === true ? 'good' : serviceUp === false ? 'bad' : 'neutral',
@@ -130,31 +151,35 @@ export function ConversationSection() {
     {
       label: 'Active sockets',
       value: formatCount(conversation?.socketConnections ?? Number.NaN),
+      detail: hasData ? 'Connected now' : 'Waiting for data',
       helper: 'Realtime Socket.IO clients currently connected.',
       badge: hasData ? 'Live' : 'Waiting',
       tone: 'neutral',
     },
     {
       label: 'New messages',
-      value: formatRate(conversation?.messagesPerSecond ?? Number.NaN),
+      value: formatConversationRate(conversation?.messagesPerSecond ?? Number.NaN),
+      detail: rateDetail(conversation?.messagesPerSecond, 'messages'),
       helper: 'Persisted user messages, excluding idempotent retries.',
       badge: !hasData ? 'Waiting' : hasTraffic ? 'Active' : 'Idle',
       tone: 'neutral',
     },
     {
-      label: 'Validated sends',
-      value: formatRate(sendRequestsPerSecond ?? Number.NaN),
-      helper: 'Persistence attempts that reached SendMessageUseCase after gateway validation.',
+      label: 'Send attempts',
+      value: formatConversationRate(sendRequestsPerSecond ?? Number.NaN),
+      detail: rateDetail(sendRequestsPerSecond, 'send attempts'),
+      helper: 'All send_message attempts, including successful, rejected, and failed outcomes.',
       badge: !hasData ? 'Waiting' : hasTraffic ? 'Active' : 'Idle',
       tone: 'neutral',
     },
     {
       label: 'Successful persistence',
-      value: !hasTraffic
-        ? hasData ? 'No traffic' : '—'
+      value: !hasData || !hasTraffic
+        ? '—'
         : successRate === null
-          ? 'Unavailable'
+          ? '—'
           : formatPercent(successRate),
+      detail: outcomeDetail(successRate, 'sends'),
       helper: 'Share of measured persistence attempts that completed successfully.',
       badge: !hasData
         ? 'Waiting'
@@ -173,18 +198,19 @@ export function ConversationSection() {
     },
     {
       label: 'Rejected sends',
-      value: rejectRate === null
-        ? 'Unavailable'
-        : !hasTraffic
-          ? hasData ? 'No traffic' : '—'
+      value: !hasData || !hasTraffic
+        ? '—'
+        : rejectRate === null
+          ? '—'
           : formatPercent(rejectRate),
-      helper: 'Gateway-level validation/auth/member rejects are not instrumented yet.',
-      badge: rejectRate === null
-        ? 'Not measured'
-        : !hasData
+      detail: outcomeDetail(rejectRate, 'sends'),
+      helper: 'Rejected send_message attempts recorded by the conversation gateway.',
+      badge: !hasData
           ? 'Waiting'
           : !hasTraffic
             ? 'Idle'
+            : rejectRate === null
+              ? 'Unavailable'
             : rejectRate < 0.01
               ? 'Low'
               : 'Watch',
@@ -194,11 +220,12 @@ export function ConversationSection() {
     },
     {
       label: 'Persistence errors',
-      value: !hasTraffic
-        ? hasData ? 'No traffic' : '—'
+      value: !hasData || !hasTraffic
+        ? '—'
         : errorRate === null
-          ? 'Unavailable'
+          ? '—'
           : formatPercent(errorRate),
+      detail: outcomeDetail(errorRate, 'sends'),
       helper: 'Failures raised while persisting a validated message.',
       badge: !hasData
         ? 'Waiting'
@@ -215,11 +242,18 @@ export function ConversationSection() {
     },
     {
       label: 'p95 persistence latency',
-      value: !hasTraffic
-        ? hasData ? 'No traffic' : '—'
+      value: !hasData || !hasTraffic
+        ? '—'
         : p95Latency === null
-          ? 'Unavailable'
+          ? '—'
           : formatSeconds(p95Latency),
+      detail: !hasData
+        ? 'Waiting for data'
+        : !hasTraffic
+          ? `No samples · ${CONVERSATION_WINDOW}`
+          : p95Latency === null
+            ? 'Unavailable'
+            : `${CONVERSATION_WINDOW} sample`,
       helper: 'Time spent in the measured SendMessageUseCase persistence path.',
       badge: !hasData
         ? 'Waiting'
@@ -241,7 +275,7 @@ export function ConversationSection() {
     : serviceUp === null
       ? 'Conversation-service status is unavailable'
       : !hasTraffic
-        ? 'Conversation service is online and idle'
+        ? 'Conversation service online · no sends in 5 min'
         : reliabilityTone === 'good'
           ? 'Measured message persistence is healthy'
           : reliabilityTone === 'warn' || reliabilityTone === 'bad'
@@ -249,9 +283,9 @@ export function ConversationSection() {
             : 'Conversation service is online'
 
   const healthDetail = serviceUp === true
-    ? rejectRate === null
-      ? 'Persistence throughput, failures, and latency are measured. Gateway-level rejection rate remains unavailable until that boundary is instrumented.'
-      : 'Use throughput, rejection/error rate, and p95 latency together when comparing replica counts during load tests.'
+    ? !hasTraffic
+      ? 'Connections and scrape status are live. Send rates and outcomes will appear when traffic resumes.'
+      : 'Send rates include successful, rejected, and failed attempts. Persistence p95 covers successful sends.'
     : 'Prometheus must be able to scrape conversation-service before throughput and latency can be trusted.'
 
   return (
@@ -270,7 +304,38 @@ export function ConversationSection() {
 
       <MonitoringError error={error} title="Conversation metrics are temporarily unavailable." hasData={hasData} />
       <HealthSummary tone={reliabilityTone} label="Quick read" title={healthTitle} detail={healthDetail} generatedAt={overview?.generatedAt} refreshing={refreshing} />
-      <MetricCardGrid cards={cards} refreshing={refreshing} />
+      <div className="conversation-window-note" role="note">
+        <strong>Window</strong>
+        <span>Connections: now</span>
+        <span>Traffic & outcomes: rolling 5 min</span>
+      </div>
+      <div className="conversation-metric-groups">
+        <section className="conversation-metric-group" aria-labelledby="conversation-live-title">
+          <div className="conversation-metric-group-heading">
+            <h3 id="conversation-live-title">Live</h3>
+            <span>Now</span>
+          </div>
+          <MetricCardGrid cards={cards.slice(0, 2)} className="conversation-live-grid" refreshing={refreshing} />
+        </section>
+        <section className="conversation-metric-group" aria-labelledby="conversation-traffic-title">
+          <div className="conversation-metric-group-heading">
+            <h3 id="conversation-traffic-title">Traffic</h3>
+            <span>Rolling 5 min</span>
+          </div>
+          <MetricCardGrid cards={cards.slice(2, 4)} className="conversation-traffic-grid" refreshing={refreshing} />
+        </section>
+        <section className="conversation-metric-group" aria-labelledby="conversation-outcomes-title">
+          <div className="conversation-metric-group-heading">
+            <h3 id="conversation-outcomes-title">Outcomes</h3>
+            <span>Rolling 5 min</span>
+          </div>
+          <MetricCardGrid cards={cards.slice(4)} className="conversation-outcomes-grid" refreshing={refreshing} />
+        </section>
+      </div>
+      <div className="conversation-history-heading">
+        <h3>History</h3>
+        <span>Rates are rolling 5-minute averages</span>
+      </div>
       <MonitoringCharts
         series={SERIES}
         history={history}
