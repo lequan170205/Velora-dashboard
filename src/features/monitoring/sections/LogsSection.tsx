@@ -75,7 +75,7 @@ export function LogsSection({ preset = null }: LogsSectionProps) {
   } = useLogsView(preset)
 
   return (
-    <section className="logs-observability dashboard-view" aria-labelledby="logs-title" aria-busy={initialLoading || refreshing}>
+    <section className="logs-observability dashboard-view" aria-labelledby="logs-title" aria-busy={initialLoading}>
       <div className="logs-heading">
         <div>
           <span className="logs-eyebrow">Loki · Docker stdout/stderr</span>

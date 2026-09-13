@@ -47,17 +47,23 @@
    flash before the first real snapshot arrives. Refreshes after data exists do
    not trigger this state because the section only marks itself busy on initial load. */
 .server-observability[aria-busy="true"],
-.system-observability[aria-busy="true"] {
+.system-observability[aria-busy="true"],
+.alerts-observability[aria-busy="true"],
+.logs-observability[aria-busy="true"] {
   position: relative;
   min-height: 520px;
 }
 .server-observability[aria-busy="true"] > *,
-.system-observability[aria-busy="true"] > * {
+.system-observability[aria-busy="true"] > *,
+.alerts-observability[aria-busy="true"] > *,
+.logs-observability[aria-busy="true"] > * {
   opacity: 0;
   pointer-events: none;
 }
 .server-observability[aria-busy="true"]::before,
-.system-observability[aria-busy="true"]::before {
+.system-observability[aria-busy="true"]::before,
+.alerts-observability[aria-busy="true"]::before,
+.logs-observability[aria-busy="true"]::before {
   content: '';
   position: absolute;
   z-index: 2;
@@ -72,7 +78,9 @@
   animation: metricsLoadingSpin .72s linear infinite;
 }
 .server-observability[aria-busy="true"]::after,
-.system-observability[aria-busy="true"]::after {
+.system-observability[aria-busy="true"]::after,
+.alerts-observability[aria-busy="true"]::after,
+.logs-observability[aria-busy="true"]::after {
   content: 'Loading live metrics…';
   position: absolute;
   z-index: 2;
@@ -90,7 +98,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .server-observability[aria-busy="true"]::before,
-  .system-observability[aria-busy="true"]::before { animation: none; }
+  .system-observability[aria-busy="true"]::before,
+  .alerts-observability[aria-busy="true"]::before,
+  .logs-observability[aria-busy="true"]::before { animation: none; }
 }
 
 .view-heading { margin-bottom: 18px; }

@@ -50,7 +50,7 @@ export function AlertsSection({ onNavigate, onOpenLogs }: AlertsSectionProps) {
   } = useAlertsView()
 
   return (
-    <section className="alerts-observability dashboard-view" aria-labelledby="alerts-title" aria-busy={initialLoading || refreshing}>
+    <section className="alerts-observability dashboard-view" aria-labelledby="alerts-title" aria-busy={initialLoading}>
       <div className="alerts-heading">
         <div>
           <span className="alerts-eyebrow">Prometheus · active rule state</span>
