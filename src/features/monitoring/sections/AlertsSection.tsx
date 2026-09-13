@@ -44,11 +44,13 @@ export function AlertsSection({ onNavigate, onOpenLogs }: AlertsSectionProps) {
     error,
     initialLoading,
     refreshing,
+    hasUsableData,
+    isStale,
     refreshNow,
   } = useAlertsView()
 
   return (
-    <section className="alerts-observability dashboard-view" aria-labelledby="alerts-title" aria-busy={initialLoading}>
+    <section className="alerts-observability dashboard-view" aria-labelledby="alerts-title" aria-busy={initialLoading || refreshing}>
       <div className="alerts-heading">
         <div>
           <span className="alerts-eyebrow">Prometheus · active rule state</span>
@@ -61,8 +63,8 @@ export function AlertsSection({ onNavigate, onOpenLogs }: AlertsSectionProps) {
       </div>
 
       {error && (
-        <div className="alerts-error" role="alert">
-          <strong>Alert state is temporarily unavailable.</strong>
+        <div className={`alerts-error${isStale ? ' alerts-stale' : ''}`} role={isStale ? 'status' : 'alert'}>
+          <strong>{isStale ? 'Refresh failed. Showing previously loaded alert state.' : 'Alert state is temporarily unavailable.'}</strong>
           <span>{error}</span>
         </div>
       )}
@@ -76,13 +78,15 @@ export function AlertsSection({ onNavigate, onOpenLogs }: AlertsSectionProps) {
 
       <div className="alerts-meta-row">
         <span>Auto-refresh · 15s</span>
-        <span>{response?.generatedAt ? `Updated ${formatTimestamp(response.generatedAt)}` : 'Waiting for Prometheus'}</span>
+        <span>{response?.generatedAt ? `${isStale ? 'Stale · ' : ''}Updated ${formatTimestamp(response.generatedAt)}` : error ? 'Unavailable' : 'Waiting for Prometheus'}</span>
       </div>
 
       <div className="dashboard-panel alerts-panel">
-        {initialLoading && alerts.length === 0 ? (
+        {initialLoading ? (
           <div className="empty-state alerts-loading"><span className="empty-state-icon"><UiIcon name="loader" size={18} /></span><strong>Loading active alerts</strong><p>Reading evaluated Prometheus rule state through monitoring-service.</p></div>
-        ) : alerts.length === 0 ? (
+        ) : !hasUsableData && error ? (
+          <div className="empty-state alerts-unavailable"><span className="empty-state-icon"><UiIcon name="zero" size={18} /></span><strong>Alert state is temporarily unavailable.</strong><p>Try refreshing after monitoring-service or Prometheus is reachable again.</p></div>
+        ) : hasUsableData && alerts.length === 0 ? (
           <div className="empty-state alerts-clear"><span className="empty-state-icon"><UiIcon name="check" size={18} /></span><strong>No active alerts</strong><p>No rule is currently pending or firing. This view is live state, not alert history.</p></div>
         ) : (
           <div className="alerts-list">

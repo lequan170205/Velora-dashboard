@@ -7,11 +7,15 @@ import {
 
 const AUTO_REFRESH_INTERVAL_MS = 15_000
 
+type AlertsRequestState = {
+  status: 'loading' | 'success' | 'error'
+  background: boolean
+  error?: string
+}
+
 export function useAlertsView() {
   const [response, setResponse] = useState<MonitoringAlertsResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [initialLoading, setInitialLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const [requestState, setRequestState] = useState<AlertsRequestState | null>(null)
   const requestIdRef = useRef(0)
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -20,22 +24,23 @@ export function useAlertsView() {
     const controller = new AbortController()
     abortControllerRef.current = controller
     const requestId = ++requestIdRef.current
-    if (background) setRefreshing(true)
-    else setInitialLoading(true)
+    setRequestState({ status: 'loading', background })
 
     try {
       const next = await fetchMonitoringAlerts(controller.signal)
       if (requestId !== requestIdRef.current) return
       setResponse(next)
-      setError(null)
+      setRequestState({ status: 'success', background: false })
     } catch (cause) {
       if (requestId !== requestIdRef.current) return
       if (cause instanceof Error && cause.name === 'AbortError') return
-      setError(cause instanceof Error ? cause.message : 'Unable to load active alerts')
+      setRequestState({
+        status: 'error',
+        background,
+        error: cause instanceof Error ? cause.message : 'Unable to load active alerts',
+      })
     } finally {
       if (requestId !== requestIdRef.current) return
-      setInitialLoading(false)
-      setRefreshing(false)
       if (abortControllerRef.current === controller) abortControllerRef.current = null
     }
   }, [])
@@ -71,6 +76,12 @@ export function useAlertsView() {
     abortControllerRef.current = null
   }, [])
 
+  const hasUsableData = response !== null
+  const initialLoading = !hasUsableData && (!requestState || requestState.status === 'loading')
+  const refreshing = requestState?.status === 'loading' && requestState.background
+  const error = requestState?.status === 'error' ? requestState.error ?? 'Unable to load active alerts' : null
+  const isStale = hasUsableData && requestState?.status === 'error'
+
   return {
     response,
     alerts: response?.alerts ?? [],
@@ -78,6 +89,8 @@ export function useAlertsView() {
     error,
     initialLoading,
     refreshing,
+    hasUsableData,
+    isStale,
     refreshNow: () => load(true),
   }
 }

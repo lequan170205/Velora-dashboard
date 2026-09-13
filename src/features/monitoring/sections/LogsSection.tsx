@@ -67,6 +67,8 @@ export function LogsSection({ preset = null }: LogsSectionProps) {
     error,
     initialLoading,
     refreshing,
+    hasUsableData,
+    isStale,
     live,
     setLive,
     refreshNow,
@@ -115,24 +117,26 @@ export function LogsSection({ preset = null }: LogsSectionProps) {
       </div>
 
       {error && (
-        <div className="logs-error" role="alert">
-          <strong>Logs are temporarily unavailable.</strong>
+        <div className={`logs-error${isStale ? ' logs-stale' : ''}`} role={isStale ? 'status' : 'alert'}>
+          <strong>{isStale ? 'Refresh failed. Showing previously loaded logs.' : 'Logs are temporarily unavailable.'}</strong>
           <span>{error}</span>
         </div>
       )}
 
       <div className="logs-meta-row">
         <div>
-          <strong>{entries.length}</strong> log lines
-          <span> · {appliedFilters.service === 'all' ? 'all services' : appliedFilters.service} · {appliedFilters.level === 'all' ? 'all levels' : appliedFilters.level}</span>
+          {hasUsableData && <><strong>{entries.length}</strong> log lines</>}
+          <span>{hasUsableData ? ' · ' : ''}{appliedFilters.service === 'all' ? 'all services' : appliedFilters.service} · {appliedFilters.level === 'all' ? 'all levels' : appliedFilters.level}</span>
         </div>
-        <span>{refreshing ? 'Updating…' : response?.generatedAt ? `Updated ${formatTimestamp(response.generatedAt)}` : 'Waiting for Loki'}</span>
+        <span>{refreshing ? 'Updating…' : response?.generatedAt ? `${isStale ? 'Stale · ' : ''}Updated ${formatTimestamp(response.generatedAt)}` : error ? 'Unavailable' : 'Waiting for Loki'}</span>
       </div>
 
       <div className="dashboard-panel logs-panel">
-        {initialLoading && entries.length === 0 ? (
+        {initialLoading ? (
           <div className="empty-state logs-loading"><span className="empty-state-icon"><UiIcon name="loader" size={18} /></span><strong>Loading recent logs</strong><p>Querying the bounded Loki window through monitoring-service.</p></div>
-        ) : entries.length === 0 ? (
+        ) : !hasUsableData && error ? (
+          <div className="empty-state logs-unavailable"><span className="empty-state-icon"><UiIcon name="zero" size={18} /></span><strong>Logs are temporarily unavailable.</strong><p>Try refreshing after monitoring-service or Loki is reachable again.</p></div>
+        ) : hasUsableData && entries.length === 0 ? (
           <div className="empty-state"><span className="empty-state-icon"><UiIcon name="zero" size={18} /></span><strong>No matching logs</strong><p>Try a wider time range, another service, or clear the text and level filters.</p></div>
         ) : (
           <div className="logs-list" role="log" aria-live="off">
@@ -149,7 +153,7 @@ export function LogsSection({ preset = null }: LogsSectionProps) {
       </div>
 
       <div className="logs-footnote">
-        <span>{response?.mayHaveMore ? 'Showing the newest 200 matching lines; narrow the filters to inspect more precisely.' : 'Showing all matching lines returned for this bounded query.'}</span>
+        <span>{hasUsableData ? (response?.mayHaveMore ? 'Showing the newest 200 matching lines; narrow the filters to inspect more precisely.' : 'Showing all matching lines returned for this bounded query.') : 'A successful log result is required to report matching lines.'}</span>
         <span>Filters apply automatically; text search waits briefly while typing to avoid unnecessary Loki queries.</span>
       </div>
     </section>
