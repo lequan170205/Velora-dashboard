@@ -1,5 +1,5 @@
 import { cn } from '@/shared/lib/cn'
-import type { MonitoringConnectionState } from '@/features/monitoring/fresshness'
+import type { MonitoringConnectionState } from '@/features/monitoring/freshness'
 
 const LABELS: Record<MonitoringConnectionState, string> = {
   live: 'Live',

@@ -20,6 +20,8 @@ export type ChartTheme = {
   }
 }
 
+export type ChartSeriesToken = keyof ChartTheme['series']
+
 /* Recharts reads colors as plain values, so chart colors are resolved as hex/rgba
    per theme instead of CSS variables. */
 const CHART_THEMES: Record<Theme, ChartTheme> = {

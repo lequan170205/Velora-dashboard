@@ -1,6 +1,2 @@
 export { AlertsSection } from './sections/AlertsSection'
-export { CallServiceSection } from './sections/CallServiceSection'
-export { ConversationSection } from './sections/ConversationSection'
 export { LogsSection } from './sections/LogsSection'
-export { MonitoringSection } from './sections/MonitoringSection'
-export { ServerSection } from './sections/ServerSection'

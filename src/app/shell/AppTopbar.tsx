@@ -3,7 +3,7 @@ import { CircleUser, LogOut, Menu } from 'lucide-react'
 
 import { ThemeToggle } from '@/shared/theme/ThemeToggle'
 import { LiveIndicator } from './LiveIndicator'
-import type { MonitoringConnectionState } from '@/features/monitoring/fresshness'
+import type { MonitoringConnectionState } from '@/features/monitoring/freshness'
 
 type AppTopbarProps = {
   title: string
