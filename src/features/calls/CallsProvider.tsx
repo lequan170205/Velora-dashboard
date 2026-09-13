@@ -1,19 +1,42 @@
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 
-import { useCallTelemetry } from './useCallTelemetry'
-import { useAuth } from '../../app/providers/auth'
+import { defaultCallTelemetryFilters, type CallTelemetryFilters } from './api'
 
-type CallsContextValue = ReturnType<typeof useCallTelemetry>
+type CallsContextValue = {
+  /** Edited filter state — data only refetches when apply() runs. */
+  draft: CallTelemetryFilters
+  /** Filters the current data was loaded with. */
+  applied: CallTelemetryFilters
+  updateFilter: <Key extends keyof CallTelemetryFilters>(key: Key, value: CallTelemetryFilters[Key]) => void
+  apply: () => void
+}
 
 const CallsContext = createContext<CallsContextValue | null>(null)
 
-/* One telemetry store for the three call views, mounted for the authenticated
-   shell only — logging out discards its state instead of requiring an explicit reset. */
+/* Shared date-range filter state for the call quality + explorer views.
+   Keeping draft/applied apart fixes the old behaviour where every keystroke
+   refetched telemetry before Apply was pressed. */
 export function CallsProvider({ children }: { children: ReactNode }) {
-  const { status } = useAuth()
-  const calls = useCallTelemetry(status === 'authenticated')
+  const [draft, setDraft] = useState<CallTelemetryFilters>(defaultCallTelemetryFilters)
+  const [applied, setApplied] = useState<CallTelemetryFilters>(defaultCallTelemetryFilters)
 
-  return <CallsContext.Provider value={calls}>{children}</CallsContext.Provider>
+  const updateFilter = useCallback(
+    <Key extends keyof CallTelemetryFilters>(key: Key, value: CallTelemetryFilters[Key]) => {
+      setDraft((prev) => ({ ...prev, [key]: value }))
+    },
+    [],
+  )
+
+  const apply = useCallback(() => {
+    setApplied(draft)
+  }, [draft])
+
+  const value = useMemo(
+    () => ({ draft, applied, updateFilter, apply }),
+    [draft, applied, updateFilter, apply],
+  )
+
+  return <CallsContext.Provider value={value}>{children}</CallsContext.Provider>
 }
 
 export function useCalls(): CallsContextValue {
