@@ -6,7 +6,7 @@ import {
   useSearchParams,
 } from 'react-router'
 
-import { AlertsSection, LogsSection } from '../features/monitoring'
+import { AlertsView, LogsView } from '../features/monitoring'
 import { InfraDashboard } from '../features/monitoring/dashboard/InfraDashboard'
 import {
   callServiceConfig,
@@ -14,7 +14,7 @@ import {
   monitoringServiceConfig,
   serverConfig,
 } from '../features/monitoring/dashboard/configs'
-import type { LogsPreset } from '../features/monitoring/hooks/useLogsView'
+import type { LogsPreset } from '../features/monitoring/hooks/useLogsQuery'
 import {
   CallQualitySection,
   CallTimelineSection,
@@ -48,7 +48,7 @@ function ServerRoute() {
 function AlertsRoute() {
   const navigate = useNavigate()
   return (
-    <AlertsSection
+    <AlertsView
       onNavigate={(view) => navigate(`/${view}`)}
       onOpenLogs={(service) => openLogs(navigate, service)}
     />
@@ -67,7 +67,7 @@ function LogsRoute() {
     return { service, level }
   }, [service, level])
 
-  return <LogsSection preset={preset} />
+  return <LogsView preset={preset} />
 }
 
 function CallQualityRoute() {

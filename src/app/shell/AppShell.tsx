@@ -48,7 +48,9 @@ export function AppShell() {
         />
 
         <main id="dashboard-main" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
-          <Outlet />
+          <div className="mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

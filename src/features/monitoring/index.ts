@@ -1,2 +1,2 @@
-export { AlertsSection } from './sections/AlertsSection'
-export { LogsSection } from './sections/LogsSection'
+export { AlertsView } from './sections/alerts/AlertsView'
+export { LogsView } from './sections/logs/LogsView'
