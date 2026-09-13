@@ -133,7 +133,7 @@ export function LogsSection({ preset = null }: LogsSectionProps) {
 
       <div className="dashboard-panel logs-panel">
         {initialLoading ? (
-          <div className="empty-state logs-loading"><span className="empty-state-icon"><UiIcon name="loader" size={18} /></span><strong>Loading recent logs</strong><p>Querying the bounded Loki window through monitoring-service.</p></div>
+          <div className="empty-state logs-loading"><span className="empty-state-icon" aria-hidden="true"><UiIcon name="loader" size={18} /></span><strong>Loading service logs…</strong><p>Querying the bounded Loki window through monitoring-service.</p></div>
         ) : !hasUsableData && error ? (
           <div className="empty-state logs-unavailable"><span className="empty-state-icon"><UiIcon name="zero" size={18} /></span><strong>Logs are temporarily unavailable.</strong><p>Try refreshing after monitoring-service or Loki is reachable again.</p></div>
         ) : hasUsableData && isStale && entries.length === 0 ? (
