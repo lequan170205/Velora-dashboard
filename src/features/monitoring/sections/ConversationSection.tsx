@@ -123,6 +123,11 @@ export function ConversationSection() {
     if (value === null) return 'Unavailable'
     return `${CONVERSATION_WINDOW} share`
   }
+  const outcomeValue = (value: number | null, noun: string) => {
+    if (!hasData) return '—'
+    if (!hasTraffic) return `No ${noun}`
+    return value === null ? '—' : formatPercent(value)
+  }
   const measuredFailureRate = errorRate === null
     ? null
     : errorRate + (rejectRate ?? 0)
@@ -174,11 +179,7 @@ export function ConversationSection() {
     },
     {
       label: 'Successful persistence',
-      value: !hasData || !hasTraffic
-        ? '—'
-        : successRate === null
-          ? '—'
-          : formatPercent(successRate),
+      value: outcomeValue(successRate, 'sends'),
       detail: outcomeDetail(successRate, 'sends'),
       helper: 'Share of measured persistence attempts that completed successfully.',
       badge: !hasData
@@ -198,11 +199,7 @@ export function ConversationSection() {
     },
     {
       label: 'Rejected sends',
-      value: !hasData || !hasTraffic
-        ? '—'
-        : rejectRate === null
-          ? '—'
-          : formatPercent(rejectRate),
+      value: outcomeValue(rejectRate, 'rejects'),
       detail: outcomeDetail(rejectRate, 'sends'),
       helper: 'Rejected send_message attempts recorded by the conversation gateway.',
       badge: !hasData
@@ -220,11 +217,7 @@ export function ConversationSection() {
     },
     {
       label: 'Persistence errors',
-      value: !hasData || !hasTraffic
-        ? '—'
-        : errorRate === null
-          ? '—'
-          : formatPercent(errorRate),
+      value: outcomeValue(errorRate, 'errors'),
       detail: outcomeDetail(errorRate, 'sends'),
       helper: 'Failures raised while persisting a validated message.',
       badge: !hasData
@@ -242,11 +235,13 @@ export function ConversationSection() {
     },
     {
       label: 'p95 persistence latency',
-      value: !hasData || !hasTraffic
+      value: !hasData
         ? '—'
-        : p95Latency === null
-          ? '—'
-          : formatSeconds(p95Latency),
+        : !hasTraffic
+          ? 'No samples'
+          : p95Latency === null
+            ? '—'
+            : formatSeconds(p95Latency),
       detail: !hasData
         ? 'Waiting for data'
         : !hasTraffic
