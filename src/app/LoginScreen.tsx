@@ -21,7 +21,7 @@ export function LoginScreen() {
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
-            'radial-gradient(56% 44% at 18% 0%, rgba(129, 140, 248, 0.14), transparent 70%), radial-gradient(48% 40% at 85% 100%, rgba(167, 139, 250, 0.12), transparent 70%)',
+            'radial-gradient(56% 44% at 18% 0%, rgba(249, 77, 12, 0.1), transparent 70%), radial-gradient(48% 40% at 85% 100%, rgba(251, 146, 60, 0.08), transparent 70%)',
         }}
       />
 
@@ -34,12 +34,12 @@ export function LoginScreen() {
             aria-labelledby="login-title"
           >
             <div className="flex flex-col items-center gap-2.5 text-center">
-              <div
-                aria-hidden="true"
-                className="grid size-11 place-items-center rounded-[12px] bg-gradient-to-br from-brand to-violet text-lg font-semibold text-white shadow-pop"
-              >
-                V
-              </div>
+        <div
+          aria-hidden="true"
+          className="grid size-11 place-items-center rounded-[12px] bg-brand text-lg font-bold text-white shadow-pop"
+        >
+          V
+        </div>
               <div>
                 <h1 id="login-title" className="text-xl font-semibold text-ink">Velora</h1>
                 <p className="text-[13px] text-ink-3">Operations</p>

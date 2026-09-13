@@ -13,7 +13,6 @@ const badgeVariants = cva(
         warn: 'bg-warn-soft text-warn',
         bad: 'bg-bad-soft text-bad',
         info: 'bg-blue-soft text-blue',
-        brand: 'bg-brand-soft text-brand',
       },
     },
     defaultVariants: {

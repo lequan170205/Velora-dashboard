@@ -12,7 +12,6 @@ export type ChartTheme = {
   thresholdBad: string
   series: {
     indigo: string
-    violet: string
     teal: string
     blue: string
     amber: string
@@ -36,8 +35,7 @@ const CHART_THEMES: Record<Theme, ChartTheme> = {
     thresholdWarn: '#fbbf24',
     thresholdBad: '#f87171',
     series: {
-      indigo: '#818cf8',
-      violet: '#a78bfa',
+      indigo: '#f94d0c',
       teal: '#2dd4bf',
       blue: '#60a5fa',
       amber: '#fbbf24',
@@ -52,11 +50,10 @@ const CHART_THEMES: Record<Theme, ChartTheme> = {
     tooltipBorder: '#e4e6f0',
     tooltipText: '#191b2e',
     tooltipMuted: '#5a5f7a',
-    thresholdWarn: '#92400e',
+    thresholdWarn: '#854d0e',
     thresholdBad: '#b91c1c',
     series: {
-      indigo: '#4f46e5',
-      violet: '#7c3aed',
+      indigo: '#ea580c',
       teal: '#0f766e',
       blue: '#2563eb',
       amber: '#b45309',

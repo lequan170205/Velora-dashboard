@@ -23,12 +23,11 @@
   --au-text-2: #a5acc8;
   --au-text-3: #8b94b1;
 
-  --au-accent: #818cf8;
-  --au-accent-strong: #6366f1;
-  --au-violet: #a78bfa;
-  --au-accent-soft: rgba(129, 140, 248, 0.14);
-  --au-action: #4f46e5;
-  --au-action-hover: #5b5fe8;
+  --au-accent: #f94d0c;
+  --au-accent-strong: #c2410c;
+  --au-accent-soft: rgba(249, 77, 12, 0.14);
+  --au-action: #c2410c;
+  --au-action-hover: #d14812;
 
   --au-success: #34d399;
   --au-success-soft: rgba(52, 211, 153, 0.14);
@@ -60,16 +59,15 @@
   --au-text-2: #5a5f7a;
   --au-text-3: #616782;
 
-  --au-accent: #4f46e5;
-  --au-accent-strong: #4338ca;
-  --au-violet: #7c3aed;
-  --au-accent-soft: rgba(79, 70, 229, 0.1);
-  --au-action: #4f46e5;
-  --au-action-hover: #4338ca;
+  --au-accent: #c2410c;
+  --au-accent-strong: #b03a0b;
+  --au-accent-soft: rgba(249, 77, 12, 0.1);
+  --au-action: #c2410c;
+  --au-action-hover: #b03a0b;
 
   --au-success: #047857;
   --au-success-soft: rgba(5, 150, 105, 0.12);
-  --au-warning: #92400e;
+  --au-warning: #854d0e;
   --au-warning-soft: rgba(217, 119, 6, 0.12);
   --au-danger: #b91c1c;
   --au-danger-soft: rgba(220, 38, 38, 0.12);
@@ -99,7 +97,6 @@
   --color-brand: var(--au-accent);
   --color-brand-strong: var(--au-accent-strong);
   --color-brand-soft: var(--au-accent-soft);
-  --color-violet: var(--au-violet);
   --color-action: var(--au-action);
   --color-action-hover: var(--au-action-hover);
 
