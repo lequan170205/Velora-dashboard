@@ -291,7 +291,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                 )}
 
                 <details className="group">
-                  <summary className="flex w-fit cursor-pointer select-none items-center gap-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+                  <summary className="flex w-fit list-none cursor-pointer select-none items-center gap-1 text-xs font-medium text-ink-3 transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
                     Rule details
                   </summary>
                   <dl className="mt-2 grid gap-x-6 gap-y-1.5 rounded-control bg-raised/60 px-3 py-2 text-xs sm:grid-cols-2">

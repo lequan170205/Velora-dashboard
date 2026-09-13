@@ -5,7 +5,7 @@ import type { TechnicalDetailsVm } from '../types'
 export function TechnicalDetails({ details }: { details: TechnicalDetailsVm }) {
   return (
     <details className="group rounded-card border border-line bg-panel">
-      <summary className="flex cursor-pointer select-none items-center justify-between px-4 py-3 text-[13px] font-medium text-ink-2 transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+      <summary className="flex list-none cursor-pointer select-none items-center justify-between px-4 py-3 text-[13px] font-medium text-ink-2 transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
         {details.summary}
         <ChevronDown
           size={15}
