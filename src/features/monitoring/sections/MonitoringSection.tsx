@@ -1,11 +1,13 @@
 import type { MonitoringMetric, MonitoringOverview } from '../api'
 import {
+  badgeForThreshold,
   formatBytes,
   formatBytesAxis,
   formatCpu,
   formatPercent,
   formatRate,
   formatSeconds,
+  toneForThreshold,
   type Tone,
 } from '../formatters'
 import {
@@ -24,13 +26,6 @@ import type {
 
 const formatSuccessRate = (errorRate: number) =>
   Number.isFinite(errorRate) ? `${((1 - errorRate) * 100).toFixed(2)}%` : '—'
-
-const cpuBadge = (value: number) => {
-  if (!Number.isFinite(value)) return { label: 'Waiting', tone: 'neutral' as Tone }
-  if (value < 0.25) return { label: 'Light load', tone: 'good' as Tone }
-  if (value < 0.75) return { label: 'Moderate', tone: 'neutral' as Tone }
-  return { label: 'Busy', tone: 'warn' as Tone }
-}
 
 const responsivenessBadge = (seconds: number) => {
   const ms = seconds * 1000
@@ -104,7 +99,7 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
     metric: 'cpu',
     title: 'Monitoring service CPU',
     question: 'How busy is this service?',
-    description: 'Processor time used by the monitoring-service process only. This is not the total CPU usage of the Ubuntu server.',
+    description: 'Share of total host CPU capacity used by the monitoring-service process. The value includes all host cores in its denominator.',
     formatter: formatCpu,
     axisFormatter: formatCpu,
     accent: '#2563eb',
@@ -159,14 +154,18 @@ export function MonitoringSection() {
   })
 
   const health = getHealthSummary(overview)
-  const cpuState = cpuBadge(overview?.process.cpuSecondsPerSecond ?? Number.NaN)
+  const processCpuRatio = overview?.process.cpuUsageRatio ?? null
+  const cpuState = {
+    label: badgeForThreshold(processCpuRatio, 0.7, 0.9),
+    tone: toneForThreshold(processCpuRatio, 0.7, 0.9),
+  }
   const successState = successBadge(overview?.rpc.errorRate ?? Number.NaN)
   const responsivenessState = responsivenessBadge(overview?.process.eventLoopP99Seconds ?? Number.NaN)
   const serviceUp = overview?.service.up ?? null
   const requestRate = overview?.rpc.requestsPerSecond ?? null
   const chartCurrentValues: Partial<Record<MonitoringMetric, MonitoringCurrentValue>> = {
     memory: { value: overview?.process.residentMemoryBytes },
-    cpu: { value: overview?.process.cpuSecondsPerSecond },
+    cpu: { value: processCpuRatio },
     rpc_rate: { value: overview?.rpc.requestsPerSecond },
     p95_rpc_latency: { value: overview?.rpc.p95LatencySeconds },
   }
@@ -188,8 +187,8 @@ export function MonitoringSection() {
     },
     {
       label: 'Monitoring service CPU',
-      value: formatCpu(overview?.process.cpuSecondsPerSecond ?? Number.NaN),
-      helper: 'CPU used by this service process only — not the whole server.',
+      value: formatCpu(processCpuRatio ?? Number.NaN),
+      helper: 'Share of total host CPU capacity used by this service process.',
       badge: cpuState.label,
       tone: cpuState.tone,
     },
@@ -222,7 +221,7 @@ export function MonitoringSection() {
         eyebrow="Monitoring service · live"
         title="How is Velora monitoring doing?"
         titleId="system-observability-title"
-        description="These numbers describe the monitoring-service process only. Use the Server view for total Ubuntu host resources."
+        description="These numbers describe the monitoring-service process. CPU is normalized to the whole host across all cores."
         rangeLabel="Monitoring history range"
         rangeHours={rangeHours}
         onRangeChange={setRangeHours}
@@ -237,7 +236,7 @@ export function MonitoringSection() {
         <div className="monitoring-scope-mark" aria-hidden="true">1</div>
         <div>
           <strong>You are looking at one Velora service, not the whole server.</strong>
-          <p>Memory and CPU below belong to <b>monitoring-service</b> only. If memory says 109 MB, that means this service is using about 109 MB — your Ubuntu machine can still be using several GB overall.</p>
+          <p>Memory belongs to <b>monitoring-service</b> only. CPU is shown as the service share of the whole host across all cores.</p>
         </div>
         <span className="monitoring-scope-badge">See Server view for host totals</span>
       </div>

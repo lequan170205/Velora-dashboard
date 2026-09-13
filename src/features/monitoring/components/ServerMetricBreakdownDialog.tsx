@@ -13,7 +13,7 @@ const METRIC_LABELS: Record<ServerMetric, string> = {
 }
 
 const METRIC_NOTES: Record<ServerMetric, string> = {
-  cpu: 'Container CPU is normalized to the host core count. Host / other is the remaining host usage.',
+  cpu: 'Every CPU value is the share of the whole host across all cores. The host card is a rolling 5-minute average; container rows are the latest Docker snapshot.',
   memory: 'Container values are working set. Host / other includes system, kernel, cache, and unassigned memory.',
   disk: 'Container values are writable layers. Docker images, volumes, build cache, and host / other complete the total.',
 }
@@ -47,12 +47,6 @@ const finite = (value: number | null | undefined): value is number =>
 
 const bytesLabel = (value: number | null) =>
   finite(value) ? formatBytes(value) : '—'
-
-const coreLabel = (value: number | null) => {
-  if (!finite(value)) return '—'
-  const digits = value >= 1 ? 2 : 3
-  return `${value.toFixed(digits)} core${value === 1 ? '' : 's'}`
-}
 
 const sumValues = (rows: readonly BreakdownRow[]) =>
   rows.reduce((total, row) => (finite(row.value) ? total + row.value : total), 0)
@@ -130,7 +124,6 @@ export function ServerMetricBreakdownDialog({
           detail: container.container,
           value: ratio,
           display: formatPercent(ratio ?? Number.NaN),
-          secondary: coreLabel(container.cpuCores),
           service: container.service,
         }
       }
@@ -278,7 +271,7 @@ export function ServerMetricBreakdownDialog({
                   <thead>
                     <tr>
                       <th scope="col">Source</th>
-                      <th scope="col">Value</th>
+                      <th scope="col">{metric === 'cpu' ? 'Value (% host)' : 'Value'}</th>
                       {onOpenLogs && <th scope="col" aria-label="Actions" />}
                     </tr>
                   </thead>

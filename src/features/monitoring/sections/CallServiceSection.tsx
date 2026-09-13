@@ -1,5 +1,6 @@
 import type { MonitoringMetric } from '../api'
 import {
+  badgeForThreshold,
   formatBytes,
   formatBytesAxis,
   formatCount,
@@ -27,7 +28,7 @@ const SERIES: readonly MonitoringSeriesDefinition[] = [
     metric: 'call_cpu',
     title: 'Call service CPU',
     question: 'How busy is the call signaling process?',
-    description: 'CPU used by call-service itself. This does not include separate Mediasoup worker CPU yet.',
+    description: 'Share of total host CPU capacity used by the call-service Node.js process. The value includes all host cores in its denominator.',
     formatter: formatCpu,
     axisFormatter: formatCpu,
     accent: '#7f8dff',
@@ -95,7 +96,7 @@ export function CallServiceSection() {
   const serviceUp = call?.up ?? null
   const eventLoopP99 = call?.eventLoopP99Seconds ?? null
   const chartCurrentValues: Partial<Record<MonitoringMetric, MonitoringCurrentValue>> = {
-    call_cpu: { value: call?.cpuSecondsPerSecond },
+    call_cpu: { value: call?.cpuUsageRatio },
     call_memory: { value: call?.residentMemoryBytes },
     call_event_loop_p99: { value: call?.eventLoopP99Seconds },
     call_sockets: { value: call?.socketConnections },
@@ -118,7 +119,7 @@ export function CallServiceSection() {
           : 'Call signaling is healthy'
 
   const healthDetail = serviceUp === true
-    ? 'This view covers the call-service Node.js signaling process. Media-worker CPU, transports, producers, and consumers will be added separately.'
+    ? 'CPU is the call-service process share of the whole host across all cores. Media-worker CPU remains part of the container breakdown on Server.'
     : 'Prometheus must be able to scrape call-service before runtime metrics can be trusted.'
 
   const cards: readonly MetricCardDefinition[] = [
@@ -145,16 +146,10 @@ export function CallServiceSection() {
     },
     {
       label: 'Process CPU',
-      value: formatCpu(call?.cpuSecondsPerSecond ?? Number.NaN),
-      helper: 'CPU consumed by the call-service Node.js process.',
-      badge: call?.cpuSecondsPerSecond === null || call?.cpuSecondsPerSecond === undefined
-        ? 'Waiting'
-        : call.cpuSecondsPerSecond < 0.25
-          ? 'Light load'
-          : call.cpuSecondsPerSecond < 0.75
-            ? 'Moderate'
-            : 'Busy',
-      tone: toneForThreshold(call?.cpuSecondsPerSecond ?? null, 0.75, 1.0),
+      value: formatCpu(call?.cpuUsageRatio ?? Number.NaN),
+      helper: 'Share of total host CPU capacity used by the call-service process.',
+      badge: badgeForThreshold(call?.cpuUsageRatio ?? null, 0.7, 0.9),
+      tone: toneForThreshold(call?.cpuUsageRatio ?? null, 0.7, 0.9),
     },
     {
       label: 'Event-loop p99',
@@ -177,7 +172,7 @@ export function CallServiceSection() {
         eyebrow="Call service · signaling"
         title="Call service performance"
         titleId="call-service-observability-title"
-        description="Runtime health for Velora call signaling: service reachability, CPU, memory, event-loop delay, and connected call sockets."
+        description="Runtime health for Velora call signaling: reachability, host CPU share, memory, event-loop delay, and connected call sockets."
         rangeLabel="Call service history range"
         rangeHours={rangeHours}
         onRangeChange={setRangeHours}
@@ -198,7 +193,7 @@ export function CallServiceSection() {
 
       <div className="monitoring-explainer">
         <strong>Scope of this view</strong>
-        <p>These metrics describe call-service signaling only. They do not yet measure active calls, Mediasoup workers, transports, producers, consumers, RTP bitrate, packet loss, or media QoE.</p>
+        <p>These metrics describe call-service signaling only. CPU is shown as a share of the whole host across all cores; the Server breakdown includes the separate Mediasoup worker too.</p>
       </div>
 
       <MonitoringCharts

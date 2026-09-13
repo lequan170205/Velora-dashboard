@@ -22,6 +22,7 @@ export const formatRate = (value: number) =>
 export const formatSeconds = (value: number) =>
   Number.isFinite(value) ? `${(value * 1000).toFixed(value >= 1 ? 0 : 1)} ms` : '—'
 
+/** Format a CPU ratio whose denominator is the whole monitored host. */
 export const formatCpu = (value: number) => formatPercent(value)
 
 export const formatCount = (value: number) =>

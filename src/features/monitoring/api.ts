@@ -27,7 +27,8 @@ export type MonitoringOverview = {
   process: {
     residentMemoryBytes: NullableMetric
     heapUsedBytes: NullableMetric
-    cpuSecondsPerSecond: NullableMetric
+    /** Fraction of the monitored host's total CPU capacity (all cores). */
+    cpuUsageRatio: NullableMetric
     eventLoopP99Seconds: NullableMetric
   }
   rpc: {
@@ -38,7 +39,8 @@ export type MonitoringOverview = {
   conversation: {
     up: boolean | null
     residentMemoryBytes: NullableMetric
-    cpuSecondsPerSecond: NullableMetric
+    /** Fraction of the monitored host's total CPU capacity (all cores). */
+    cpuUsageRatio: NullableMetric
     eventLoopP99Seconds: NullableMetric
     socketConnections: NullableMetric
     messagesPerSecond: NullableMetric
@@ -51,7 +53,8 @@ export type MonitoringOverview = {
   call: {
     up: boolean | null
     residentMemoryBytes: NullableMetric
-    cpuSecondsPerSecond: NullableMetric
+    /** Fraction of the monitored host's total CPU capacity (all cores). */
+    cpuUsageRatio: NullableMetric
     eventLoopP99Seconds: NullableMetric
     socketConnections: NullableMetric
   }

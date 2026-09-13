@@ -343,9 +343,9 @@ export function ConversationSection() {
       <details className="technical-details">
         <summary>Conversation-service runtime details</summary>
         <div><span>Process memory</span><strong>{formatBytes(conversation?.residentMemoryBytes ?? Number.NaN)}</strong></div>
-        <div><span>Process CPU</span><strong>{formatCpu(conversation?.cpuSecondsPerSecond ?? Number.NaN)}</strong></div>
+        <div><span>Process CPU · host share</span><strong>{formatCpu(conversation?.cpuUsageRatio ?? Number.NaN)}</strong></div>
         <div><span>Event-loop p99</span><strong>{formatSeconds(conversation?.eventLoopP99Seconds ?? Number.NaN)}</strong></div>
-        <p>These runtime values are aggregated across the currently scraped conversation-service instances. They become especially useful once k3s starts scaling replicas.</p>
+        <p>CPU is the process share of the whole host across all cores. Runtime values are aggregated across the currently scraped conversation-service instances.</p>
       </details>
     </section>
   )
