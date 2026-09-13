@@ -1,0 +1,129 @@
+/* Aurora Ops design system — tokens + Tailwind utilities.
+   Preflight stays excluded until the legacy stylesheets retire (final cleanup phase),
+   so this layer is purely additive for the current UI.
+   Token names intentionally avoid the legacy --color-* names in tokens.css. */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* Aurora dark — default */
+:root,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --au-bg: #0b0f1a;
+  --au-sidebar: #0e1220;
+  --au-card: #131725;
+  --au-raised: #1a1f35;
+  --au-inset: #1f2440;
+  --au-border: rgba(255, 255, 255, 0.08);
+  --au-border-strong: rgba(255, 255, 255, 0.14);
+  --au-text: #edeef7;
+  --au-text-2: #a5acc8;
+  --au-text-3: #6e7591;
+
+  --au-accent: #818cf8;
+  --au-accent-strong: #6366f1;
+  --au-violet: #a78bfa;
+  --au-accent-soft: rgba(129, 140, 248, 0.14);
+  --au-action: #6366f1;
+  --au-action-hover: #818cf8;
+
+  --au-success: #34d399;
+  --au-success-soft: rgba(52, 211, 153, 0.14);
+  --au-warning: #fbbf24;
+  --au-warning-soft: rgba(251, 191, 36, 0.14);
+  --au-danger: #f87171;
+  --au-danger-soft: rgba(248, 113, 113, 0.14);
+  --au-danger-strong: #dc2626;
+  --au-info: #7da2fb;
+  --au-info-soft: rgba(125, 162, 251, 0.14);
+
+  --au-shadow-sm: none;
+  --au-shadow-md: none;
+  --au-shadow-lg: 0 24px 64px rgba(2, 4, 12, 0.55);
+  --au-overlay: rgba(5, 7, 15, 0.6);
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --au-bg: #f6f7fb;
+  --au-sidebar: #ffffff;
+  --au-card: #ffffff;
+  --au-raised: #f0f1f8;
+  --au-inset: #eef0f7;
+  --au-border: #e4e6f0;
+  --au-border-strong: #cdd1e0;
+  --au-text: #191b2e;
+  --au-text-2: #5a5f7a;
+  --au-text-3: #8a8fa8;
+
+  --au-accent: #4f46e5;
+  --au-accent-strong: #4338ca;
+  --au-violet: #7c3aed;
+  --au-accent-soft: rgba(79, 70, 229, 0.1);
+  --au-action: #4f46e5;
+  --au-action-hover: #4338ca;
+
+  --au-success: #059669;
+  --au-success-soft: rgba(5, 150, 105, 0.12);
+  --au-warning: #d97706;
+  --au-warning-soft: rgba(217, 119, 6, 0.12);
+  --au-danger: #dc2626;
+  --au-danger-soft: rgba(220, 38, 38, 0.12);
+  --au-danger-strong: #b91c1c;
+  --au-info: #2563eb;
+  --au-info-soft: rgba(37, 99, 235, 0.12);
+
+  --au-shadow-sm: 0 1px 2px rgba(23, 26, 54, 0.06);
+  --au-shadow-md: 0 4px 16px rgba(23, 26, 54, 0.08);
+  --au-shadow-lg: 0 24px 64px rgba(23, 26, 54, 0.16);
+  --au-overlay: rgba(25, 27, 46, 0.45);
+}
+
+@theme inline {
+  --color-canvas: var(--au-bg);
+  --color-sidebar: var(--au-sidebar);
+  --color-panel: var(--au-card);
+  --color-raised: var(--au-raised);
+  --color-inset: var(--au-inset);
+  --color-line: var(--au-border);
+  --color-line-strong: var(--au-border-strong);
+
+  --color-ink: var(--au-text);
+  --color-ink-2: var(--au-text-2);
+  --color-ink-3: var(--au-text-3);
+
+  --color-brand: var(--au-accent);
+  --color-brand-strong: var(--au-accent-strong);
+  --color-brand-soft: var(--au-accent-soft);
+  --color-violet: var(--au-violet);
+  --color-action: var(--au-action);
+  --color-action-hover: var(--au-action-hover);
+
+  --color-ok: var(--au-success);
+  --color-ok-soft: var(--au-success-soft);
+  --color-warn: var(--au-warning);
+  --color-warn-soft: var(--au-warning-soft);
+  --color-bad: var(--au-danger);
+  --color-bad-soft: var(--au-danger-soft);
+  --color-bad-strong: var(--au-danger-strong);
+  --color-blue: var(--au-info);
+  --color-blue-soft: var(--au-info-soft);
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', 'Liberation Mono', monospace;
+
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-dialog: 16px;
+
+  --shadow-panel: var(--au-shadow-sm);
+  --shadow-pop: var(--au-shadow-md);
+  --shadow-modal: var(--au-shadow-lg);
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
