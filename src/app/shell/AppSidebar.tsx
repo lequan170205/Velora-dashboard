@@ -57,7 +57,7 @@ function SidebarContent({
       <div className="flex items-center gap-2.5 border-b border-line px-4 py-4">
         <div
           aria-hidden="true"
-          className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-gradient-to-br from-brand to-violet text-sm font-semibold text-white"
+          className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-brand text-sm font-bold text-white"
         >
           V
         </div>

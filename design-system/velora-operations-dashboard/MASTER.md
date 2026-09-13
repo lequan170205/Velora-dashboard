@@ -6,11 +6,14 @@ components under `src/shared` and `src/app`.
 
 ## Direction
 
-- Style: Aurora Ops — deep navy surfaces, indigo/violet accents, restrained gradients
+- Style: Aurora Ops — deep navy surfaces, Velora orange accents, restrained gradients
+- Brand: flat `#F94D0C` straight from the Velora logo (no gradient marks); dark mode
+  uses it as-is for marks/series, controls use `#C2410C` for white-text contrast
 - Variance: 4/10 — consistent chrome, expressive status colors
 - Motion: 2/10 — 150–250 ms state transitions only, no decorative animation
 - Density: 5.5/10 — data-first but with breathing room
 - Goal: status and values read first; explanations reveal on demand
+- Brand orange is never used for status: warning stays yellow-amber, danger stays red
 
 ## Theming
 
@@ -32,8 +35,8 @@ components under `src/shared` and `src/app`.
 | Inset (fields) | `#1F2440` |
 | Border / strong | `rgba(255,255,255,.08)` / `.14` |
 | Text / secondary / tertiary | `#EDEEF7` / `#A5ACC8` / `#8B94B1` |
-| Accent (indigo) / violet | `#818CF8` / `#A78BFA` |
-| Action button | `#4F46E5` (hover `#5B5FE8`) |
+| Accent (Velora orange) | `#F94D0C` |
+| Action button | `#C2410C` (hover `#D14812`) |
 | Success / warning / danger / info | `#34D399` / `#FBBF24` / `#F87171` / `#7DA2FB` |
 
 ### Light
@@ -45,14 +48,15 @@ components under `src/shared` and `src/app`.
 | Raised / inset | `#F0F1F8` / `#EEF0F7` |
 | Border / strong | `#E4E6F0` / `#CDD1E0` |
 | Text / secondary / tertiary | `#191B2E` / `#5A5F7A` / `#616782` |
-| Accent (indigo) / violet | `#4F46E5` / `#7C3AED` |
-| Action button | `#4F46E5` (hover `#4338CA`) |
+| Accent (Velora orange) | `#C2410C` |
+| Action button | `#C2410C` (hover `#B03A0B`) |
 | Success / warning / danger / info | `#047857` / `#92400E` / `#B91C1C` / `#1D4ED8` |
 
-Chart series palette (dark): indigo `#818CF8`, violet `#A78BFA`, teal `#2DD4BF`,
-blue `#60A5FA`, amber `#FBBF24`, rose `#FB7185` — light mode uses the darker
-status hues. Gradient fills: vertical accent at 26% → 2% opacity. Gradients are
-allowed only on chart fills and the login backdrop.
+Chart series palette (dark): orange `#F94D0C`, teal `#2DD4BF`, blue `#60A5FA`,
+amber `#FBBF24`, rose `#FB7185` — light mode uses darker status hues
+(orange `#EA580C`, teal `#0F766E`, blue `#2563EB`, amber `#B45309`, rose `#E11D48`).
+Gradient fills: vertical accent at 26% → 2% opacity. Gradients are
+allowed only on chart fills and the login backdrop (subtle orange radials).
 
 ## Typography
 

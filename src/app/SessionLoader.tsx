@@ -6,7 +6,7 @@ export function SessionLoader() {
       <div className="flex items-center gap-3">
         <div
           aria-hidden="true"
-          className="grid size-9 place-items-center rounded-[10px] bg-gradient-to-br from-brand to-violet text-sm font-semibold text-white"
+          className="grid size-9 place-items-center rounded-[10px] bg-brand text-sm font-bold text-white"
         >
           V
         </div>

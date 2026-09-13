@@ -155,7 +155,7 @@ export const monitoringServiceConfig: InfraViewConfig = {
       description: 'RAM used by the monitoring-service process only, not the whole Ubuntu server. A steady climb matters more than a single spike.',
       formatter: formatBytes,
       axisFormatter: formatBytesAxis,
-      accentToken: 'violet',
+      accentToken: 'indigo',
       emptyTitle: 'No memory history yet',
       emptyDescription: 'Prometheus will fill this chart after it has collected a few samples from monitoring-service.',
     },
