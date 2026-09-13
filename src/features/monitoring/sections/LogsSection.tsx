@@ -136,6 +136,8 @@ export function LogsSection({ preset = null }: LogsSectionProps) {
           <div className="empty-state logs-loading"><span className="empty-state-icon"><UiIcon name="loader" size={18} /></span><strong>Loading recent logs</strong><p>Querying the bounded Loki window through monitoring-service.</p></div>
         ) : !hasUsableData && error ? (
           <div className="empty-state logs-unavailable"><span className="empty-state-icon"><UiIcon name="zero" size={18} /></span><strong>Logs are temporarily unavailable.</strong><p>Try refreshing after monitoring-service or Loki is reachable again.</p></div>
+        ) : hasUsableData && isStale && entries.length === 0 ? (
+          <div className="empty-state logs-stale-empty"><span className="empty-state-icon"><UiIcon name="zero" size={18} /></span><strong>No logs matched the last successful refresh.</strong><p>Current result is unavailable. Refresh to try again.</p></div>
         ) : hasUsableData && entries.length === 0 ? (
           <div className="empty-state"><span className="empty-state-icon"><UiIcon name="zero" size={18} /></span><strong>No matching logs</strong><p>Try a wider time range, another service, or clear the text and level filters.</p></div>
         ) : (

@@ -86,6 +86,8 @@ export function AlertsSection({ onNavigate, onOpenLogs }: AlertsSectionProps) {
           <div className="empty-state alerts-loading"><span className="empty-state-icon"><UiIcon name="loader" size={18} /></span><strong>Loading active alerts</strong><p>Reading evaluated Prometheus rule state through monitoring-service.</p></div>
         ) : !hasUsableData && error ? (
           <div className="empty-state alerts-unavailable"><span className="empty-state-icon"><UiIcon name="zero" size={18} /></span><strong>Alert state is temporarily unavailable.</strong><p>Try refreshing after monitoring-service or Prometheus is reachable again.</p></div>
+        ) : hasUsableData && isStale && alerts.length === 0 ? (
+          <div className="empty-state alerts-stale-empty"><span className="empty-state-icon"><UiIcon name="zero" size={18} /></span><strong>Last successful check had no active alerts.</strong><p>Current alert state may be outdated. Refresh to check again.</p></div>
         ) : hasUsableData && alerts.length === 0 ? (
           <div className="empty-state alerts-clear"><span className="empty-state-icon"><UiIcon name="check" size={18} /></span><strong>No active alerts</strong><p>No rule is currently pending or firing. This view is live state, not alert history.</p></div>
         ) : (
