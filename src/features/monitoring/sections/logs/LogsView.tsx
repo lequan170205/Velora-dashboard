@@ -249,7 +249,7 @@ export function LogsView({ preset = null }: LogsViewProps) {
                     style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
                   >
                     <time
-                      className="w-[92px] shrink-0 truncate font-mono text-[11px] tabular-nums text-ink-3 sm:w-[104px]"
+                      className="shrink-0 whitespace-nowrap font-mono text-[11px] tabular-nums text-ink-3"
                       dateTime={entry.timestamp}
                       title={new Date(entry.timestamp).toLocaleString()}
                     >

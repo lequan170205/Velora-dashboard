@@ -88,6 +88,8 @@ export type InfraViewConfig = {
   bottomNote?: NoteVm
   cards?: (ctx: CardContext) => readonly StatCardVm[]
   cardGroups?: (ctx: CardContext) => readonly StatCardGroupVm[]
+  /** Extra grid columns for the single-card-group layout (e.g. 'sm:grid-cols-2 xl:grid-cols-5'). */
+  cardsGridClassName?: string
   facts?: (overview: MonitoringOverview | null) => readonly FactVm[]
   series: readonly SeriesConfig[]
   currentValues: (overview: MonitoringOverview | null) => Partial<Record<MonitoringMetric, MonitoringCurrentValue>>

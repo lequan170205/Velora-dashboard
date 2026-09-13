@@ -53,6 +53,7 @@ export const callServiceConfig: InfraViewConfig = {
     title: 'Scope of this view',
     lines: ['These metrics describe call-service signaling only. CPU is shown as a share of the whole host across all cores; the Server breakdown includes the separate Mediasoup worker too.'],
   },
+  cardsGridClassName: 'sm:grid-cols-2 xl:grid-cols-5',
   cards: ({ overview, hasData }) => {
     const call = overview?.call
     const serviceUp = call?.up ?? null

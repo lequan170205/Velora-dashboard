@@ -31,9 +31,9 @@ components under `src/shared` and `src/app`.
 | Raised | `#1A1F35` |
 | Inset (fields) | `#1F2440` |
 | Border / strong | `rgba(255,255,255,.08)` / `.14` |
-| Text / secondary / tertiary | `#EDEEF7` / `#A5ACC8` / `#6E7591` |
+| Text / secondary / tertiary | `#EDEEF7` / `#A5ACC8` / `#8B94B1` |
 | Accent (indigo) / violet | `#818CF8` / `#A78BFA` |
-| Action button | `#6366F1` (hover `#818CF8`) |
+| Action button | `#4F46E5` (hover `#5B5FE8`) |
 | Success / warning / danger / info | `#34D399` / `#FBBF24` / `#F87171` / `#7DA2FB` |
 
 ### Light
@@ -44,10 +44,10 @@ components under `src/shared` and `src/app`.
 | Sidebar / card | `#FFFFFF` |
 | Raised / inset | `#F0F1F8` / `#EEF0F7` |
 | Border / strong | `#E4E6F0` / `#CDD1E0` |
-| Text / secondary / tertiary | `#191B2E` / `#5A5F7A` / `#8A8FA8` |
+| Text / secondary / tertiary | `#191B2E` / `#5A5F7A` / `#616782` |
 | Accent (indigo) / violet | `#4F46E5` / `#7C3AED` |
 | Action button | `#4F46E5` (hover `#4338CA`) |
-| Success / warning / danger / info | `#059669` / `#D97706` / `#DC2626` / `#2563EB` |
+| Success / warning / danger / info | `#047857` / `#92400E` / `#B91C1C` / `#1D4ED8` |
 
 Chart series palette (dark): indigo `#818CF8`, violet `#A78BFA`, teal `#2DD4BF`,
 blue `#60A5FA`, amber `#FBBF24`, rose `#FB7185` — light mode uses the darker
