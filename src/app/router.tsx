@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import {
   createHashRouter,
   Navigate,
@@ -16,11 +16,12 @@ import {
 } from '../features/monitoring/dashboard/configs'
 import type { LogsPreset } from '../features/monitoring/hooks/useLogsQuery'
 import {
-  CallQualitySection,
-  CallTimelineSection,
-  RecentCallsSection,
+  CallsProvider,
+  CallQualityView,
+  CallTimelineView,
+  RecentCallsView,
+  useCalls,
 } from '../features/calls'
-import { CallsProvider, useCalls } from '../features/calls/CallsProvider'
 import { isLogsLevel, openLogs, openTimeline } from './flows'
 import { LoginScreen } from './LoginScreen'
 import { useAuth } from './providers/auth'
@@ -71,59 +72,26 @@ function LogsRoute() {
 }
 
 function CallQualityRoute() {
-  const calls = useCalls()
-  return (
-    <CallQualitySection
-      summary={calls.summary}
-      filters={calls.filters}
-      error={calls.error}
-      onFilterChange={calls.updateFilter}
-      onApplyFilters={calls.applyFilters}
-    />
-  )
+  const { applied } = useCalls()
+  return <CallQualityView appliedFilters={applied} />
 }
 
 function RecentCallsRoute() {
-  const calls = useCalls()
+  const { applied } = useCalls()
   const navigate = useNavigate()
   return (
-    <RecentCallsSection
-      recentCallLegs={calls.recentCallLegs}
-      filters={calls.filters}
-      error={calls.error}
-      onFilterChange={calls.updateFilter}
-      onApplyFilters={calls.applyFilters}
-      onInspect={(callId) => {
-        calls.inspectCall(callId)
-        openTimeline(navigate, callId)
-      }}
+    <RecentCallsView
+      appliedFilters={applied}
+      onInspect={(callId) => openTimeline(navigate, callId)}
     />
   )
 }
 
+/* The URL parameter is a deep link: arriving with ?callId=… loads that timeline. */
 function TimelineRoute() {
-  const calls = useCalls()
   const [searchParams] = useSearchParams()
-  const callIdParam = searchParams.get('callId')
-
-  // React to deep links only; form submissions drive state without rewriting the URL.
-  useEffect(() => {
-    if (callIdParam && callIdParam !== calls.callId) {
-      calls.setCallId(callIdParam)
-      void calls.loadTimeline(callIdParam)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [callIdParam])
-
-  return (
-    <CallTimelineSection
-      callId={calls.callId}
-      timeline={calls.timeline}
-      error={calls.error}
-      onCallIdChange={calls.setCallId}
-      onLoadTimeline={(callId) => void calls.loadTimeline(callId)}
-    />
-  )
+  const callIdParam = searchParams.get('callId') ?? ''
+  return <CallTimelineView initialCallId={callIdParam} />
 }
 
 export const router = createHashRouter([
