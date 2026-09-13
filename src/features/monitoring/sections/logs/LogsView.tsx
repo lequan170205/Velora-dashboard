@@ -107,7 +107,7 @@ export function LogsView({ preset = null }: LogsViewProps) {
         </div>
       </div>
 
-      <div className="sticky top-14 z-20 rounded-card border border-line bg-panel/95 px-3 py-3 backdrop-blur-md">
+      <div className="rounded-card border border-line bg-panel px-3 py-3 sm:sticky sm:top-14 sm:z-20 sm:backdrop-blur-md sm:bg-panel/95">
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
           <div className="flex flex-col gap-1">
             <Label htmlFor="logs-service">Service</Label>
@@ -243,13 +243,13 @@ export function LogsView({ preset = null }: LogsViewProps) {
                   <article
                     key={`${entry.timestampNs}-${entry.service}-${entry.message}`}
                     className={cn(
-                      'absolute inset-x-0 flex items-center gap-3 border-b border-line px-4 last:border-b-0',
+                      'absolute inset-x-0 flex items-center gap-2 border-b border-line px-4 last:border-b-0 sm:gap-3',
                       entry.level === 'error' && 'bg-bad-soft/30',
                     )}
                     style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
                   >
                     <time
-                      className="w-[104px] shrink-0 truncate font-mono text-[11px] tabular-nums text-ink-3"
+                      className="w-[92px] shrink-0 truncate font-mono text-[11px] tabular-nums text-ink-3 sm:w-[104px]"
                       dateTime={entry.timestamp}
                       title={new Date(entry.timestamp).toLocaleString()}
                     >
@@ -264,7 +264,9 @@ export function LogsView({ preset = null }: LogsViewProps) {
                       {levelLabel(entry.level)}
                     </span>
                     <span
-                      className="w-44 shrink-0 truncate text-xs text-ink-2"
+                      className={cn(
+                        'hidden w-44 shrink-0 truncate text-xs text-ink-2 sm:inline',
+                      )}
                       title={entry.container ?? entry.service}
                     >
                       {entry.service}
