@@ -2,6 +2,7 @@ import { Loader2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 
 import { Button, Input, Label } from '@/shared/components/ui'
+import { BrandMark } from './BrandMark'
 import { useAuth } from './providers/auth'
 
 export function LoginScreen() {
@@ -34,12 +35,7 @@ export function LoginScreen() {
             aria-labelledby="login-title"
           >
             <div className="flex flex-col items-center gap-2.5 text-center">
-        <div
-          aria-hidden="true"
-          className="grid size-11 place-items-center rounded-[12px] bg-brand text-lg font-bold text-white shadow-pop"
-        >
-          V
-        </div>
+              <BrandMark className="size-11 rounded-[12px] shadow-pop" />
               <div>
                 <h1 id="login-title" className="text-xl font-semibold text-ink">Velora</h1>
                 <p className="text-[13px] text-ink-3">Operations</p>

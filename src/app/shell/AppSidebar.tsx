@@ -2,6 +2,7 @@ import { CheckCircle2, X } from 'lucide-react'
 import { NavLink } from 'react-router'
 
 import { NAV_GROUPS } from '../navigation'
+import { BrandMark } from '../BrandMark'
 import type { MonitoringConnectionState } from '@/features/monitoring/freshness'
 import { cn } from '@/shared/lib/cn'
 
@@ -55,12 +56,7 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col border-r border-line bg-sidebar">
       <div className="flex items-center gap-2.5 border-b border-line px-4 py-4">
-        <div
-          aria-hidden="true"
-          className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-brand text-sm font-bold text-white"
-        >
-          V
-        </div>
+        <BrandMark className="size-8" />
         <div className="min-w-0 leading-tight">
           <p className="truncate text-sm font-semibold text-ink">Velora</p>
           <p className="text-xs text-ink-3">Operations</p>

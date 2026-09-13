@@ -157,9 +157,9 @@ body {
   color: var(--au-text);
 }
 
-.au-nav-link[data-status='active'] {
+.au-nav-link[aria-current='page'] {
   background-color: var(--au-accent-soft);
-  color: var(--au-text);
+  color: var(--au-accent);
   font-weight: 500;
 }
 
