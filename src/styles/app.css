@@ -1,9 +1,8 @@
-/* Aurora Ops design system — tokens + Tailwind utilities.
-   Preflight stays excluded until the legacy stylesheets retire (final cleanup phase),
-   so this layer is purely additive for the current UI.
-   Token names intentionally avoid the legacy --color-* names in tokens.css. */
-@layer theme, base, components, utilities;
+/* Aurora Ops design system — the single stylesheet.
+   Tailwind full build (theme + preflight + utilities); the legacy sheets are gone.
+   Token names are app-namespaced and theme-switched via data-theme on <html>. */
 @import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/preflight.css' layer(base);
 @import 'tailwindcss/utilities.css' layer(utilities);
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));

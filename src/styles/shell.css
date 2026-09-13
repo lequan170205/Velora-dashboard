@@ -1,8 +1,0 @@
-/* Legacy page-level pieces still shared by the calls sections.
-   The shell, sidebar, topbar and login styles were replaced by the Aurora shell
-   (Tailwind components in src/app/shell + src/app/LoginScreen). */
-.section-header-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 15px; }
-.section-header-row h2 { margin: 0 0 5px; font-size: 1.25rem; letter-spacing: -.035em; }
-.section-meta { flex-shrink: 0; padding: 6px 9px; border: 1px solid var(--border); border-radius: 999px; color: #77869b; background: #0d131c; font-size: .68rem; font-weight: 720; }
-.dashboard-alert { display: flex; gap: 8px 12px; align-items: center; margin: 12px 0; padding: 11px 13px; border: 1px solid #4a2930; border-radius: 9px; background: #1a1014; color: #df929b; font-size: .78rem; }
-.dashboard-alert strong { color: #ff8b96; }

@@ -1,68 +1,113 @@
-# Velora Operations Dashboard
+# Velora Operations Dashboard — Aurora Ops design system
+
+This document is the source of truth for the dashboard's look and feel.
+The implementation lives in `src/styles/app.css` (tokens) and the Tailwind
+components under `src/shared` and `src/app`.
 
 ## Direction
 
-- Style: minimal, flat, dark, data-first
-- Variance: 2/10
-- Motion: 2/10
-- Density: 7/10
-- Goal: show status and values first; reveal explanations only when needed
+- Style: Aurora Ops — deep navy surfaces, indigo/violet accents, restrained gradients
+- Variance: 4/10 — consistent chrome, expressive status colors
+- Motion: 2/10 — 150–250 ms state transitions only, no decorative animation
+- Density: 5.5/10 — data-first but with breathing room
+- Goal: status and values read first; explanations reveal on demand
 
-## Visual rules
+## Theming
 
-- Use one neutral page background and one flat card surface.
-- Avoid gradients, glass effects, decorative grids, glow, and card shadows.
-- Use green, amber, and red only for operational state.
-- Keep borders subtle and radii between 6–10px.
-- Prefer native sans-serif UI text; reserve monospace for values, IDs, logs, and timestamps.
-- Keep one visible page title. Do not repeat the same heading in the content.
-- Hide helper copy when the label and value already explain the metric.
-- Put technical explanations inside a details disclosure.
+- Two modes: dark (default) and light, driven by `data-theme` on `<html>`
+- Persisted in `localStorage` as `velora-theme`; falls back to `prefers-color-scheme`
+- An inline script in `index.html` applies the theme before first paint (no flash)
+- Charts read resolved hex values from `useChartTheme()` (Recharts cannot read CSS variables)
 
 ## Tokens
 
+### Dark (default)
+
 | Role | Value |
 | --- | --- |
-| Background | `#0C0D0F` |
-| Sidebar | `#101114` |
-| Card | `#141518` |
-| Raised | `#1A1C20` |
-| Border | `#27292D` |
-| Strong border | `#3A3D43` |
-| Text | `#F4F4F5` |
-| Muted text | `#A1A1AA` |
-| Dim text | `#85858E` |
-| Healthy | `#4ADE80` |
-| Warning | `#F59E0B` |
-| Critical | `#EF4444` |
+| Background | `#0B0F1A` |
+| Sidebar | `#0E1220` |
+| Card | `#131725` |
+| Raised | `#1A1F35` |
+| Inset (fields) | `#1F2440` |
+| Border / strong | `rgba(255,255,255,.08)` / `.14` |
+| Text / secondary / tertiary | `#EDEEF7` / `#A5ACC8` / `#6E7591` |
+| Accent (indigo) / violet | `#818CF8` / `#A78BFA` |
+| Action button | `#6366F1` (hover `#818CF8`) |
+| Success / warning / danger / info | `#34D399` / `#FBBF24` / `#F87171` / `#7DA2FB` |
+
+### Light
+
+| Role | Value |
+| --- | --- |
+| Background | `#F6F7FB` |
+| Sidebar / card | `#FFFFFF` |
+| Raised / inset | `#F0F1F8` / `#EEF0F7` |
+| Border / strong | `#E4E6F0` / `#CDD1E0` |
+| Text / secondary / tertiary | `#191B2E` / `#5A5F7A` / `#8A8FA8` |
+| Accent (indigo) / violet | `#4F46E5` / `#7C3AED` |
+| Action button | `#4F46E5` (hover `#4338CA`) |
+| Success / warning / danger / info | `#059669` / `#D97706` / `#DC2626` / `#2563EB` |
+
+Chart series palette (dark): indigo `#818CF8`, violet `#A78BFA`, teal `#2DD4BF`,
+blue `#60A5FA`, amber `#FBBF24`, rose `#FB7185` — light mode uses the darker
+status hues. Gradient fills: vertical accent at 26% → 2% opacity. Gradients are
+allowed only on chart fills and the login backdrop.
+
+## Typography
+
+- Inter Variable for UI (self-hosted via Fontsource); JetBrains Mono Variable for
+  logs, IDs, timestamps, metric values, and axis labels
+- Scale: 11–12 labels/meta · 13–14 body/controls · 15 page title · 26 stat values
+- Weights 400/500/600; every numeral uses `tabular-nums`
+
+## Shape, depth, motion
+
+- Spacing on a 4 px scale; container max-width 1500 px
+- Radius: controls 8 · cards 12 · dialogs 16 · pills 999
+- Dark mode shadows are effectively none (borders carry structure); light mode
+  uses soft rgba(23,26,54,…) shadows
+- Status never rides on color alone: tone badges always carry text
+- Hover changes surface/border only; `prefers-reduced-motion` disables transitions
+
+## Components
+
+- Primitives in `src/shared/components/ui`: Button (primary/secondary/ghost/danger ×
+  sm/md), Badge (good/warn/bad/neutral/info/brand, optional dot), Card, Input,
+  NativeSelect, Select (Radix), Label, Skeleton, EmptyState, Tooltip
+- Shell: 248 px fixed sidebar (drawer below 1024 px), sticky topbar with live
+  indicator, theme toggle, account menu
+- Infra views are config-driven: `dashboard/configs/*.ts` produce view models,
+  `InfraDashboard` renders them
+- Tables use the unlayered `.au-table` classes; form fields use `.au-field`,
+  labels `.au-label`, sidebar links `.au-nav-link` (these out-specify anything
+  and keep legacy element styling from reappearing)
 
 ## Interaction
 
-- Interactive targets are at least 44×44px where space allows.
-- Hover changes surface or border only; it never moves layout.
-- Keyboard focus is always visible.
-- Animation is limited to short state transitions and loading indicators.
-- Respect `prefers-reduced-motion`.
+- Interactive targets are at least 36 px tall; 44 px where space allows
+- Keyboard focus is always visible (accent ring, offset)
+- Data only refetches on Apply in filter forms; live views poll automatically
+- Respect `prefers-reduced-motion`
 
 ## Responsive behavior
 
-- Desktop: persistent 220px sidebar, compact sticky topbar.
-- Tablet/mobile: horizontal scroll navigation with group labels removed.
-- Metrics collapse from three columns to two, then one.
-- Tables and logs scroll horizontally instead of compressing data.
+- ≥1024 px: persistent sidebar; below: drawer from the topbar
+- Metric grids: 3 → 2 → 1 columns; call table becomes a card stack below 768 px
+- Logs list scrolls internally; tables scroll horizontally in their container
 
 ## Content rules
 
-- Prefer short labels: “Alerts”, “Logs”, “Quality”, “Recent”.
-- Keep status text to one phrase and freshness to one timestamp.
-- Empty and error states may include one short recovery sentence.
-- Do not remove information required to diagnose an incident; move secondary context to tooltips, accessible labels, or disclosures.
+- Short labels: "Alerts", "Logs", "Quality", "Recent"
+- Status text is one phrase; freshness is one timestamp
+- Empty and error states include one short recovery sentence
+- Never remove diagnostic information; move secondary context into tooltips,
+  accessible labels, or disclosures
 
 ## Pre-delivery checks
 
-- Contrast is at least 4.5:1 for normal text.
-- Status is never communicated by color alone.
-- Icons come from the shared SVG icon set.
-- Focus states remain visible.
-- Verify at 375px, 768px, 1024px, and 1440px.
-- No horizontal page scroll; data tables may scroll inside their container.
+- Contrast ≥ 4.5:1 for normal text in both modes
+- Status is never communicated by color alone
+- Icons come from lucide-react
+- Verify at 375, 768, 1024, and 1440 px in dark and light
+- No horizontal page scroll; data tables scroll inside their container
