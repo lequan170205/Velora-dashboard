@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { CircleOff, Loader2, Minus, TriangleAlert } from 'lucide-react'
+import { CircleOff, Minus, TriangleAlert } from 'lucide-react'
 
 import type { MonitoringPoint } from '../../api'
 import {
@@ -19,6 +19,7 @@ import {
 import type { MonitoringEmptyStateKind, MonitoringThresholdDefinition, MonitoringTooltipSnapshot, MonitoringCurrentValue, MonitoringYAxisDefinition } from '../../model'
 import type { ChartSeriesToken } from '@/shared/lib/chartTheme'
 import { useChartTheme } from '@/shared/lib/chartTheme'
+import { ChartPlotSkeleton } from '@/shared/components/ui'
 import { cn } from '@/shared/lib/cn'
 
 type HistoryChartProps = {
@@ -47,8 +48,8 @@ type ThresholdState = {
 }
 
 type ChartEmptyState = {
-  kind: 'loading' | 'error' | MonitoringEmptyStateKind
-  label: 'Loading' | 'Failed to load' | 'No data yet' | 'No traffic data'
+  kind: 'error' | MonitoringEmptyStateKind
+  label: 'Failed to load' | 'No data yet' | 'No traffic data'
   icon: typeof Minus
   title: string
   description: string
@@ -215,15 +216,7 @@ export function HistoryChart({
     !yDomain || (threshold.value >= yDomain[0] && threshold.value <= yDomain[1]),
   ) ?? []
 
-  const emptyState: ChartEmptyState = loading
-    ? {
-        kind: 'loading',
-        label: 'Loading',
-        icon: Loader2,
-        title: 'Loading history…',
-        description: 'Fetching Prometheus samples for the selected range.',
-      }
-    : hasHistoryError
+  const emptyState: ChartEmptyState = hasHistoryError
       ? {
           kind: 'error',
           label: 'Failed to load',
@@ -319,7 +312,9 @@ export function HistoryChart({
         )}
       </div>
 
-      {data.length === 0 ? (
+      {loading && data.length === 0 ? (
+        <ChartPlotSkeleton />
+      ) : data.length === 0 ? (
         <div
           className={cn(
             'flex h-44 flex-col items-center justify-center gap-1.5 rounded-control border border-dashed border-line px-4 text-center',
@@ -330,7 +325,7 @@ export function HistoryChart({
           <EmptyIcon
             size={18}
             aria-hidden="true"
-            className={cn('mb-0.5 text-ink-3', emptyState.kind === 'loading' && 'animate-spin')}
+            className="mb-0.5 text-ink-3"
           />
           <span className="text-[11px] font-medium uppercase tracking-wider text-ink-3">{emptyState.label}</span>
           <strong className="text-[13px] font-semibold text-ink">{emptyState.title}</strong>

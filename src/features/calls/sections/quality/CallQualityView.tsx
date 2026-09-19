@@ -5,7 +5,7 @@ import { milliseconds, percent, type CallTelemetryFilters } from '../../api'
 import { useCallSummaryQuery } from '../../useCallsQueries'
 import { useCalls } from '../../CallsProvider'
 import { FilterBar } from '../../components/FilterBar'
-import { EmptyState, Skeleton } from '@/shared/components/ui'
+import { EmptyState, Skeleton, SkeletonRows, StatCardsSkeleton } from '@/shared/components/ui'
 import { cn } from '@/shared/lib/cn'
 
 type CallQualityViewProps = {
@@ -14,7 +14,8 @@ type CallQualityViewProps = {
 
 export function CallQualityView({ appliedFilters }: CallQualityViewProps) {
   const { draft, apply, updateFilter } = useCalls()
-  const { data: summary, error, isFetching } = useCallSummaryQuery(appliedFilters)
+  const { data: summary, error, isFetching, isPending } = useCallSummaryQuery(appliedFilters)
+  const initialLoading = isPending && !summary
 
   const callCards = useMemo(
     () => [
@@ -47,7 +48,7 @@ export function CallQualityView({ appliedFilters }: CallQualityViewProps) {
   )
 
   return (
-    <section className="flex flex-col gap-4" aria-labelledby="call-quality-title" aria-busy={isFetching && !summary}>
+    <section className="flex flex-col gap-4" aria-labelledby="call-quality-title" aria-busy={initialLoading || (isFetching && !summary)}>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Application telemetry</p>
@@ -71,21 +72,25 @@ export function CallQualityView({ appliedFilters }: CallQualityViewProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {callCards.map((card) => (
-          <article
-            key={card.label}
-            title={card.helper}
-            className="flex flex-col gap-1.5 rounded-card border border-line bg-panel px-4 pb-4 pt-[18px]"
-          >
-            <span className="text-[13px] font-medium text-ink-2">{card.label}</span>
-            <span className="text-[26px] font-semibold leading-tight tracking-tight text-ink tabular-nums">
-              {card.value}
-            </span>
-            <span className="sr-only">{card.helper}</span>
-          </article>
-        ))}
-      </div>
+      {initialLoading ? (
+        <StatCardsSkeleton count={callCards.length} />
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {callCards.map((card) => (
+            <article
+              key={card.label}
+              title={card.helper}
+              className="flex flex-col gap-1.5 rounded-card border border-line bg-panel px-4 pb-4 pt-[18px]"
+            >
+              <span className="text-[13px] font-medium text-ink-2">{card.label}</span>
+              <span className="text-[26px] font-semibold leading-tight tracking-tight text-ink tabular-nums">
+                {card.value}
+              </span>
+              <span className="sr-only">{card.helper}</span>
+            </article>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
         <section className="overflow-hidden rounded-card border border-line bg-panel" aria-label="Average quality">
@@ -136,7 +141,9 @@ export function CallQualityView({ appliedFilters }: CallQualityViewProps) {
               {failureCount}
             </span>
           </div>
-          {failures.length === 0 ? (
+          {initialLoading ? (
+            <SkeletonRows rows={3} rowClassName="py-2.5" />
+          ) : failures.length === 0 ? (
             <EmptyState
               icon={CheckCircle2}
               title="No failures in this range"

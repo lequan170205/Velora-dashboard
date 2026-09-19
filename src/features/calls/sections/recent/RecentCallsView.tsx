@@ -4,7 +4,7 @@ import type { CallTelemetryFilters, RecentCallLeg } from '../../api'
 import { useRecentCallsQuery } from '../../useCallsQueries'
 import { useCalls } from '../../CallsProvider'
 import { FilterBar } from '../../components/FilterBar'
-import { Button, EmptyState } from '@/shared/components/ui'
+import { Button, EmptyState, SkeletonRows } from '@/shared/components/ui'
 import { cn } from '@/shared/lib/cn'
 
 type RecentCallsViewProps = {
@@ -22,10 +22,11 @@ const pill = (tone: 'good' | 'muted' | 'bad') =>
 
 export function RecentCallsView({ appliedFilters, onInspect }: RecentCallsViewProps) {
   const { draft, apply, updateFilter } = useCalls()
-  const { data: recentCallLegs = [], error, isFetching } = useRecentCallsQuery(appliedFilters)
+  const { data: recentCallLegs = [], error, isFetching, isPending } = useRecentCallsQuery(appliedFilters)
+  const initialLoading = isPending && recentCallLegs.length === 0
 
   return (
-    <section className="flex flex-col gap-4" aria-labelledby="recent-calls-title" aria-busy={isFetching && recentCallLegs.length === 0}>
+    <section className="flex flex-col gap-4" aria-labelledby="recent-calls-title" aria-busy={initialLoading || (isFetching && recentCallLegs.length === 0)}>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Call explorer</p>
@@ -49,7 +50,11 @@ export function RecentCallsView({ appliedFilters, onInspect }: RecentCallsViewPr
         </div>
       )}
 
-      {recentCallLegs.length === 0 ? (
+      {initialLoading ? (
+        <div className="overflow-hidden rounded-card border border-line bg-panel" aria-label="Loading recent calls">
+          <SkeletonRows rows={7} rowClassName="py-[13px]" />
+        </div>
+      ) : recentCallLegs.length === 0 ? (
         <EmptyState
           icon={Minus}
           title="No calls in this range"

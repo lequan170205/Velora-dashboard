@@ -17,6 +17,7 @@ import { InfraToolbar } from './components/InfraToolbar'
 import { NoteCard } from './components/NoteCard'
 import { StatCardGrid, StatCardGroups } from './components/StatCard'
 import { TechnicalDetails } from './components/TechnicalDetails'
+import { Skeleton, StatCardsSkeleton, ChartsSkeleton, ToolbarControlsSkeleton } from '@/shared/components/ui'
 import { useNow } from '@/shared/lib/useNow'
 
 const OVERVIEW_REFRESH_INTERVAL_MS = 15_000
@@ -24,6 +25,42 @@ const OVERVIEW_REFRESH_INTERVAL_MS = 15_000
 type InfraDashboardProps = {
   config: InfraViewConfig
   onOpenLogs?: (service: string) => void
+}
+
+/* Initial-load placeholder mirroring the real page: toolbar, stat cards with
+   the exact per-config count, and one chart card per configured series. */
+function InfraDashboardSkeleton({ config }: { config: InfraViewConfig }) {
+  const cardCount =
+    config.cards?.({ overview: null, hasData: false }).length
+    ?? config
+      .cardGroups?.({ overview: null, hasData: false })
+      .reduce((total, group) => total + group.cards.length, 0)
+    ?? 6
+
+  const toolbar = (
+    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+      <div className="min-w-0">
+        <Skeleton className="h-3 w-44" />
+        <Skeleton className="mt-2 h-4 w-64 sm:w-[520px]" />
+      </div>
+      <ToolbarControlsSkeleton />
+    </div>
+  )
+
+  return (
+    <section className="flex flex-col gap-4" aria-busy="true" aria-label={`${config.toolbar.title} loading`}>
+      {config.toolbar.placement === 'top' && toolbar}
+      <StatCardsSkeleton count={cardCount} gridClassName={config.cardsGridClassName} />
+      {config.toolbar.placement === 'history' && toolbar}
+      {config.historyHeading && (
+        <div className="flex items-baseline gap-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+      )}
+      <ChartsSkeleton count={config.series.length} />
+    </section>
+  )
 }
 
 export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
@@ -86,6 +123,8 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
   const technicalDetails = config.technicalDetails?.(overview) ?? null
 
   const containerResources = useContainerResourcesQuery(config.breakdown === true)
+
+  if (initialLoading) return <InfraDashboardSkeleton config={config} />
 
   const host = overview?.host ?? null
   const overallValue = activeMetric === 'cpu'

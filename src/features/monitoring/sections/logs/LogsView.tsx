@@ -1,11 +1,11 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useRef } from 'react'
-import { CircleOff, Loader2, Pause, Play, RefreshCw, ScrollText } from 'lucide-react'
+import { CircleOff, Pause, Play, RefreshCw, ScrollText } from 'lucide-react'
 
 import type { MonitoringLogEntry, MonitoringLogLevel } from '../../logsApi'
 import { useLogsQuery, type LogsRangeMinutes } from '../../hooks/useLogsQuery'
 import { LOG_SERVICE_OPTIONS } from '../../services'
-import { Button, EmptyState, Input, Label, NativeSelect } from '@/shared/components/ui'
+import { Button, EmptyState, Input, Label, NativeSelect, Skeleton } from '@/shared/components/ui'
 import { cn } from '@/shared/lib/cn'
 
 const LEVEL_OPTIONS: readonly MonitoringLogLevel[] = ['all', 'error', 'warn', 'info', 'debug']
@@ -205,11 +205,16 @@ export function LogsView({ preset = null }: LogsViewProps) {
 
       <div className="overflow-hidden rounded-card border border-line bg-panel">
         {initialLoading ? (
-          <EmptyState
-            icon={Loader2}
-            title="Loading service logs…"
-            description="Querying the bounded Loki window through monitoring-service."
-          />
+          <div className="flex flex-col divide-y divide-line" aria-label="Loading service logs">
+            {Array.from({ length: 10 }, (_, index) => (
+              <div key={index} className="flex items-center gap-2 px-4 sm:gap-3" style={{ height: ROW_HEIGHT }}>
+                <Skeleton className="h-3 w-[76px] shrink-0" />
+                <Skeleton className="h-[18px] w-12 shrink-0 rounded-full" />
+                <Skeleton className="hidden h-3 w-44 shrink-0 sm:block" />
+                <Skeleton className="h-3 min-w-0 flex-1" />
+              </div>
+            ))}
+          </div>
         ) : !hasUsableData && error ? (
           <EmptyState
             icon={CircleOff}

@@ -3,7 +3,6 @@ import {
   BellRing,
   CheckCircle2,
   CircleOff,
-  Loader2,
   TriangleAlert,
 } from "lucide-react";
 
@@ -18,7 +17,12 @@ import {
   type AlertMetricView,
 } from "../../alertRouting";
 import { useAlertsQuery } from "../../hooks/useAlertsQuery";
-import { Button, EmptyState } from "@/shared/components/ui";
+import {
+  Button,
+  CountTileSkeleton,
+  EmptyState,
+  RowCardsSkeleton,
+} from "@/shared/components/ui";
 import { cn } from "@/shared/lib/cn";
 
 const formatTimestamp = (value: string) => {
@@ -232,30 +236,36 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
         className="grid grid-cols-2 gap-3 xl:grid-cols-4"
         aria-label="Active alert counts"
       >
-        <CountTile
-          label="Total active"
-          hint="Pending + firing"
-          value={counts?.total ?? null}
-          tone="neutral"
-        />
-        <CountTile
-          label="Critical"
-          hint="Critical severity"
-          value={counts?.critical ?? null}
-          tone={counts?.critical ? "bad" : "neutral"}
-        />
-        <CountTile
-          label="Firing"
-          hint="Threshold duration met"
-          value={counts?.firing ?? null}
-          tone={counts?.firing ? "bad" : "neutral"}
-        />
-        <CountTile
-          label="Pending"
-          hint="Waiting for rule duration"
-          value={counts?.pending ?? null}
-          tone="neutral"
-        />
+        {initialLoading ? (
+          Array.from({ length: 4 }, (_, index) => <CountTileSkeleton key={index} />)
+        ) : (
+          <>
+            <CountTile
+              label="Total active"
+              hint="Pending + firing"
+              value={counts?.total ?? null}
+              tone="neutral"
+            />
+            <CountTile
+              label="Critical"
+              hint="Critical severity"
+              value={counts?.critical ?? null}
+              tone={counts?.critical ? "bad" : "neutral"}
+            />
+            <CountTile
+              label="Firing"
+              hint="Threshold duration met"
+              value={counts?.firing ?? null}
+              tone={counts?.firing ? "bad" : "neutral"}
+            />
+            <CountTile
+              label="Pending"
+              hint="Waiting for rule duration"
+              value={counts?.pending ?? null}
+              tone="neutral"
+            />
+          </>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -295,11 +305,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
       </div>
 
       {initialLoading ? (
-        <EmptyState
-          icon={Loader2}
-          title="Loading active alerts"
-          description="Reading evaluated Prometheus rule state through monitoring-service."
-        />
+        <RowCardsSkeleton cards={4} />
       ) : !hasUsableData && error ? (
         <EmptyState
           icon={CircleOff}

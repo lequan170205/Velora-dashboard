@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Search } from 'lucide-react'
+import { Minus, Search } from 'lucide-react'
 
 import { formatTimelineMetrics, milliseconds, type CallTimelineEvent } from '../../api'
 import { useCallTimelineQuery } from '../../useCallsQueries'
-import { Button, EmptyState, Input, Label } from '@/shared/components/ui'
+import { Button, EmptyState, Input, Label, Skeleton } from '@/shared/components/ui'
 import { cn } from '@/shared/lib/cn'
 
 type CallTimelineViewProps = {
@@ -71,6 +71,33 @@ function TimelineItem({ item, isLast }: { item: CallTimelineEvent; isLast: boole
   )
 }
 
+/* Initial-load placeholder mirroring the rendered timeline: connector, dot,
+   and one card per event. */
+function TimelineSkeleton() {
+  return (
+    <div className="rounded-card border border-line bg-raised/40 p-4" aria-label="Loading call timeline">
+      <ol className="relative flex flex-col">
+        {Array.from({ length: 4 }, (_, index) => (
+          <li key={index} className="relative flex gap-3 pb-3 pl-6 last:pb-0">
+            {index < 3 && (
+              <span aria-hidden="true" className="absolute left-[7px] top-4 h-full w-px bg-line-strong" />
+            )}
+            <span aria-hidden="true" className="absolute left-0 top-1.5 size-3.5 rounded-full border-2 border-line-strong bg-raised" />
+            <div className="min-w-0 flex-1 rounded-card border border-line bg-panel px-4 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+              <Skeleton className="mt-2 h-3 w-52" />
+              <Skeleton className="mt-2 h-3 w-40" />
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
 export function CallTimelineView({ initialCallId = '' }: CallTimelineViewProps) {
   const [input, setInput] = useState(initialCallId)
   const [submittedId, setSubmittedId] = useState(initialCallId.trim())
@@ -81,7 +108,8 @@ export function CallTimelineView({ initialCallId = '' }: CallTimelineViewProps) 
     setSubmittedId(initialCallId.trim())
   }, [initialCallId])
 
-  const { data: timeline = [], error, isFetching } = useCallTimelineQuery(submittedId)
+  const { data: timeline = [], error, isFetching, isPending } = useCallTimelineQuery(submittedId)
+  const loadingTimeline = submittedId.trim().length > 0 && isPending && !error
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -89,7 +117,11 @@ export function CallTimelineView({ initialCallId = '' }: CallTimelineViewProps) 
   }
 
   return (
-    <section className="flex flex-col gap-4" aria-labelledby="call-timeline-title">
+    <section
+      className="flex flex-col gap-4"
+      aria-labelledby="call-timeline-title"
+      aria-busy={loadingTimeline || isFetching}
+    >
       <div className="min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Deep inspection</p>
         <h2 className="sr-only" id="call-timeline-title">Call timeline</h2>
@@ -127,12 +159,22 @@ export function CallTimelineView({ initialCallId = '' }: CallTimelineViewProps) 
         </div>
       )}
 
-      {timeline.length === 0 ? (
-        <EmptyState
-          icon={Search}
-          title="Select a call to inspect"
-          description="Open a recent call or paste a call ID above."
-        />
+      {loadingTimeline ? (
+        <TimelineSkeleton />
+      ) : timeline.length === 0 ? (
+        submittedId ? (
+          <EmptyState
+            icon={Minus}
+            title="No events for this call"
+            description="The call ID may be wrong, too old, or telemetry was never received."
+          />
+        ) : (
+          <EmptyState
+            icon={Search}
+            title="Select a call to inspect"
+            description="Open a recent call or paste a call ID above."
+          />
+        )
       ) : (
         <div className="rounded-card border border-line bg-raised/40 p-4">
           <ol className="relative flex flex-col" aria-label="Timeline events for the selected call">
