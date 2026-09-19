@@ -186,8 +186,8 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
             Active alerts
           </h2>
           <p className="mt-0.5 max-w-prose text-[13px] leading-relaxed text-ink-2">
-            Pending and firing conditions from host, Conversation, Call,
-            Notification, and monitoring-service rules. Resolved alerts
+            Pending and firing conditions from deployments, host, Conversation,
+            Call, Notification, and monitoring-service rules. Resolved alerts
             disappear from this live view.
           </p>
         </div>
@@ -331,6 +331,10 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
             const routingService = alertServiceForRouting(alert);
             const metricView = metricViewForAlert(alert);
             const severity = SEVERITY_TONE[alert.severity];
+            const targetSha = alert.labels.target_sha;
+            const deployedSha = alert.labels.deployed_sha;
+            const canOpenLogs =
+              onOpenLogs && routingService !== "deployment";
 
             return (
               <article
@@ -408,10 +412,26 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                           : alert.value.toPrecision(4)}
                       </dd>
                     </div>
+                    {targetSha && (
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <dt className="shrink-0 text-ink-3">Promoted commit</dt>
+                        <dd className="min-w-0 text-right font-mono text-ink [overflow-wrap:anywhere]">
+                          {targetSha}
+                        </dd>
+                      </div>
+                    )}
+                    {deployedSha && (
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <dt className="shrink-0 text-ink-3">Production commit</dt>
+                        <dd className="min-w-0 text-right font-mono text-ink [overflow-wrap:anywhere]">
+                          {deployedSha}
+                        </dd>
+                      </div>
+                    )}
                   </dl>
                 </details>
 
-                {(onNavigate || onOpenLogs) && (
+                {((onNavigate && metricView) || canOpenLogs) && (
                   <div className="flex items-center gap-2">
                     {onNavigate && metricView && (
                       <Button
@@ -422,7 +442,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                         View metrics
                       </Button>
                     )}
-                    {onOpenLogs && (
+                    {canOpenLogs && (
                       <Button
                         variant="ghost"
                         size="sm"
