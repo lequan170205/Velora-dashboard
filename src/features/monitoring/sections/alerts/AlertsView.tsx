@@ -339,6 +339,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
             const severity = SEVERITY_TONE[alert.severity];
             const targetSha = alert.labels.target_sha;
             const deployedSha = alert.labels.deployed_sha;
+            const suggestedFix = alert.annotations.action;
             const canOpenLogs =
               onOpenLogs && routingService !== "deployment";
 
@@ -398,6 +399,12 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                 {alert.description && (
                   <p className="text-[13px] leading-relaxed text-ink-2">
                     {alert.description}
+                  </p>
+                )}
+                {suggestedFix && (
+                  <p className="min-w-0 rounded-control bg-raised/60 px-3 py-2 text-[13px] leading-relaxed text-ink-2 [overflow-wrap:anywhere]">
+                    <span className="font-semibold text-ink">Suggested fix: </span>
+                    {suggestedFix}
                   </p>
                 )}
 
