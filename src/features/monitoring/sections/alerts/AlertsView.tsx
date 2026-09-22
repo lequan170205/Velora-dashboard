@@ -451,7 +451,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                         )}
                         {deployedSha && (
                           <div className="flex items-center justify-between gap-3 sm:justify-start">
-                            <dt className="text-ink-3">Running</dt>
+                            <dt className="text-ink-3">Last healthy</dt>
                             <dd
                               className="font-mono text-ink"
                               title={deployedSha}
@@ -502,7 +502,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                     )}
                     {deployedSha && (
                       <div className="flex min-w-0 items-start justify-between gap-3">
-                        <dt className="shrink-0 text-ink-3">Production commit</dt>
+                        <dt className="shrink-0 text-ink-3">Last healthy release</dt>
                         <dd className="min-w-0 text-right font-mono text-ink [overflow-wrap:anywhere]">
                           {deployedSha}
                         </dd>
