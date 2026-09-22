@@ -339,7 +339,14 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
             const severity = SEVERITY_TONE[alert.severity];
             const targetSha = alert.labels.target_sha;
             const deployedSha = alert.labels.deployed_sha;
-            const suggestedFix = alert.annotations.action;
+            const isDeploymentAlert = routingService === "deployment";
+            const deploymentStatus = alert.labels.status;
+            const failureReason =
+              alert.annotations.reason ||
+              alert.labels.reason ||
+              alert.description;
+            const suggestedFix =
+              alert.annotations.action || alert.labels.action;
             const canOpenLogs =
               onOpenLogs && routingService !== "deployment";
 
@@ -379,6 +386,11 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                         ? routingService
                         : alert.service}
                     </span>
+                    {isDeploymentAlert && deploymentStatus && (
+                      <span className="rounded-full border border-bad-soft bg-bad-soft/50 px-2 py-0.5 font-mono text-[11px] text-bad">
+                        {deploymentStatus}
+                      </span>
+                    )}
                   </div>
                   <time
                     className="font-mono text-xs tabular-nums text-ink-3"
@@ -396,12 +408,63 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                 <h3 className="text-sm font-semibold leading-snug text-ink">
                   {alert.summary}
                 </h3>
-                {alert.description && (
+                {isDeploymentAlert ? (
+                  <div
+                    role={alert.state === "firing" ? "alert" : undefined}
+                    className="grid gap-2.5 rounded-control border border-bad-soft bg-bad-soft/30 px-3 py-2.5"
+                  >
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-bad">
+                        Failure reason
+                      </p>
+                      <p className="mt-1 text-[13px] leading-relaxed text-ink [overflow-wrap:anywhere]">
+                        {failureReason ||
+                          "The deploy failed without a diagnostic reason."}
+                      </p>
+                    </div>
+                    {suggestedFix && (
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">
+                          Recommended action
+                        </p>
+                        <p className="mt-1 text-[13px] leading-relaxed text-ink [overflow-wrap:anywhere]">
+                          {suggestedFix}
+                        </p>
+                      </div>
+                    )}
+                    {(targetSha || deployedSha) && (
+                      <dl className="grid gap-1 border-t border-bad-soft pt-2 text-xs sm:grid-cols-2">
+                        {targetSha && (
+                          <div className="flex items-center justify-between gap-3 sm:justify-start">
+                            <dt className="text-ink-3">Target</dt>
+                            <dd
+                              className="font-mono text-ink"
+                              title={targetSha}
+                            >
+                              {targetSha.slice(0, 12)}
+                            </dd>
+                          </div>
+                        )}
+                        {deployedSha && (
+                          <div className="flex items-center justify-between gap-3 sm:justify-start">
+                            <dt className="text-ink-3">Running</dt>
+                            <dd
+                              className="font-mono text-ink"
+                              title={deployedSha}
+                            >
+                              {deployedSha.slice(0, 12)}
+                            </dd>
+                          </div>
+                        )}
+                      </dl>
+                    )}
+                  </div>
+                ) : alert.description ? (
                   <p className="text-[13px] leading-relaxed text-ink-2">
                     {alert.description}
                   </p>
-                )}
-                {suggestedFix && (
+                ) : null}
+                {!isDeploymentAlert && suggestedFix && (
                   <p className="min-w-0 rounded-control bg-raised/60 px-3 py-2 text-[13px] leading-relaxed text-ink-2 [overflow-wrap:anywhere]">
                     <span className="font-semibold text-ink">Suggested fix: </span>
                     {suggestedFix}
