@@ -6,6 +6,7 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "vite",
+    "test": "node --test scripts/test-deployment-alert.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

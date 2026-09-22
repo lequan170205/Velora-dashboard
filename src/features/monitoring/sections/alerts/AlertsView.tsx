@@ -16,6 +16,7 @@ import {
   metricViewForAlert,
   type AlertMetricView,
 } from "../../alertRouting";
+import { deploymentAlertDetails } from "../../deploymentAlertDetails";
 import { useAlertsQuery } from "../../hooks/useAlertsQuery";
 import {
   Button,
@@ -337,18 +338,17 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
             const routingService = alertServiceForRouting(alert);
             const metricView = metricViewForAlert(alert);
             const severity = SEVERITY_TONE[alert.severity];
-            const targetSha = alert.labels.target_sha;
-            const deployedSha = alert.labels.deployed_sha;
             const isDeploymentAlert = routingService === "deployment";
-            const deploymentStatus = alert.labels.status;
-            const failureReason =
-              alert.annotations.reason ||
-              alert.labels.reason ||
-              alert.description;
-            const suggestedFix =
-              alert.annotations.action || alert.labels.action;
-            const canOpenLogs =
-              onOpenLogs && routingService !== "deployment";
+            const {
+              status: deploymentStatus,
+              reason: failureReason,
+              action: suggestedFix,
+              failedService,
+              targetSha,
+              deployedSha,
+            } = deploymentAlertDetails(alert);
+            const logService = failedService || routingService;
+            const canOpenLogs = onOpenLogs && logService !== "deployment";
 
             return (
               <article
@@ -391,6 +391,11 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                         {deploymentStatus}
                       </span>
                     )}
+                    {isDeploymentAlert && failedService && (
+                      <span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink">
+                        failed: {failedService}
+                      </span>
+                    )}
                   </div>
                   <time
                     className="font-mono text-xs tabular-nums text-ink-3"
@@ -418,8 +423,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                         Failure reason
                       </p>
                       <p className="mt-1 text-[13px] leading-relaxed text-ink [overflow-wrap:anywhere]">
-                        {failureReason ||
-                          "The deploy failed without a diagnostic reason."}
+                        {failureReason}
                       </p>
                     </div>
                     {suggestedFix && (
@@ -522,7 +526,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onOpenLogs(routingService)}
+                        onClick={() => onOpenLogs(logService)}
                       >
                         View logs
                       </Button>
