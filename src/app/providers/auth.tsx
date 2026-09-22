@@ -13,6 +13,7 @@ type AuthContextValue = {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+const SESSION_RETRY_DELAY_MS = 3_000
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('checking')
@@ -21,25 +22,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
 
-    void (async () => {
+    const scheduleRetry = () => {
+      if (cancelled || retryTimer) return
+      retryTimer = setTimeout(() => {
+        retryTimer = null
+        void verifySession()
+      }, SESSION_RETRY_DELAY_MS)
+    }
+
+    const verifySession = async () => {
       try {
         const response = await fetchApi('/auth/me')
         if (cancelled) return
-        if (!response.ok) {
+
+        if (response.status === 401 || response.status === 403) {
           setStatus('unauthenticated')
           return
         }
+
+        if (!response.ok) {
+          scheduleRetry()
+          return
+        }
+
         const user = (await response.json()) as { roles?: string[] }
         if (cancelled) return
         setStatus(user.roles?.includes('ADMIN') === true ? 'authenticated' : 'unauthenticated')
       } catch {
-        if (!cancelled) setStatus('unauthenticated')
+        scheduleRetry()
       }
-    })()
+    }
+
+    void verifySession()
 
     return () => {
       cancelled = true
+      if (retryTimer) clearTimeout(retryTimer)
     }
   }, [])
 
