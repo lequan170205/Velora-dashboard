@@ -112,7 +112,5 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
 
-export const titleForPath = (pathname: string): string => {
-  if (pathname === "/timeline") return "Call timeline";
-  return NAV_ITEMS.find((item) => item.to === pathname)?.title ?? "Velora Operations";
-};
+export const titleForPath = (pathname: string): string =>
+  NAV_ITEMS.find((item) => item.to === pathname)?.title ?? "Velora Operations";

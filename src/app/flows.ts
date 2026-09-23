@@ -18,11 +18,3 @@ export function openLogs(
   if (isLogsLevel(level)) search.set('level', level)
   navigate({ pathname: '/logs', search: search.toString() })
 }
-
-/* Cross-view flow: open one call in the timeline view. */
-export function openTimeline(navigate: NavigateFunction, callId: string) {
-  navigate({
-    pathname: '/timeline',
-    search: `?callId=${encodeURIComponent(callId)}`,
-  })
-}

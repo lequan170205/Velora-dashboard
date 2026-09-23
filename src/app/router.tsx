@@ -23,9 +23,8 @@ import type { LogsPreset } from "../features/monitoring/hooks/useLogsQuery";
 import {
   CallsOverviewView,
   CallsProvider,
-  CallTimelineView,
 } from "../features/calls";
-import { isLogsLevel, openLogs, openTimeline } from "./flows";
+import { isLogsLevel, openLogs } from "./flows";
 import { LoginScreen } from "./LoginScreen";
 import { useAuth } from "./providers/auth";
 import { SessionLoader } from "./SessionLoader";
@@ -80,15 +79,39 @@ function LogsRoute() {
 }
 
 function CallsRoute() {
-  const navigate = useNavigate();
-  return <CallsOverviewView onInspect={(callId) => openTimeline(navigate, callId)} />;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedCallId = searchParams.get("callId");
+
+  const inspectCall = (callId: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("callId", callId);
+    setSearchParams(next);
+  };
+
+  const closeInspection = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("callId");
+    setSearchParams(next, { replace: true });
+  };
+
+  return (
+    <CallsOverviewView
+      selectedCallId={selectedCallId}
+      onInspect={inspectCall}
+      onCloseInspection={closeInspection}
+    />
+  );
 }
 
-/* The URL parameter is a deep link: arriving with ?callId=… loads that timeline. */
-function TimelineRoute() {
+function LegacyTimelineRoute() {
   const [searchParams] = useSearchParams();
-  const callIdParam = searchParams.get("callId") ?? "";
-  return <CallTimelineView initialCallId={callIdParam} />;
+  const callId = searchParams.get("callId");
+  return (
+    <Navigate
+      to={callId ? `/calls?callId=${encodeURIComponent(callId)}` : "/calls"}
+      replace
+    />
+  );
 }
 
 export const router = createHashRouter([
@@ -129,7 +152,7 @@ export const router = createHashRouter([
       { path: "calls", element: <CallsRoute /> },
       { path: "call-quality", element: <Navigate to="/calls" replace /> },
       { path: "recent-calls", element: <Navigate to="/calls" replace /> },
-      { path: "timeline", element: <TimelineRoute /> },
+      { path: "timeline", element: <LegacyTimelineRoute /> },
       { path: "*", element: <Navigate to="/server" replace /> },
     ],
   },

@@ -4,19 +4,24 @@ import {
   fetchCallSummary,
   fetchCallTimeline,
   fetchRecentCallLegs,
+  isValidCallId,
   type CallTelemetryFilters,
 } from './api'
 
 const CALL_TELEMETRY_REFRESH_INTERVAL_MS = 15_000
+
+const refreshIntervalFor = (filters: CallTelemetryFilters) =>
+  filters.range === 'custom' ? false : CALL_TELEMETRY_REFRESH_INTERVAL_MS
 
 export function useCallSummaryQuery(filters: CallTelemetryFilters) {
   return useQuery({
     queryKey: ['calls', 'summary', filters],
     queryFn: () => fetchCallSummary(filters),
     placeholderData: keepPreviousData,
-    refetchInterval: CALL_TELEMETRY_REFRESH_INTERVAL_MS,
+    refetchInterval: refreshIntervalFor(filters),
     refetchIntervalInBackground: false,
-    gcTime: 0,
+    staleTime: 10_000,
+    gcTime: 5 * 60_000,
   })
 }
 
@@ -25,9 +30,10 @@ export function useRecentCallsQuery(filters: CallTelemetryFilters) {
     queryKey: ['calls', 'recent', filters],
     queryFn: () => fetchRecentCallLegs(filters),
     placeholderData: keepPreviousData,
-    refetchInterval: CALL_TELEMETRY_REFRESH_INTERVAL_MS,
+    refetchInterval: refreshIntervalFor(filters),
     refetchIntervalInBackground: false,
-    gcTime: 0,
+    staleTime: 10_000,
+    gcTime: 5 * 60_000,
   })
 }
 
@@ -35,7 +41,7 @@ export function useCallTimelineQuery(callId: string) {
   return useQuery({
     queryKey: ['calls', 'timeline', callId],
     queryFn: () => fetchCallTimeline(callId),
-    enabled: callId.trim().length > 0,
-    gcTime: 0,
+    enabled: isValidCallId(callId),
+    gcTime: 5 * 60_000,
   })
 }
