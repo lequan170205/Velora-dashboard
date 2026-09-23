@@ -1,9 +1,8 @@
-import { CheckCircle2, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { NavLink } from 'react-router'
 
 import { NAV_GROUPS } from '../navigation'
 import { BrandMark } from '../BrandMark'
-import type { MonitoringConnectionState } from '@/features/monitoring/freshness'
 import { cn } from '@/shared/lib/cn'
 
 const navLinkClassName = (isActive: boolean) =>
@@ -47,12 +46,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function SidebarContent({
-  onNavigate,
-}: {
-  connectionState: MonitoringConnectionState
-  onNavigate?: () => void
-}) {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col border-r border-line bg-sidebar">
       <div className="flex items-center gap-2.5 border-b border-line px-4 py-4">
@@ -64,21 +58,14 @@ function SidebarContent({
       </div>
 
       <SidebarNav onNavigate={onNavigate} />
-
-      <div className="flex items-center gap-1.5 border-t border-line px-4 py-3">
-        <span className="inline-flex items-center gap-1.5 text-xs text-ink-2">
-          <CheckCircle2 size={13} aria-hidden="true" className="text-ok" />
-          Production
-        </span>
-      </div>
     </div>
   )
 }
 
-export function AppSidebar({ connectionState }: { connectionState: MonitoringConnectionState }) {
+export function AppSidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] lg:block">
-      <SidebarContent connectionState={connectionState} />
+      <SidebarContent />
     </aside>
   )
 }
@@ -86,11 +73,9 @@ export function AppSidebar({ connectionState }: { connectionState: MonitoringCon
 export function MobileNavDrawer({
   open,
   onOpenChange,
-  connectionState,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  connectionState: MonitoringConnectionState
 }) {
   return (
     <DrawerRoot open={open} onOpenChange={onOpenChange}>
@@ -101,10 +86,7 @@ export function MobileNavDrawer({
           aria-describedby={undefined}
         >
           <DrawerTitle className="sr-only">Dashboard navigation</DrawerTitle>
-          <SidebarContent
-            connectionState={connectionState}
-            onNavigate={() => onOpenChange(false)}
-          />
+          <SidebarContent onNavigate={() => onOpenChange(false)} />
           <button
             type="button"
             aria-label="Close navigation"
