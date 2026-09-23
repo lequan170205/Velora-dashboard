@@ -1,6 +1,6 @@
 import type { MonitoringMetric, MonitoringOverview } from '../api'
 import type { Tone } from '../formatters'
-import type { MonitoringCurrentValue, MonitoringEmptyStateKind, MonitoringTooltipSnapshot, MonitoringYAxisDefinition, RangeHours } from '../model'
+import type { MonitoringCurrentValue, MonitoringEmptyStateKind, MonitoringTooltipDetail, MonitoringTooltipSnapshot, MonitoringYAxisDefinition, RangeHours } from '../model'
 import type { ChartSeriesToken } from '../../../shared/lib/chartTheme'
 
 export type ServerMetric = 'cpu' | 'memory' | 'disk'
@@ -54,6 +54,7 @@ export type SeriesConfig = {
   emptyDescription: string
   emptyStateKind?: MonitoringEmptyStateKind
   yAxis?: MonitoringYAxisDefinition
+  tooltipDetails?: (overview: MonitoringOverview | null, value: number) => readonly MonitoringTooltipDetail[]
 }
 
 export type CardContext = {

@@ -16,7 +16,7 @@ import {
   formatMonitoringAge,
   getMonitoringHistoryFreshnessState,
 } from '../../freshness'
-import type { MonitoringEmptyStateKind, MonitoringThresholdDefinition, MonitoringTooltipSnapshot, MonitoringCurrentValue, MonitoringYAxisDefinition } from '../../model'
+import type { MonitoringEmptyStateKind, MonitoringThresholdDefinition, MonitoringTooltipDetail, MonitoringTooltipSnapshot, MonitoringCurrentValue, MonitoringYAxisDefinition } from '../../model'
 import type { ChartSeriesToken } from '@/shared/lib/chartTheme'
 import { useChartTheme } from '@/shared/lib/chartTheme'
 import { ChartPlotSkeleton } from '@/shared/components/ui'
@@ -37,6 +37,7 @@ type HistoryChartProps = {
   yAxis?: MonitoringYAxisDefinition
   currentValue?: MonitoringCurrentValue
   currentSnapshot?: MonitoringTooltipSnapshot
+  tooltipDetails?: (value: number) => readonly MonitoringTooltipDetail[]
   historyError?: string | null
   now: number
   loading?: boolean
@@ -171,6 +172,7 @@ export function HistoryChart({
   yAxis,
   currentValue,
   currentSnapshot,
+  tooltipDetails,
   historyError,
   now,
   loading = false,
@@ -390,6 +392,7 @@ export function HistoryChart({
                     const hoveredValue = Number(payload[0]?.value)
                     if (!Number.isFinite(hoveredTimestamp) || !Number.isFinite(hoveredValue)) return null
 
+                    const hoverDetails = tooltipDetails?.(hoveredValue) ?? []
                     const showCurrentSnapshot = Boolean(
                       currentSnapshot &&
                       historyFreshness === 'fresh' &&
@@ -408,6 +411,16 @@ export function HistoryChart({
                             {valueFormatter(hoveredValue)}
                           </strong>
                         </div>
+                        {hoverDetails.length > 0 && (
+                          <dl className="mt-2 border-t border-line pt-2">
+                            {hoverDetails.map((detail) => (
+                              <div key={detail.label} className="mt-0.5 flex items-center justify-between gap-4">
+                                <dt className="text-[11px] text-ink-3">{detail.label}</dt>
+                                <dd className="font-mono text-xs tabular-nums text-ink">{detail.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
                         {showCurrentSnapshot && currentSnapshot && (
                           <div className="mt-2 border-t border-line pt-2">
                             <span className="text-[11px] font-medium uppercase tracking-wide text-ink-3">

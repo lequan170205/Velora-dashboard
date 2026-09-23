@@ -55,6 +55,14 @@ const SERIES = [
         { value: 0.9, label: 'High 90%', tone: 'bad' as const },
       ],
     },
+    tooltipDetails: (overview, value) => {
+      const total = overview?.host.memoryTotalBytes
+      if (total == null || !Number.isFinite(total) || total <= 0) return []
+      return [
+        { label: 'Approx. used', value: formatBytes(value * total) },
+        { label: 'Capacity', value: formatBytes(total) },
+      ]
+    },
   },
   {
     metric: 'host_disk' as const,
@@ -76,6 +84,14 @@ const SERIES = [
         { value: 0.8, label: 'Watch 80%', tone: 'warn' as const },
         { value: 0.92, label: 'High 92%', tone: 'bad' as const },
       ],
+    },
+    tooltipDetails: (overview, value) => {
+      const total = overview?.host.diskTotalBytes
+      if (total == null || !Number.isFinite(total) || total <= 0) return []
+      return [
+        { label: 'Approx. used', value: formatBytes(value * total) },
+        { label: 'Capacity', value: formatBytes(total) },
+      ]
     },
   },
   {

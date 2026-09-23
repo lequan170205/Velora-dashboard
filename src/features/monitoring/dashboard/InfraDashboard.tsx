@@ -174,6 +174,7 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
             yAxis={item.yAxis}
             currentValue={currentValues[item.metric]}
             currentSnapshot={snapshots?.[item.metric]}
+            tooltipDetails={item.tooltipDetails ? (value) => item.tooltipDetails?.(overview, value) ?? [] : undefined}
             historyError={historyErrors[item.metric] ?? null}
             now={now}
             loading={initialLoading || historyRefreshing}
