@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { SlidersHorizontal, X } from 'lucide-react'
 
 import {
@@ -20,25 +20,13 @@ const RANGE_OPTIONS: readonly { value: CallRangePreset; label: string }[] = [
 
 type FilterBarProps = {
   filters: CallTelemetryFilters
-  appliedFilters: CallTelemetryFilters
   onChange: <Key extends keyof CallTelemetryFilters>(key: Key, value: CallTelemetryFilters[Key]) => void
-  onApply: () => void
 }
 
-export function FilterBar({ filters, appliedFilters, onChange, onApply }: FilterBarProps) {
+export function FilterBar({ filters, onChange }: FilterBarProps) {
   const [showAdvanced, setShowAdvanced] = useState(false)
-
   const advancedCount = [filters.osVersion, filters.appVersion, filters.direction].filter(Boolean).length
-  const dirty = useMemo(
-    () => JSON.stringify(filters) !== JSON.stringify(appliedFilters),
-    [filters, appliedFilters],
-  )
   const valid = hasValidCustomRange(filters)
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    if (dirty && valid) onApply()
-  }
 
   const clearAdvanced = () => {
     onChange('osVersion', '')
@@ -47,7 +35,7 @@ export function FilterBar({ filters, appliedFilters, onChange, onApply }: Filter
   }
 
   return (
-    <form onSubmit={submit} aria-label="Call telemetry filters" className="rounded-card border border-line bg-panel p-3">
+    <section aria-label="Call telemetry filters" className="rounded-card border border-line bg-panel p-3">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
         <div className="min-w-0 flex-1">
           <Label>Range</Label>
@@ -71,7 +59,7 @@ export function FilterBar({ filters, appliedFilters, onChange, onApply }: Filter
           </div>
         </div>
 
-        <div className="w-full xl:w-44">
+        <div className="w-full sm:w-48">
           <Label htmlFor="call-platform">Platform</Label>
           <NativeSelect
             id="call-platform"
@@ -86,46 +74,44 @@ export function FilterBar({ filters, appliedFilters, onChange, onApply }: Filter
           </NativeSelect>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowAdvanced((value) => !value)}
-            aria-expanded={showAdvanced}
-          >
-            <SlidersHorizontal size={14} aria-hidden="true" />
-            More filters{advancedCount > 0 ? ` · ${advancedCount}` : ''}
-          </Button>
-          <Button type="submit" size="sm" disabled={!dirty || !valid}>
-            Apply
-          </Button>
-        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowAdvanced((value) => !value)}
+          aria-expanded={showAdvanced}
+          className="self-start xl:self-auto"
+        >
+          <SlidersHorizontal size={14} aria-hidden="true" />
+          More filters{advancedCount > 0 ? ` · ${advancedCount}` : ''}
+        </Button>
       </div>
 
       {filters.range === 'custom' && (
-        <div className="mt-3 grid grid-cols-1 gap-2.5 border-t border-line pt-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="call-from">From</Label>
-            <Input
-              id="call-from"
-              type="datetime-local"
-              value={filters.customFrom}
-              onChange={(event) => onChange('customFrom', event.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <Label htmlFor="call-to">To</Label>
-            <Input
-              id="call-to"
-              type="datetime-local"
-              value={filters.customTo}
-              onChange={(event) => onChange('customTo', event.target.value)}
-              className="mt-1"
-            />
+        <div className="mt-3 border-t border-line pt-3">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="w-full sm:w-[260px]">
+              <Label htmlFor="call-from">From</Label>
+              <Input
+                id="call-from"
+                type="datetime-local"
+                value={filters.customFrom}
+                onChange={(event) => onChange('customFrom', event.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div className="w-full sm:w-[260px]">
+              <Label htmlFor="call-to">To</Label>
+              <Input
+                id="call-to"
+                type="datetime-local"
+                value={filters.customTo}
+                onChange={(event) => onChange('customTo', event.target.value)}
+                className="mt-1"
+              />
+            </div>
           </div>
           {!valid && (
-            <p role="alert" className="text-xs text-bad sm:col-span-2">
+            <p role="alert" className="mt-2 text-xs text-bad">
               Custom range needs valid start and end times, with From before To.
             </p>
           )}
@@ -180,6 +166,6 @@ export function FilterBar({ filters, appliedFilters, onChange, onApply }: Filter
           )}
         </div>
       )}
-    </form>
+    </section>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Check, CheckCircle2, Copy, Minus, Search } from 'lucide-react'
+import { ArrowRight, Check, CheckCircle2, Copy, LoaderCircle, Minus, Search } from 'lucide-react'
 
 import { milliseconds, percent, type RecentCallLeg } from '../../api'
 import { useCalls } from '../../CallsProvider'
@@ -208,7 +208,7 @@ export function CallsOverviewView({
   onInspect,
   onCloseInspection,
 }: CallsOverviewViewProps) {
-  const { draft, applied, apply, updateFilter } = useCalls()
+  const { draft, applied, updateFilter } = useCalls()
   const summaryQuery = useCallSummaryQuery(applied)
   const recentQuery = useRecentCallsQuery(applied)
   const summary = summaryQuery.data
@@ -224,16 +224,20 @@ export function CallsOverviewView({
   const failureEventCount = failures.reduce((total, [, count]) => total + count, 0)
   const summaryLoading = summaryQuery.isPending && !summary
   const recentLoading = recentQuery.isPending && recentCallLegs.length === 0
+  const filtersPending = JSON.stringify(draft) !== JSON.stringify(applied)
+  const filterUpdating = filtersPending || summaryQuery.isPlaceholderData || recentQuery.isPlaceholderData
   const updatedAtValues = [summaryQuery.dataUpdatedAt, recentQuery.dataUpdatedAt].filter((value) => value > 0)
   const oldestUpdate = updatedAtValues.length > 0 ? Math.min(...updatedAtValues) : 0
 
-  const freshness = applied.range === 'custom'
-    ? 'Historical range'
-    : summaryQuery.isFetching || recentQuery.isFetching
-      ? 'Refreshing…'
+  const freshness = filterUpdating
+    ? 'Updating…'
+    : applied.range === 'custom'
+      ? 'Historical range'
+      : summaryQuery.isFetching || recentQuery.isFetching
+        ? 'Refreshing…'
       : oldestUpdate > 0
-        ? `Updated ${Math.max(0, Math.floor((now - oldestUpdate) / 1000))}s ago`
-        : 'Live'
+          ? `Updated ${Math.max(0, Math.floor((now - oldestUpdate) / 1000))}s ago`
+          : 'Live'
 
   const errors = [summaryQuery.error?.message, recentQuery.error?.message]
     .filter((message, index, all): message is string => Boolean(message) && all.indexOf(message) === index)
@@ -249,7 +253,10 @@ export function CallsOverviewView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-line px-2.5 py-1 text-xs tabular-nums text-ink-3">{freshness}</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs tabular-nums text-ink-3">
+            {filterUpdating && <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />}
+            {freshness}
+          </span>
           <Button variant="secondary" size="sm" onClick={() => setInspectDialogOpen(true)}>
             <Search size={14} aria-hidden="true" />
             Inspect call ID
@@ -257,7 +264,14 @@ export function CallsOverviewView({
         </div>
       </div>
 
-      <FilterBar filters={draft} appliedFilters={applied} onChange={updateFilter} onApply={apply} />
+      <FilterBar filters={draft} onChange={updateFilter} />
+
+      {filterUpdating && (
+        <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-control border border-line bg-raised/70 px-3 py-2 text-xs text-ink-2">
+          <LoaderCircle size={13} aria-hidden="true" className="animate-spin" />
+          Updating results for the new filters…
+        </div>
+      )}
 
       {errors.length > 0 && (
         <div role="alert" className="rounded-card border border-bad-soft bg-bad-soft/50 px-4 py-3 text-[13px] text-ink">
@@ -265,6 +279,7 @@ export function CallsOverviewView({
         </div>
       )}
 
+      <div className={cn('flex flex-col gap-4 transition-opacity duration-150', filterUpdating && 'opacity-60')} aria-busy={filterUpdating}>
       {summaryLoading ? (
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {Array.from({ length: 4 }, (_, index) => (
@@ -364,6 +379,8 @@ export function CallsOverviewView({
           </section>
         </div>
       </details>
+
+      </div>
 
       <InspectCallDialog
         open={inspectDialogOpen}
