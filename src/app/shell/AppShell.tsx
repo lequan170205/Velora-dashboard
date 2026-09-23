@@ -32,11 +32,10 @@ export function AppShell() {
         Skip to dashboard content
       </a>
 
-      <AppSidebar connectionState={connectionState} />
+      <AppSidebar />
       <MobileNavDrawer
         open={navOpen}
         onOpenChange={setNavOpen}
-        connectionState={connectionState}
       />
 
       <div className="flex min-w-0 flex-1 flex-col lg:pl-[248px]">
