@@ -13,9 +13,8 @@ type CallsContextValue = {
 
 const CallsContext = createContext<CallsContextValue | null>(null)
 
-/* Shared date-range filter state for the call quality + explorer views.
-   Keeping draft/applied apart fixes the old behaviour where every keystroke
-   refetched telemetry before Apply was pressed. */
+/* Shared call telemetry filters for the overview and its drill-down flow.
+   Keeping draft/applied apart avoids refetching on every filter keystroke. */
 export function CallsProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<CallTelemetryFilters>(defaultCallTelemetryFilters)
   const [applied, setApplied] = useState<CallTelemetryFilters>(defaultCallTelemetryFilters)

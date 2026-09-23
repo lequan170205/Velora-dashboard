@@ -21,11 +21,9 @@ import {
 } from "../features/monitoring/dashboard/configs";
 import type { LogsPreset } from "../features/monitoring/hooks/useLogsQuery";
 import {
+  CallsOverviewView,
   CallsProvider,
-  CallQualityView,
   CallTimelineView,
-  RecentCallsView,
-  useCalls,
 } from "../features/calls";
 import { isLogsLevel, openLogs, openTimeline } from "./flows";
 import { LoginScreen } from "./LoginScreen";
@@ -81,20 +79,9 @@ function LogsRoute() {
   return <LogsView preset={preset} />;
 }
 
-function CallQualityRoute() {
-  const { applied } = useCalls();
-  return <CallQualityView appliedFilters={applied} />;
-}
-
-function RecentCallsRoute() {
-  const { applied } = useCalls();
+function CallsRoute() {
   const navigate = useNavigate();
-  return (
-    <RecentCallsView
-      appliedFilters={applied}
-      onInspect={(callId) => openTimeline(navigate, callId)}
-    />
-  );
+  return <CallsOverviewView onInspect={(callId) => openTimeline(navigate, callId)} />;
 }
 
 /* The URL parameter is a deep link: arriving with ?callId=… loads that timeline. */
@@ -139,8 +126,9 @@ export const router = createHashRouter([
       { path: "reels", element: <InfraDashboard config={reelsConfig} /> },
       { path: "alerts", element: <AlertsRoute /> },
       { path: "logs", element: <LogsRoute /> },
-      { path: "call-quality", element: <CallQualityRoute /> },
-      { path: "recent-calls", element: <RecentCallsRoute /> },
+      { path: "calls", element: <CallsRoute /> },
+      { path: "call-quality", element: <Navigate to="/calls" replace /> },
+      { path: "recent-calls", element: <Navigate to="/calls" replace /> },
       { path: "timeline", element: <TimelineRoute /> },
       { path: "*", element: <Navigate to="/server" replace /> },
     ],
