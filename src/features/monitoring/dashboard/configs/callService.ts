@@ -24,6 +24,7 @@ export const callServiceConfig: InfraViewConfig = {
   },
   health: (overview) => {
     const call = overview?.call
+    const serviceUp = call?.up ?? null
     const eventLoopP99 = call?.eventLoopP99Seconds ?? null
 
     const tone: Tone = serviceUp === null
@@ -55,7 +56,6 @@ export const callServiceConfig: InfraViewConfig = {
   cardsGridClassName: 'sm:grid-cols-2 xl:grid-cols-4',
   cards: ({ overview, hasData }) => {
     const call = overview?.call
-    const serviceUp = call?.up ?? null
     const eventLoopP99 = call?.eventLoopP99Seconds ?? null
 
     const cards: readonly StatCardVm[] = [

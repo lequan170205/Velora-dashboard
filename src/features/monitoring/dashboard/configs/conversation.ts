@@ -34,6 +34,7 @@ export const conversationConfig: InfraViewConfig = {
   },
   health: (overview) => {
     const conversation = overview?.conversation
+    const serviceUp = conversation?.up ?? null
     const sendRequestsPerSecond = conversation?.sendRequestsPerSecond ?? null
     const hasTraffic = sendRequestsPerSecond !== null && sendRequestsPerSecond > 0
     const rejectRate = conversation?.rejectRate ?? null
@@ -72,7 +73,6 @@ export const conversationConfig: InfraViewConfig = {
   },
   cardGroups: ({ overview, hasData }) => {
     const conversation = overview?.conversation
-    const serviceUp = conversation?.up ?? null
     const successRate = conversation?.successRate ?? null
     const rejectRate = conversation?.rejectRate ?? null
     const errorRate = conversation?.errorRate ?? null

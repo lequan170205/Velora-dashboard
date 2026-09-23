@@ -41,6 +41,7 @@ export const notificationServiceConfig: InfraViewConfig = {
   },
   health: (overview) => {
     const notification = overview?.notification;
+    const serviceUp = notification?.up ?? null;
     const databaseUp = notification?.databaseUp ?? null;
     const schedulerAge =
       notification?.retrySchedulerCompletionAgeSeconds ?? null;
@@ -91,7 +92,6 @@ export const notificationServiceConfig: InfraViewConfig = {
   },
   cardGroups: ({ overview, hasData }) => {
     const notification = overview?.notification;
-    const serviceUp = notification?.up ?? null;
     const databaseUp = notification?.databaseUp ?? null;
     const schedulerAge =
       notification?.retrySchedulerCompletionAgeSeconds ?? null;
