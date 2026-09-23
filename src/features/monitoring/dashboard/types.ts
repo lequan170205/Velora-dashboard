@@ -72,7 +72,7 @@ export type InfraViewConfig = {
     eyebrow: string
     title: string
     titleId: string
-    description: string
+    description?: string
     rangeLabel: string
     /** 'top' renders the toolbar above everything; 'history' keeps it with the charts. */
     placement: 'top' | 'history'
