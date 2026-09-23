@@ -237,7 +237,7 @@ export function LogDetailDialog({ entry, onClose }: LogDetailDialogProps) {
 
                           return (
                             <article
-                              key={\`\${item.timestampNs}-\${item.service}-\${item.message}\`}
+                              key={`${item.timestampNs}-${item.service}-${item.message}`}
                               className={cn(
                                 'grid gap-1 px-3 py-2.5 text-xs sm:grid-cols-[100px_52px_1fr]',
                                 selected && 'bg-brand-soft/60',
