@@ -22,6 +22,7 @@ export const callServiceConfig: InfraViewConfig = {
     rangeLabel: 'Call service history range',
     placement: 'top',
   },
+  hideCardToneBars: true,
   health: (overview) => {
     const call = overview?.call
     const serviceUp = call?.up ?? null

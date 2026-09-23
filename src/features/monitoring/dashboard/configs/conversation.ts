@@ -32,6 +32,7 @@ export const conversationConfig: InfraViewConfig = {
     rangeLabel: 'Conversation history range',
     placement: 'top',
   },
+  hideCardToneBars: true,
   health: (overview) => {
     const conversation = overview?.conversation
     const serviceUp = conversation?.up ?? null

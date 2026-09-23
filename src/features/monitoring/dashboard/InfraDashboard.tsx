@@ -203,6 +203,7 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
           groups={cardGroups}
           refreshing={refreshing}
           onDialog={config.breakdown ? (metric) => setActiveMetric(metric ?? null) : undefined}
+          hideToneBars={config.hideCardToneBars}
         />
       ) : (
         cards && (
@@ -211,6 +212,7 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
             gridClassName={config.cardsGridClassName}
             refreshing={refreshing}
             onDialog={config.breakdown ? (metric) => setActiveMetric(metric ?? null) : undefined}
+            hideToneBars={config.hideCardToneBars}
           />
         )
       )}

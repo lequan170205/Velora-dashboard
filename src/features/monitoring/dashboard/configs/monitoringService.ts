@@ -42,6 +42,7 @@ export const monitoringServiceConfig: InfraViewConfig = {
     rangeLabel: 'Monitoring history range',
     placement: 'top',
   },
+  hideCardToneBars: true,
   health: (overview) => {
     if (!overview || overview.service.up === null) {
       return {

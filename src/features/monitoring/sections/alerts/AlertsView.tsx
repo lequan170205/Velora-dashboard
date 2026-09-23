@@ -58,13 +58,10 @@ const alertKey = (alert: MonitoringAlert) => {
   return `${alert.name}:${alert.activeAt ?? "unknown"}:${labelKey}`;
 };
 
-const SEVERITY_TONE: Record<
-  MonitoringAlertSeverity,
-  { badge: string; hairline: string }
-> = {
-  critical: { badge: "bg-bad-soft text-bad", hairline: "bg-bad/60" },
-  warning: { badge: "bg-warn-soft text-warn", hairline: "bg-warn/60" },
-  info: { badge: "bg-blue-soft text-blue", hairline: "bg-blue/60" },
+const SEVERITY_TONE: Record<MonitoringAlertSeverity, string> = {
+  critical: "bg-bad-soft text-bad",
+  warning: "bg-warn-soft text-warn",
+  info: "bg-blue-soft text-blue",
 };
 
 const STATE_TONE: Record<MonitoringAlertState, string> = {
@@ -126,20 +123,12 @@ function CountTile({
   tone: "neutral" | "warn" | "bad";
 }) {
   return (
-    <article className="relative flex flex-col gap-1 overflow-hidden rounded-card border border-line bg-panel px-4 pb-3.5 pt-[18px]">
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute inset-x-4 top-0 h-0.5 rounded-b",
-          tone === "bad"
-            ? "bg-bad/60"
-            : tone === "warn"
-              ? "bg-warn/60"
-              : "bg-transparent",
-        )}
-      />
+    <article className="flex flex-col gap-1 rounded-card border border-line bg-panel px-4 py-3.5">
       <span className="text-[13px] font-medium text-ink-2">{label}</span>
-      <span className="font-mono text-[26px] font-semibold leading-tight tabular-nums text-ink">
+      <span className={cn(
+        "font-mono text-[26px] font-semibold leading-tight tabular-nums",
+        tone === "bad" ? "text-bad" : tone === "warn" ? "text-warn" : "text-ink",
+      )}>
         {value ?? "—"}
       </span>
       <span className="text-xs text-ink-3">{hint}</span>
@@ -335,7 +324,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
           {visibleAlerts.map((alert) => {
             const routingService = alertServiceForRouting(alert);
             const metricView = metricViewForAlert(alert);
-            const severity = SEVERITY_TONE[alert.severity];
+            const severityTone = SEVERITY_TONE[alert.severity];
             const isDeploymentAlert = routingService === "deployment";
             const {
               status: deploymentStatus,
@@ -351,22 +340,14 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
             return (
               <article
                 key={alertKey(alert)}
-                className="relative flex flex-col gap-2 overflow-hidden rounded-card border border-line bg-panel px-4 pb-3.5 pt-[18px]"
+                className="flex flex-col gap-2 rounded-card border border-line bg-panel p-4"
               >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "absolute inset-x-4 top-0 h-0.5 rounded-b",
-                    severity.hairline,
-                  )}
-                />
-
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <span
                       className={cn(
                         "rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
-                        severity.badge,
+                        severityTone,
                       )}
                     >
                       {alert.severity}

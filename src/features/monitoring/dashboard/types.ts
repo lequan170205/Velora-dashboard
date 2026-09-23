@@ -84,6 +84,8 @@ export type InfraViewConfig = {
   cardGroups?: (ctx: CardContext) => readonly StatCardGroupVm[]
   /** Extra grid columns for the single-card-group layout (e.g. 'sm:grid-cols-2 xl:grid-cols-5'). */
   cardsGridClassName?: string
+  /** Hide the decorative status hairline while keeping badge/tone semantics. */
+  hideCardToneBars?: boolean
   facts?: (overview: MonitoringOverview | null) => readonly FactVm[]
   series: readonly SeriesConfig[]
   /**

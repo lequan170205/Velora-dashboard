@@ -17,10 +17,10 @@ const BADGE_TONE: Record<Tone, BadgeTone> = {
   neutral: 'neutral',
 }
 
-function StatCardBody({ card }: { card: StatCardVm }) {
+function StatCardBody({ card, hideToneBar = false }: { card: StatCardVm; hideToneBar?: boolean }) {
   return (
     <>
-      {card.toneBar !== false && (
+      {!hideToneBar && card.toneBar !== false && (
         <span aria-hidden="true" className={cn('absolute inset-x-4 top-0 h-0.5 rounded-b', TONE_BAR[card.tone])} />
       )}
       <div className="flex items-start justify-between gap-2">
@@ -41,7 +41,15 @@ function StatCardBody({ card }: { card: StatCardVm }) {
 const cardClass =
   'relative flex flex-col gap-1.5 rounded-card border border-line bg-panel px-4 pb-4 pt-[18px] text-left transition-colors duration-150'
 
-export function StatCard({ card, onDialog }: { card: StatCardVm; onDialog?: (metric: StatCardVm['dialog']) => void }) {
+export function StatCard({
+  card,
+  onDialog,
+  hideToneBar = false,
+}: {
+  card: StatCardVm
+  onDialog?: (metric: StatCardVm['dialog']) => void
+  hideToneBar?: boolean
+}) {
   if (card.dialog && onDialog) {
     return (
       <button
@@ -52,14 +60,14 @@ export function StatCard({ card, onDialog }: { card: StatCardVm; onDialog?: (met
         title={card.helper}
         onClick={() => onDialog(card.dialog)}
       >
-        <StatCardBody card={card} />
+        <StatCardBody card={card} hideToneBar={hideToneBar} />
       </button>
     )
   }
 
   return (
     <article className={cardClass} title={card.helper}>
-      <StatCardBody card={card} />
+      <StatCardBody card={card} hideToneBar={hideToneBar} />
     </article>
   )
 }
@@ -69,11 +77,13 @@ export function StatCardGrid({
   gridClassName,
   refreshing = false,
   onDialog,
+  hideToneBars = false,
 }: {
   cards: readonly StatCardVm[]
   gridClassName?: string
   refreshing?: boolean
   onDialog?: (metric: StatCardVm['dialog']) => void
+  hideToneBars?: boolean
 }) {
   return (
     <div
@@ -81,16 +91,17 @@ export function StatCardGrid({
       className={cn('grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3', gridClassName)}
     >
       {cards.map((card) => (
-        <StatCard key={card.label} card={card} onDialog={onDialog} />
+        <StatCard key={card.label} card={card} onDialog={onDialog} hideToneBar={hideToneBars} />
       ))}
     </div>
   )
 }
 
-export function StatCardGroups({ groups, refreshing, onDialog }: {
+export function StatCardGroups({ groups, refreshing, onDialog, hideToneBars = false }: {
   groups: readonly StatCardGroupVm[]
   refreshing?: boolean
   onDialog?: (metric: StatCardVm['dialog']) => void
+  hideToneBars?: boolean
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -107,6 +118,7 @@ export function StatCardGroups({ groups, refreshing, onDialog }: {
             gridClassName={group.gridClassName}
             refreshing={refreshing}
             onDialog={onDialog}
+            hideToneBars={hideToneBars}
           />
         </section>
       ))}

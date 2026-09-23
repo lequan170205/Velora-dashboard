@@ -39,6 +39,7 @@ export const notificationServiceConfig: InfraViewConfig = {
     rangeLabel: "Notification service history range",
     placement: "top",
   },
+  hideCardToneBars: true,
   health: (overview) => {
     const notification = overview?.notification;
     const serviceUp = notification?.up ?? null;
