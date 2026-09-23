@@ -24,7 +24,6 @@ export const callServiceConfig: InfraViewConfig = {
   },
   health: (overview) => {
     const call = overview?.call
-    const serviceUp = call?.up ?? null
     const eventLoopP99 = call?.eventLoopP99Seconds ?? null
 
     const tone: Tone = serviceUp === null
@@ -53,20 +52,13 @@ export const callServiceConfig: InfraViewConfig = {
     title: 'Scope of this view',
     lines: ['These metrics describe call-service signaling only. CPU is shown as a share of the whole host across all cores; the Server breakdown includes the separate Mediasoup worker too.'],
   },
-  cardsGridClassName: 'sm:grid-cols-2 xl:grid-cols-5',
+  cardsGridClassName: 'sm:grid-cols-2 xl:grid-cols-4',
   cards: ({ overview, hasData }) => {
     const call = overview?.call
     const serviceUp = call?.up ?? null
     const eventLoopP99 = call?.eventLoopP99Seconds ?? null
 
     const cards: readonly StatCardVm[] = [
-      {
-        label: 'Service status',
-        value: serviceUp === true ? 'Online' : serviceUp === false ? 'Offline' : '—',
-        helper: 'Can Prometheus scrape call-service?',
-        badge: serviceUp === true ? 'Reachable' : serviceUp === false ? 'Unreachable' : 'Waiting',
-        tone: serviceUp === true ? 'good' : serviceUp === false ? 'bad' : 'neutral',
-      },
       {
         label: 'Connected call sockets',
         value: formatCount(call?.socketConnections ?? Number.NaN),
