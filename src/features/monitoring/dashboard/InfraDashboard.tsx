@@ -72,6 +72,7 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
   const overviewQuery = useOverviewQuery(config.errorMessage)
   const overview = overviewQuery.data ?? null
   const hasData = overviewQuery.data !== undefined
+  const historyEnabled = config.historyEnabled?.(overview) ?? true
 
   const rangeOption = RANGE_OPTIONS.find((option) => option.hours === rangeHours) ?? RANGE_OPTIONS[0]
   const seriesQueries = useQueries({
@@ -93,6 +94,7 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
       placeholderData: (previous: unknown) => previous,
       gcTime: 5 * 60_000,
       staleTime: 30_000,
+      enabled: historyEnabled,
     })),
   })
 

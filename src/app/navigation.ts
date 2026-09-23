@@ -1,13 +1,17 @@
 import {
   Activity,
   Bell,
+  BrainCircuit,
+  Film,
   Gauge,
+  KeyRound,
   List,
   MessageSquare,
   Milestone,
   Phone,
   ScrollText,
   Server,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,6 +60,30 @@ export const NAV_GROUPS: NavGroup[] = [
         label: "Notifications",
         title: "Notification service",
         icon: Bell,
+      },
+      {
+        to: "/auth-service",
+        label: "Auth",
+        title: "Auth service",
+        icon: KeyRound,
+      },
+      {
+        to: "/user-service",
+        label: "Users",
+        title: "User service",
+        icon: Users,
+      },
+      {
+        to: "/rag",
+        label: "RAG",
+        title: "RAG monitoring",
+        icon: BrainCircuit,
+      },
+      {
+        to: "/reels",
+        label: "Reels",
+        title: "Reel pipeline",
+        icon: Film,
       },
     ],
   },

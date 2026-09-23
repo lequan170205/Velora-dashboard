@@ -9,11 +9,15 @@ import {
 import { AlertsView, LogsView } from "../features/monitoring";
 import { InfraDashboard } from "../features/monitoring/dashboard/InfraDashboard";
 import {
+  authServiceConfig,
   callServiceConfig,
   conversationConfig,
   monitoringServiceConfig,
   notificationServiceConfig,
+  ragConfig,
+  reelsConfig,
   serverConfig,
+  userServiceConfig,
 } from "../features/monitoring/dashboard/configs";
 import type { LogsPreset } from "../features/monitoring/hooks/useLogsQuery";
 import {
@@ -123,6 +127,16 @@ export const router = createHashRouter([
         path: "notification-service",
         element: <InfraDashboard config={notificationServiceConfig} />,
       },
+      {
+        path: "auth-service",
+        element: <InfraDashboard config={authServiceConfig} />,
+      },
+      {
+        path: "user-service",
+        element: <InfraDashboard config={userServiceConfig} />,
+      },
+      { path: "rag", element: <InfraDashboard config={ragConfig} /> },
+      { path: "reels", element: <InfraDashboard config={reelsConfig} /> },
       { path: "alerts", element: <AlertsRoute /> },
       { path: "logs", element: <LogsRoute /> },
       { path: "call-quality", element: <CallQualityRoute /> },

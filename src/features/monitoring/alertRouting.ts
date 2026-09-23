@@ -5,7 +5,11 @@ export type AlertMetricView =
   | "service"
   | "conversation"
   | "call-service"
-  | "notification-service";
+  | "notification-service"
+  | "auth-service"
+  | "user-service"
+  | "rag"
+  | "reels";
 
 /**
  * Prometheus alerts that aggregate over several series can lose their job label.
@@ -23,6 +27,14 @@ export const alertServiceForRouting = (
   if (candidate.includes("conversation")) return "conversation-service";
   if (candidate.includes("call")) return "call-service";
   if (candidate.includes("notification")) return "notification-service";
+  if (candidate.includes("auth-service") || candidate.includes("auth"))
+    return "auth-service";
+  if (candidate.includes("user-service") || candidate.includes("user service"))
+    return "user-service";
+  if (candidate.includes("ai-service") || candidate.includes("rag"))
+    return "ai-service";
+  if (candidate.includes("content-service") || candidate.includes("reel"))
+    return "content-service";
   if (candidate.includes("monitoring")) return "monitoring-service";
   if (candidate.includes("node-exporter") || candidate.includes("host"))
     return "node-exporter";
@@ -39,6 +51,10 @@ export const metricViewForAlert = (
   if (service === "conversation-service") return "conversation";
   if (service === "call-service") return "call-service";
   if (service === "notification-service") return "notification-service";
+  if (service === "auth-service") return "auth-service";
+  if (service === "user-service") return "user-service";
+  if (service === "ai-service") return "rag";
+  if (service === "content-service") return "reels";
   if (service === "monitoring-service") return "service";
   if (service === "node-exporter") return "server";
   return null;

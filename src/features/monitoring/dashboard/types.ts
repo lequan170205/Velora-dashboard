@@ -92,6 +92,12 @@ export type InfraViewConfig = {
   cardsGridClassName?: string
   facts?: (overview: MonitoringOverview | null) => readonly FactVm[]
   series: readonly SeriesConfig[]
+  /**
+   * Optional compatibility gate for dashboards whose metrics were introduced
+   * after the base monitoring API. When false, history queries stay disabled
+   * until the overview proves that the backend supports this view.
+   */
+  historyEnabled?: (overview: MonitoringOverview | null) => boolean
   currentValues: (overview: MonitoringOverview | null) => Partial<Record<MonitoringMetric, MonitoringCurrentValue>>
   snapshots?: (overview: MonitoringOverview | null) => Partial<Record<MonitoringMetric, MonitoringTooltipSnapshot>>
   technicalDetails?: (overview: MonitoringOverview | null) => TechnicalDetailsVm | null

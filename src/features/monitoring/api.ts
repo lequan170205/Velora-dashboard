@@ -69,6 +69,106 @@ export type MonitoringOverview = {
     apnsTransportFailuresPerSecond: NullableMetric;
     retrySchedulerCompletionAgeSeconds: NullableMetric;
   };
+  auth?: {
+    up: boolean | null;
+    residentMemoryBytes: NullableMetric;
+    cpuUsageRatio: NullableMetric;
+    eventLoopP99Seconds: NullableMetric;
+    databaseUp: boolean | null;
+    redisUp: boolean | null;
+    requestsPerSecond: NullableMetric;
+    errorRate: NullableMetric;
+    p95LatencySeconds: NullableMetric;
+    loginRequestsPerSecond: NullableMetric;
+    loginSuccessRate: NullableMetric;
+    refreshRequestsPerSecond: NullableMetric;
+    refreshSuccessRate: NullableMetric;
+    refreshRecoveriesPerSecond: NullableMetric;
+    replayDetectionsPerSecond: NullableMetric;
+    cleanupAgeSeconds: NullableMetric;
+    queueReady: NullableMetric;
+    queueUnacked: NullableMetric;
+    consumers: NullableMetric;
+  };
+  user?: {
+    up: boolean | null;
+    residentMemoryBytes: NullableMetric;
+    cpuUsageRatio: NullableMetric;
+    eventLoopP99Seconds: NullableMetric;
+    databaseUp: boolean | null;
+    requestsPerSecond: NullableMetric;
+    errorRate: NullableMetric;
+    p95LatencySeconds: NullableMetric;
+    createRequestsPerSecond: NullableMetric;
+    searchRequestsPerSecond: NullableMetric;
+    searchP95LatencySeconds: NullableMetric;
+    recommendationRequestsPerSecond: NullableMetric;
+    recommendationP95LatencySeconds: NullableMetric;
+    recommendationCandidates: NullableMetric;
+    storageFailureRate: NullableMetric;
+    queueReady: NullableMetric;
+    queueUnacked: NullableMetric;
+    consumers: NullableMetric;
+  };
+  rag?: {
+    requestsPerSecond: NullableMetric;
+    failureRate: NullableMetric;
+    p95LatencySeconds: NullableMetric;
+    avgRetrievedChunks: NullableMetric;
+    contextInsufficientRate: NullableMetric;
+    verifierFailureRate: NullableMetric;
+    fallbackRate: NullableMetric;
+    retriesPerRequest: NullableMetric;
+    inputTokensPerSecond: NullableMetric;
+    outputTokensPerSecond: NullableMetric;
+    totalTokensPerSecond: NullableMetric;
+    avgTokensPerRequest: NullableMetric;
+    p95TokensPerRequest: NullableMetric;
+  };
+  reels?: {
+    snapshotUp: boolean | null;
+    rabbitmqUp: boolean | null;
+    queued: NullableMetric;
+    processing: NullableMetric;
+    ready: NullableMetric;
+    failed: NullableMetric;
+    degraded: NullableMetric;
+    stalled: NullableMetric;
+    recentFailed: NullableMetric;
+    readyLatencyP95Seconds: NullableMetric;
+    media?: {
+      throughputPerSecond: NullableMetric;
+      failureRate: NullableMetric;
+      retryRate: NullableMetric;
+      p95LatencySeconds: NullableMetric;
+      queueWaitP95Seconds: NullableMetric;
+      exhaustedRetriesPerSecond: NullableMetric;
+      queueReady: NullableMetric;
+      queueUnacked: NullableMetric;
+      consumers: NullableMetric;
+      retryQueueDepth: NullableMetric;
+      dlqDepth: NullableMetric;
+      publishRate: NullableMetric;
+      deliveryRate: NullableMetric;
+    };
+    index?: {
+      throughputPerSecond: NullableMetric;
+      failureRate: NullableMetric;
+      retryRate: NullableMetric;
+      p95LatencySeconds: NullableMetric;
+      queueWaitP95Seconds: NullableMetric;
+      exhaustedRetriesPerSecond: NullableMetric;
+      chunksPerSecond: NullableMetric;
+      zeroChunkRate: NullableMetric;
+      queueReady: NullableMetric;
+      queueUnacked: NullableMetric;
+      consumers: NullableMetric;
+      retryQueueDepth: NullableMetric;
+      dlqDepth: NullableMetric;
+      publishRate: NullableMetric;
+      deliveryRate: NullableMetric;
+    };
+  };
 };
 
 export type MonitoringStatus = {
@@ -135,7 +235,93 @@ export type MonitoringMetric =
   | "notification_database_up"
   | "notification_apns_request_rate"
   | "notification_apns_transport_failure_rate"
-  | "notification_retry_scheduler_completion_age_seconds";
+  | "notification_retry_scheduler_completion_age_seconds"
+  | "auth_cpu"
+  | "auth_memory"
+  | "auth_event_loop_p99"
+  | "auth_database_up"
+  | "auth_redis_up"
+  | "auth_request_rate"
+  | "auth_error_rate"
+  | "auth_p95_latency"
+  | "auth_login_request_rate"
+  | "auth_login_success_rate"
+  | "auth_refresh_request_rate"
+  | "auth_refresh_success_rate"
+  | "auth_refresh_recovered_rate"
+  | "auth_refresh_replay_rate"
+  | "auth_cleanup_age_seconds"
+  | "auth_queue_ready"
+  | "auth_queue_unacked"
+  | "auth_consumers"
+  | "user_cpu"
+  | "user_memory"
+  | "user_event_loop_p99"
+  | "user_database_up"
+  | "user_request_rate"
+  | "user_error_rate"
+  | "user_p95_latency"
+  | "user_create_request_rate"
+  | "user_search_request_rate"
+  | "user_search_p95_latency"
+  | "user_recommendation_request_rate"
+  | "user_recommendation_p95_latency"
+  | "user_recommendation_candidates"
+  | "user_storage_failure_rate"
+  | "user_queue_ready"
+  | "user_queue_unacked"
+  | "user_consumers"
+  | "rag_request_rate"
+  | "rag_failure_rate"
+  | "rag_p95_latency"
+  | "rag_avg_retrieved_chunks"
+  | "rag_context_insufficient_rate"
+  | "rag_verifier_failure_rate"
+  | "rag_fallback_rate"
+  | "rag_retries_per_request"
+  | "rag_input_token_rate"
+  | "rag_output_token_rate"
+  | "rag_total_token_rate"
+  | "rag_avg_tokens_per_request"
+  | "rag_p95_tokens_per_request"
+  | "reel_snapshot_up"
+  | "reel_queued"
+  | "reel_processing"
+  | "reel_ready"
+  | "reel_failed"
+  | "reel_degraded"
+  | "reel_stalled"
+  | "reel_recent_failed"
+  | "reel_ready_latency_p95"
+  | "reel_rabbitmq_up"
+  | "reel_media_throughput"
+  | "reel_media_failure_rate"
+  | "reel_media_retry_rate"
+  | "reel_media_p95_latency"
+  | "reel_media_queue_wait_p95"
+  | "reel_media_exhausted_retry_rate"
+  | "reel_media_queue_ready"
+  | "reel_media_queue_unacked"
+  | "reel_media_consumers"
+  | "reel_media_retry_queue_depth"
+  | "reel_media_dlq_depth"
+  | "reel_media_publish_rate"
+  | "reel_media_delivery_rate"
+  | "reel_index_throughput"
+  | "reel_index_failure_rate"
+  | "reel_index_retry_rate"
+  | "reel_index_p95_latency"
+  | "reel_index_queue_wait_p95"
+  | "reel_index_exhausted_retry_rate"
+  | "reel_index_chunk_rate"
+  | "reel_index_zero_chunk_rate"
+  | "reel_index_queue_ready"
+  | "reel_index_queue_unacked"
+  | "reel_index_consumers"
+  | "reel_index_retry_queue_depth"
+  | "reel_index_dlq_depth"
+  | "reel_index_publish_rate"
+  | "reel_index_delivery_rate";
 
 export type MonitoringPoint = { timestamp: number; value: number };
 

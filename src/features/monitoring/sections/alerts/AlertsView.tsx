@@ -191,9 +191,9 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
             Active alerts
           </h2>
           <p className="mt-0.5 max-w-prose text-[13px] leading-relaxed text-ink-2">
-            Pending and firing conditions from deployments, host, Conversation,
-            Call, Notification, and monitoring-service rules. Resolved alerts
-            disappear from this live view.
+            Pending and firing conditions from deployments, host, RAG, Reels,
+            Conversation, Call, Notification, Auth, User, and monitoring-service rules.
+            Resolved alerts disappear from this live view.
           </p>
         </div>
         <Button
