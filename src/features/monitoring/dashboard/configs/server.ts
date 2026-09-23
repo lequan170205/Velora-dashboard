@@ -55,7 +55,7 @@ const SERIES = [
         { value: 0.9, label: 'High 90%', tone: 'bad' as const },
       ],
     },
-    tooltipDetails: (overview, value) => {
+    tooltipDetails: (overview: MonitoringOverview | null, value: number) => {
       const total = overview?.host.memoryTotalBytes
       if (total == null || !Number.isFinite(total) || total <= 0) return []
       return [
@@ -85,7 +85,7 @@ const SERIES = [
         { value: 0.92, label: 'High 92%', tone: 'bad' as const },
       ],
     },
-    tooltipDetails: (overview, value) => {
+    tooltipDetails: (overview: MonitoringOverview | null, value: number) => {
       const total = overview?.host.diskTotalBytes
       if (total == null || !Number.isFinite(total) || total <= 0) return []
       return [
