@@ -82,14 +82,6 @@ export const notificationServiceConfig: InfraViewConfig = {
 
     return { tone, label: "Quick read", title, detail };
   },
-  topNote: {
-    title: "How delivery is measured",
-    lines: [
-      "APNs traffic: rolling 5 min",
-      "Database and scheduler freshness: live",
-      "Process CPU and memory: notification-service only",
-    ],
-  },
   cardGroups: ({ overview, hasData }) => {
     const notification = overview?.notification;
     const databaseUp = notification?.databaseUp ?? null;

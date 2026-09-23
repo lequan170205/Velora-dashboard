@@ -29,13 +29,6 @@ export type StatCardGroupVm = {
 
 export type FactVm = { label: string; value: string }
 
-export type NoteVm = {
-  mark?: string
-  title?: string
-  lines: readonly string[]
-  badge?: string
-}
-
 export type TechnicalDetailsVm = {
   summary: string
   rows: readonly { label: string; value: string }[]
@@ -84,8 +77,6 @@ export type InfraViewConfig = {
     placement: 'top' | 'history'
   }
   health: (overview: MonitoringOverview | null, hasData: boolean) => HealthVm
-  topNote?: NoteVm
-  bottomNote?: NoteVm
   cards?: (ctx: CardContext) => readonly StatCardVm[]
   cardGroups?: (ctx: CardContext) => readonly StatCardGroupVm[]
   /** Extra grid columns for the single-card-group layout (e.g. 'sm:grid-cols-2 xl:grid-cols-5'). */

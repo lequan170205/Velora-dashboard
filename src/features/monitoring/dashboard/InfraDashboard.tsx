@@ -14,7 +14,6 @@ import { FactsRow } from './components/FactsRow'
 import { HealthBanner } from './components/HealthBanner'
 import { HistoryChart } from './components/HistoryChart'
 import { InfraToolbar } from './components/InfraToolbar'
-import { NoteCard } from './components/NoteCard'
 import { StatCardGrid, StatCardGroups } from './components/StatCard'
 import { TechnicalDetails } from './components/TechnicalDetails'
 import { Skeleton, StatCardsSkeleton, ChartsSkeleton, ToolbarControlsSkeleton } from '@/shared/components/ui'
@@ -198,8 +197,6 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
         refreshing={refreshing}
       />
 
-      {config.topNote && <NoteCard note={config.topNote} />}
-
       {cardGroups ? (
         <StatCardGroups
           groups={cardGroups}
@@ -225,8 +222,6 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
           {charts}
         </section>
       )}
-
-      {config.toolbar.placement === 'top' && config.bottomNote && <NoteCard note={config.bottomNote} />}
 
       {config.toolbar.placement === 'top' && charts}
 

@@ -84,16 +84,6 @@ export const monitoringServiceConfig: InfraViewConfig = {
         : 'The monitoring service is online and responsive. There is no internal monitoring traffic right now.',
     }
   },
-  topNote: {
-    mark: '1',
-    title: 'You are looking at one Velora service, not the whole server.',
-    lines: ['Memory belongs to monitoring-service only. CPU is shown as the service share of the whole host across all cores.'],
-    badge: 'See Server view for host totals',
-  },
-  bottomNote: {
-    title: 'How to read these charts',
-    lines: ['Every chart here is scoped to monitoring-service. Look for sudden jumps or a trend that keeps rising. Hover over a line to see the exact value and time. Empty traffic charts are normal when no monitoring requests are being made.'],
-  },
   cards: ({ overview, hasData }) => {
     const processCpuRatio = overview?.process.cpuUsageRatio ?? null
     const requestRate = overview?.rpc.requestsPerSecond ?? null

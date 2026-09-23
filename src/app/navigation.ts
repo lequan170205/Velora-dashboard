@@ -37,17 +37,17 @@ export const NAV_GROUPS: NavGroup[] = [
         title: "Server resources",
         icon: Server,
       },
+    ],
+  },
+  {
+    label: "Services",
+    items: [
       {
         to: "/service",
         label: "Monitoring",
         title: "Monitoring service",
         icon: Activity,
       },
-    ],
-  },
-  {
-    label: "Services",
-    items: [
       {
         to: "/conversation",
         label: "Conversation",

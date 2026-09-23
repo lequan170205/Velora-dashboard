@@ -67,10 +67,6 @@ export const conversationConfig: InfraViewConfig = {
 
     return { tone: reliabilityTone, label: 'Quick read', title, detail }
   },
-  topNote: {
-    title: 'Window',
-    lines: ['Connections: now', 'Traffic & outcomes: rolling 5 min'],
-  },
   cardGroups: ({ overview, hasData }) => {
     const conversation = overview?.conversation
     const successRate = conversation?.successRate ?? null
