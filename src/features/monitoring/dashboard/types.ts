@@ -14,6 +14,8 @@ export type StatCardVm = {
   helper: string
   badge: string
   tone: Tone
+  /** Defaults to true. Disable when the badge already carries enough status emphasis. */
+  toneBar?: boolean
   /** Server-only: opens the metric breakdown dialog. */
   dialog?: ServerMetric
 }

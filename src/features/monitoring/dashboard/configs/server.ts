@@ -169,6 +169,7 @@ export const serverConfig: InfraViewConfig = {
         helper: 'Real CPU usage across the monitored host.',
         badge: badgeForThreshold(host?.cpuUsageRatio ?? null, 0.7, 0.9),
         tone: toneForThreshold(host?.cpuUsageRatio ?? null, 0.7, 0.9),
+        toneBar: false,
         dialog: 'cpu',
       },
       {
@@ -177,6 +178,7 @@ export const serverConfig: InfraViewConfig = {
         helper: `${formatBytes(host?.memoryAvailableBytes ?? Number.NaN)} available · comparable to free -h.`,
         badge: badgeForThreshold(host?.memoryUsageRatio ?? null, 0.75, 0.9),
         tone: toneForThreshold(host?.memoryUsageRatio ?? null, 0.75, 0.9),
+        toneBar: false,
         dialog: 'memory',
       },
       {
@@ -185,6 +187,7 @@ export const serverConfig: InfraViewConfig = {
         helper: `${formatBytes(host?.diskAvailableBytes ?? Number.NaN)} available on the monitored filesystem.`,
         badge: badgeForThreshold(host?.diskUsageRatio ?? null, 0.8, 0.92),
         tone: toneForThreshold(host?.diskUsageRatio ?? null, 0.8, 0.92),
+        toneBar: false,
         dialog: 'disk',
       },
     ]

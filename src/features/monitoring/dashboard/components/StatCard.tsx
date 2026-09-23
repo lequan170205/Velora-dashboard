@@ -20,7 +20,9 @@ const BADGE_TONE: Record<Tone, BadgeTone> = {
 function StatCardBody({ card }: { card: StatCardVm }) {
   return (
     <>
-      <span aria-hidden="true" className={cn('absolute inset-x-4 top-0 h-0.5 rounded-b', TONE_BAR[card.tone])} />
+      {card.toneBar !== false && (
+        <span aria-hidden="true" className={cn('absolute inset-x-4 top-0 h-0.5 rounded-b', TONE_BAR[card.tone])} />
+      )}
       <div className="flex items-start justify-between gap-2">
         <span className="min-w-0 text-[13px] font-medium leading-snug text-ink-2">{card.label}</span>
         <Badge tone={BADGE_TONE[card.tone]} dot>
