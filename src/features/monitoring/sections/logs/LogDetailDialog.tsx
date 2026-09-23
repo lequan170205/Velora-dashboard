@@ -1,14 +1,10 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Copy, RefreshCw, X } from 'lucide-react'
+import { Check, Copy, X } from 'lucide-react'
 
-import { fetchMonitoringLogs, type MonitoringLogEntry } from '../../logsApi'
-import { Button, Skeleton } from '@/shared/components/ui'
+import type { MonitoringLogEntry } from '../../logsApi'
+import { Button } from '@/shared/components/ui'
 import { cn } from '@/shared/lib/cn'
-
-const SURROUNDING_WINDOW_MS = 30_000
-const SURROUNDING_LOG_LIMIT = 100
 
 type CopyState = 'idle' | 'copied' | 'failed'
 
@@ -50,43 +46,11 @@ const copyText = async (value: string) => {
 }
 
 export function LogDetailDialog({ entry, onClose }: LogDetailDialogProps) {
-  const [showContext, setShowContext] = useState(false)
   const [copyState, setCopyState] = useState<CopyState>('idle')
 
   useEffect(() => {
-    setShowContext(false)
     setCopyState('idle')
   }, [entry?.timestampNs])
-
-  const contextWindow = useMemo(() => {
-    if (!entry) return null
-    const timestamp = Date.parse(entry.timestamp)
-    if (!Number.isFinite(timestamp)) return null
-
-    return {
-      from: new Date(timestamp - SURROUNDING_WINDOW_MS).toISOString(),
-      to: new Date(timestamp + SURROUNDING_WINDOW_MS).toISOString(),
-    }
-  }, [entry])
-
-  const surroundingQuery = useQuery({
-    queryKey: ['monitoring', 'logs', 'surrounding', entry?.timestampNs, entry?.service],
-    queryFn: ({ signal }) => {
-      if (!entry || !contextWindow) throw new Error('This log has an invalid timestamp')
-
-      return fetchMonitoringLogs({
-        service: entry.service,
-        level: 'all',
-        search: '',
-        from: contextWindow.from,
-        to: contextWindow.to,
-        limit: SURROUNDING_LOG_LIMIT,
-        signal,
-      })
-    },
-    enabled: Boolean(entry && showContext),
-    gcTime: 0,
-  })
 
   const labels = useMemo(
     () => Object.entries(entry?.labels ?? {}).sort(([left], [right]) => left.localeCompare(right)),
@@ -113,7 +77,7 @@ export function LogDetailDialog({ entry, onClose }: LogDetailDialogProps) {
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-[var(--au-overlay)] backdrop-blur-[4px]" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[88dvh] w-[min(920px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-dialog border border-line bg-panel p-5 shadow-modal focus:outline-none">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[88dvh] w-[min(760px,calc(100vw-1.5rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-dialog border border-line bg-panel p-5 shadow-modal focus:outline-none">
           {entry && (
             <>
               <div className="flex items-start justify-between gap-4">
@@ -125,7 +89,7 @@ export function LogDetailDialog({ entry, onClose }: LogDetailDialogProps) {
                     {entry.service}
                   </Dialog.Title>
                   <Dialog.Description className="mt-1 text-[13px] text-ink-2">
-                    Full log payload and nearby lines from the same service.
+                    Inspect the full log payload and metadata for this line.
                   </Dialog.Description>
                 </div>
                 <Dialog.Close asChild>
@@ -172,7 +136,7 @@ export function LogDetailDialog({ entry, onClose }: LogDetailDialogProps) {
                     {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy message'}
                   </Button>
                 </div>
-                <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-control border border-line bg-inset p-3 font-mono text-xs leading-relaxed text-ink">
+                <pre className="mt-2 max-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-control border border-line bg-inset p-3 font-mono text-xs leading-relaxed text-ink">
                   {entry.message}
                 </pre>
               </section>
@@ -194,86 +158,6 @@ export function LogDetailDialog({ entry, onClose }: LogDetailDialogProps) {
                   )}
                 </dl>
               </details>
-
-              <section className="mt-4" aria-labelledby="surrounding-logs-heading">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 id="surrounding-logs-heading" className="text-sm font-semibold text-ink">Surrounding logs</h3>
-                    <p className="mt-0.5 text-xs text-ink-3">
-                      Same service · 30 seconds before and after this line · up to {SURROUNDING_LOG_LIMIT} lines
-                    </p>
-                  </div>
-                  <Button
-                    variant={showContext ? 'ghost' : 'secondary'}
-                    size="sm"
-                    onClick={() => setShowContext((current) => !current)}
-                    disabled={!contextWindow}
-                  >
-                    {showContext && surroundingQuery.isFetching && <RefreshCw size={13} aria-hidden="true" className="animate-spin" />}
-                    {showContext ? 'Hide surrounding logs' : 'Show surrounding logs'}
-                  </Button>
-                </div>
-
-                {showContext && (
-                  <div className="mt-3 overflow-hidden rounded-control border border-line">
-                    {surroundingQuery.isPending ? (
-                      <div className="flex flex-col gap-2 p-3" aria-label="Loading surrounding logs">
-                        {Array.from({ length: 5 }, (_, index) => (
-                          <Skeleton key={index} className="h-8 w-full" />
-                        ))}
-                      </div>
-                    ) : surroundingQuery.isError ? (
-                      <div role="alert" className="p-4 text-[13px] text-bad">
-                        <strong className="font-semibold">Unable to load surrounding logs.</strong>{' '}
-                        {surroundingQuery.error.message}
-                      </div>
-                    ) : surroundingQuery.data?.entries.length ? (
-                      <div className="max-h-80 overflow-y-auto divide-y divide-line">
-                        {surroundingQuery.data.entries.map((item) => {
-                          const selected =
-                            item.timestampNs === entry.timestampNs &&
-                            item.service === entry.service &&
-                            item.message === entry.message
-
-                          return (
-                            <article
-                              key={`${item.timestampNs}-${item.service}-${item.message}`}
-                              className={cn(
-                                'grid gap-1 px-3 py-2.5 text-xs sm:grid-cols-[100px_52px_1fr]',
-                                selected && 'bg-brand-soft/60',
-                              )}
-                            >
-                              <time
-                                className="font-mono tabular-nums text-ink-3"
-                                dateTime={item.timestamp}
-                                title={formatTimestamp(item.timestamp)}
-                              >
-                                {new Date(item.timestamp).toLocaleTimeString()}
-                              </time>
-                              <span className={cn('w-fit rounded-full px-1.5 py-px text-[10px] font-semibold uppercase', levelTone(item.level))}>
-                                {item.level}
-                              </span>
-                              <pre className="min-w-0 whitespace-pre-wrap break-words font-mono leading-relaxed text-ink">
-                                {item.message}
-                              </pre>
-                            </article>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <div className="p-4 text-[13px] text-ink-3">
-                        No other log lines were returned in this ±30 second window.
-                      </div>
-                    )}
-
-                    {surroundingQuery.data?.mayHaveMore && (
-                      <p className="border-t border-line px-3 py-2 text-xs text-warn">
-                        More than {SURROUNDING_LOG_LIMIT} lines matched this window. Narrow the main log filters if you need a smaller incident slice.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </section>
             </>
           )}
         </Dialog.Content>

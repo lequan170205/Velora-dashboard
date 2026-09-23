@@ -302,7 +302,7 @@ export function LogsView({ preset = null }: LogsViewProps) {
             : 'A successful log result is required to report matching lines.'}
         </span>
         <span>Filters apply automatically; text search waits briefly while typing to avoid unnecessary Loki queries.</span>
-        <span>Select a log line to inspect its full message, labels, and logs from ±30 seconds around it.</span>
+        <span>Select a log line to inspect its full message and metadata without leaving the live log view.</span>
       </div>
 
       <LogDetailDialog entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
