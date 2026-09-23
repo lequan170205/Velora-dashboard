@@ -72,9 +72,8 @@ export const authServiceConfig: InfraViewConfig = {
         id: "health",
         heading: "Service health",
         hint: "Live",
-        gridClassName: "sm:grid-cols-2 xl:grid-cols-4",
+        gridClassName: "sm:grid-cols-2 xl:grid-cols-3",
         cards: [
-          { label: "Service", value: statusValue(auth?.up), detail: "Prometheus scrape", helper: "Can Prometheus scrape auth-service?", badge: auth?.up === true ? "Reachable" : auth?.up === false ? "Outage" : "Waiting", tone: statusTone(auth?.up) },
           { label: "PostgreSQL", value: statusValue(auth?.databaseUp), detail: "Live dependency check", helper: "Can auth-service reach its PostgreSQL database?", badge: auth?.databaseUp === true ? "Connected" : auth?.databaseUp === false ? "Outage" : "Waiting", tone: statusTone(auth?.databaseUp) },
           { label: "Redis", value: statusValue(auth?.redisUp), detail: "Live dependency check", helper: "Can auth-service reach Redis for verification and role-cache operations?", badge: auth?.redisUp === true ? "Connected" : auth?.redisUp === false ? "Outage" : "Waiting", tone: statusTone(auth?.redisUp) },
           { label: "p95 latency", value: formatSeconds(auth?.p95LatencySeconds ?? Number.NaN), detail, helper: "p95 handling time across Auth RPC operations.", badge: auth?.p95LatencySeconds == null ? "Waiting" : auth.p95LatencySeconds < 1 ? "Healthy" : "Watch", tone: toneForThreshold(auth?.p95LatencySeconds ?? null, 1, 2) },

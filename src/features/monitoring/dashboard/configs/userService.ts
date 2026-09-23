@@ -68,9 +68,8 @@ export const userServiceConfig: InfraViewConfig = {
         id: "health",
         heading: "Service health",
         hint: "Live",
-        gridClassName: "sm:grid-cols-2 xl:grid-cols-4",
+        gridClassName: "sm:grid-cols-2 xl:grid-cols-3",
         cards: [
-          { label: "Service", value: statusValue(user?.up), detail: "Prometheus scrape", helper: "Can Prometheus scrape user-service?", badge: user?.up === true ? "Reachable" : user?.up === false ? "Outage" : "Waiting", tone: statusTone(user?.up) },
           { label: "PostgreSQL", value: statusValue(user?.databaseUp), detail: "Live dependency check", helper: "Can user-service reach PostgreSQL?", badge: user?.databaseUp === true ? "Connected" : user?.databaseUp === false ? "Outage" : "Waiting", tone: statusTone(user?.databaseUp) },
           { label: "Internal error rate", value: formatPercent(user?.errorRate ?? Number.NaN), detail, helper: "Unexpected User RPC failures; expected domain rejections are excluded.", badge: user?.errorRate == null ? "Waiting" : user.errorRate < 0.05 ? "Healthy" : "Watch", tone: toneForThreshold(user?.errorRate ?? null, 0.05, 0.1) },
           { label: "p95 latency", value: formatSeconds(user?.p95LatencySeconds ?? Number.NaN), detail, helper: "p95 handling time across User RPC operations.", badge: user?.p95LatencySeconds == null ? "Waiting" : user.p95LatencySeconds < 1 ? "Healthy" : "Watch", tone: toneForThreshold(user?.p95LatencySeconds ?? null, 1, 2) },

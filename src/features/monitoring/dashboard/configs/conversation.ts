@@ -34,7 +34,6 @@ export const conversationConfig: InfraViewConfig = {
   },
   health: (overview) => {
     const conversation = overview?.conversation
-    const serviceUp = conversation?.up ?? null
     const sendRequestsPerSecond = conversation?.sendRequestsPerSecond ?? null
     const hasTraffic = sendRequestsPerSecond !== null && sendRequestsPerSecond > 0
     const rejectRate = conversation?.rejectRate ?? null
@@ -99,14 +98,6 @@ export const conversationConfig: InfraViewConfig = {
     }
 
     const liveCards: readonly StatCardVm[] = [
-      {
-        label: 'Service status',
-        value: serviceUp === true ? 'Online' : serviceUp === false ? 'Offline' : '—',
-        detail: hasData ? 'Prometheus scrape' : 'Waiting for data',
-        helper: 'Can Prometheus scrape conversation-service?',
-        badge: serviceUp === true ? 'Reachable' : serviceUp === false ? 'Unreachable' : 'Waiting',
-        tone: serviceUp === true ? 'good' : serviceUp === false ? 'bad' : 'neutral',
-      },
       {
         label: 'Active sockets',
         value: formatCount(conversation?.socketConnections ?? Number.NaN),

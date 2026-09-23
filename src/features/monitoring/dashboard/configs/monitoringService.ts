@@ -96,19 +96,11 @@ export const monitoringServiceConfig: InfraViewConfig = {
   },
   cards: ({ overview, hasData }) => {
     const processCpuRatio = overview?.process.cpuUsageRatio ?? null
-    const serviceUp = overview?.service.up ?? null
     const requestRate = overview?.rpc.requestsPerSecond ?? null
     const successState = successBadge(overview?.rpc.errorRate ?? Number.NaN)
     const responsivenessState = responsivenessBadge(overview?.process.eventLoopP99Seconds ?? Number.NaN)
 
     const cards: readonly StatCardVm[] = [
-      {
-        label: 'Service status',
-        value: serviceUp === true ? 'Online' : serviceUp === false ? 'Offline' : '—',
-        helper: 'Can Prometheus reach monitoring-service?',
-        badge: serviceUp === true ? 'Reachable' : serviceUp === false ? 'Unreachable' : 'Waiting',
-        tone: serviceUp === true ? 'good' : serviceUp === false ? 'bad' : 'neutral',
-      },
       {
         label: 'Monitoring service memory',
         value: formatBytes(overview?.process.residentMemoryBytes ?? Number.NaN),

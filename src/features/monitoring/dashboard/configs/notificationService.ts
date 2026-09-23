@@ -41,7 +41,6 @@ export const notificationServiceConfig: InfraViewConfig = {
   },
   health: (overview) => {
     const notification = overview?.notification;
-    const serviceUp = notification?.up ?? null;
     const databaseUp = notification?.databaseUp ?? null;
     const schedulerAge =
       notification?.retrySchedulerCompletionAgeSeconds ?? null;
@@ -102,21 +101,6 @@ export const notificationServiceConfig: InfraViewConfig = {
     const eventLoopP99 = notification?.eventLoopP99Seconds ?? null;
 
     const runtimeCards: readonly StatCardVm[] = [
-      {
-        label: "Service status",
-        value:
-          serviceUp === true ? "Online" : serviceUp === false ? "Offline" : "—",
-        detail: hasData ? "Prometheus scrape" : "Waiting for data",
-        helper: "Can Prometheus scrape notification-service?",
-        badge:
-          serviceUp === true
-            ? "Reachable"
-            : serviceUp === false
-              ? "Unreachable"
-              : "Waiting",
-        tone:
-          serviceUp === true ? "good" : serviceUp === false ? "bad" : "neutral",
-      },
       {
         label: "Database connection",
         value:
@@ -249,7 +233,7 @@ export const notificationServiceConfig: InfraViewConfig = {
         id: "runtime",
         heading: "Runtime",
         hint: "Live",
-        gridClassName: "sm:grid-cols-3",
+        gridClassName: "sm:grid-cols-2",
         cards: runtimeCards,
       },
       {
