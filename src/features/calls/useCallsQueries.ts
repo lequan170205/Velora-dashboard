@@ -7,11 +7,15 @@ import {
   type CallTelemetryFilters,
 } from './api'
 
+const CALL_TELEMETRY_REFRESH_INTERVAL_MS = 15_000
+
 export function useCallSummaryQuery(filters: CallTelemetryFilters) {
   return useQuery({
     queryKey: ['calls', 'summary', filters],
     queryFn: () => fetchCallSummary(filters),
     placeholderData: keepPreviousData,
+    refetchInterval: CALL_TELEMETRY_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
     gcTime: 0,
   })
 }
@@ -21,6 +25,8 @@ export function useRecentCallsQuery(filters: CallTelemetryFilters) {
     queryKey: ['calls', 'recent', filters],
     queryFn: () => fetchRecentCallLegs(filters),
     placeholderData: keepPreviousData,
+    refetchInterval: CALL_TELEMETRY_REFRESH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
     gcTime: 0,
   })
 }

@@ -1,10 +1,11 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { CircleOff, Pause, Play, RefreshCw, ScrollText } from 'lucide-react'
 
 import type { MonitoringLogEntry, MonitoringLogLevel } from '../../logsApi'
 import { useLogsQuery, type LogsRangeMinutes } from '../../hooks/useLogsQuery'
 import { LOG_SERVICE_OPTIONS } from '../../services'
+import { LogDetailDialog } from './LogDetailDialog'
 import { Button, EmptyState, Input, Label, NativeSelect, Skeleton } from '@/shared/components/ui'
 import { cn } from '@/shared/lib/cn'
 
@@ -61,6 +62,7 @@ export function LogsView({ preset = null }: LogsViewProps) {
     refreshNow,
   } = useLogsQuery(preset)
 
+  const [selectedEntry, setSelectedEntry] = useState<MonitoringLogEntry | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const virtualizer = useVirtualizer({
     count: entries.length,
@@ -245,11 +247,15 @@ export function LogsView({ preset = null }: LogsViewProps) {
               {virtualizer.getVirtualItems().map((virtualRow) => {
                 const entry = entries[virtualRow.index]
                 return (
-                  <article
+                  <button
                     key={`${entry.timestampNs}-${entry.service}-${entry.message}`}
+                    type="button"
+                    onClick={() => setSelectedEntry(entry)}
+                    aria-label={`Inspect ${entry.level} log from ${entry.service} at ${new Date(entry.timestamp).toLocaleString()}`}
                     className={cn(
-                      'absolute inset-x-0 flex items-center gap-2 border-b border-line px-4 last:border-b-0 sm:gap-3',
-                      entry.level === 'error' && 'bg-bad-soft/30',
+                      'absolute inset-x-0 flex items-center gap-2 border-b border-line px-4 text-left last:border-b-0 sm:gap-3',
+                      'transition-colors hover:bg-raised/70 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-brand',
+                      entry.level === 'error' && 'bg-bad-soft/30 hover:bg-bad-soft/50',
                     )}
                     style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
                   >
@@ -279,7 +285,7 @@ export function LogsView({ preset = null }: LogsViewProps) {
                     <pre className="min-w-0 flex-1 truncate font-mono text-xs leading-[38px] text-ink" title={entry.message}>
                       {entry.message}
                     </pre>
-                  </article>
+                  </button>
                 )
               })}
             </div>
@@ -296,7 +302,10 @@ export function LogsView({ preset = null }: LogsViewProps) {
             : 'A successful log result is required to report matching lines.'}
         </span>
         <span>Filters apply automatically; text search waits briefly while typing to avoid unnecessary Loki queries.</span>
+        <span>Select a log line to inspect its full message, labels, and logs from ±30 seconds around it.</span>
       </div>
+
+      <LogDetailDialog entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
     </section>
   )
 }
