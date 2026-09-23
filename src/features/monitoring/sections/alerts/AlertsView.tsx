@@ -191,9 +191,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
             Active alerts
           </h2>
           <p className="mt-0.5 max-w-prose text-[13px] leading-relaxed text-ink-2">
-            Pending and firing conditions from deployments, host, RAG, Reels,
-            Conversation, Call, Notification, Auth, User, and monitoring-service rules.
-            Resolved alerts disappear from this live view.
+            Pending and firing Prometheus rules across Velora.
           </p>
         </div>
         <Button
@@ -539,15 +537,6 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
         </div>
       )}
 
-      <div className="flex flex-col gap-0.5 text-xs leading-relaxed text-ink-3">
-        <span>
-          Prometheus handles rule evaluation only in this lightweight profile.
-        </span>
-        <span>
-          No Alertmanager is running yet, so this page does not provide
-          silences, grouping, or external notifications.
-        </span>
-      </div>
     </section>
   );
 }

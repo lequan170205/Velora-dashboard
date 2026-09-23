@@ -120,7 +120,6 @@ export const serverConfig: InfraViewConfig = {
     eyebrow: 'Host history',
     title: 'History',
     titleId: 'server-history-title',
-    description: 'Historical host metrics from Prometheus node exporter.',
     rangeLabel: 'Server history range',
     placement: 'history',
   },

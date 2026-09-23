@@ -48,7 +48,7 @@ function ServerRoute() {
   return (
     <InfraDashboard
       config={serverConfig}
-      onOpenLogs={(service) => openLogs(navigate, service)}
+      onOpenLogs={(service) => openLogs(navigate, service, 'all')}
     />
   );
 }

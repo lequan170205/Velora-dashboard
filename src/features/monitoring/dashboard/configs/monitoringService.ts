@@ -38,7 +38,7 @@ export const monitoringServiceConfig: InfraViewConfig = {
     eyebrow: 'Monitoring service · live',
     title: 'How is Velora monitoring doing?',
     titleId: 'system-observability-title',
-    description: 'These numbers describe the monitoring-service process. CPU is normalized to the whole host across all cores.',
+    description: 'Process and RPC health for monitoring-service.',
     rangeLabel: 'Monitoring history range',
     placement: 'top',
   },
@@ -195,7 +195,6 @@ export const monitoringServiceConfig: InfraViewConfig = {
         },
         { label: 'RPC error rate', value: formatPercent(overview?.rpc.errorRate ?? Number.NaN, 2) },
       ],
-      note: 'These technical values belong to monitoring-service. Whole-server CPU, RAM, swap, and disk are available in the separate Server view.',
     }
   },
 }

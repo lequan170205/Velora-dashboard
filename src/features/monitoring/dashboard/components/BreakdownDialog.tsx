@@ -14,12 +14,6 @@ const METRIC_LABELS: Record<ServerMetric, string> = {
   disk: 'Disk',
 }
 
-const METRIC_NOTES: Record<ServerMetric, string> = {
-  cpu: 'Every CPU value is the share of the whole host across all cores. The host card is a rolling 5-minute average; container rows are the latest Docker snapshot.',
-  memory: 'Container values are working set. Host / other includes system, kernel, cache, and unassigned memory.',
-  disk: 'Container values are writable layers. Docker images, volumes, build cache, and host / other complete the total.',
-}
-
 type BreakdownRow = {
   key: string
   label: string
@@ -253,10 +247,6 @@ export function BreakdownDialog({
                   <span className="font-medium text-ink-2">{containerCountLabel(response, containers)}</span>
                   <span className="tabular-nums">{updatedLabel(response?.generatedAt)}</span>
                 </div>
-                <p className="mt-2 rounded-control bg-raised/60 px-3 py-2 text-xs leading-relaxed text-ink-2">
-                  {METRIC_NOTES[metric]}
-                </p>
-
                 {error && (
                   <div role="alert" className="mt-3 rounded-control border border-bad-soft bg-bad-soft/50 px-3 py-2 text-[13px] text-ink">
                     <strong className="font-semibold">Container snapshot unavailable.</strong> {error}

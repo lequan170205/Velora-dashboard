@@ -2,7 +2,7 @@ import type { NavigateFunction } from 'react-router'
 
 import type { LogsPreset } from '../features/monitoring/hooks/useLogsQuery'
 
-const VALID_LOG_LEVELS = ['error', 'warn', 'info', 'debug'] as const
+const VALID_LOG_LEVELS = ['all', 'error', 'warn', 'info', 'debug'] as const
 
 export const isLogsLevel = (value: string | null): value is LogsPreset['level'] =>
   value !== null && (VALID_LOG_LEVELS as readonly string[]).includes(value)
