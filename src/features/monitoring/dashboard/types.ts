@@ -14,8 +14,8 @@ export type StatCardVm = {
   helper: string
   badge: string
   tone: Tone
-  /** Defaults to true. Disable when the badge already carries enough status emphasis. */
-  toneBar?: boolean
+  /** Optional capacity gauge (0..1) rendered as a fill bar with threshold notches. */
+  meter?: { ratio: number; warnAt?: number; badAt?: number } | null
   /** Server-only: opens the metric breakdown dialog. */
   dialog?: ServerMetric
 }
@@ -57,6 +57,8 @@ export type SeriesConfig = {
   emptyStateKind?: MonitoringEmptyStateKind
   yAxis?: MonitoringYAxisDefinition
   tooltipDetails?: (overview: MonitoringOverview | null, value: number) => readonly MonitoringTooltipDetail[]
+  /** Renders full-width with a taller plot — the page's lead metric. */
+  variant?: 'hero'
 }
 
 export type CardContext = {
@@ -84,8 +86,6 @@ export type InfraViewConfig = {
   cardGroups?: (ctx: CardContext) => readonly StatCardGroupVm[]
   /** Extra grid columns for the single-card-group layout (e.g. 'sm:grid-cols-2 xl:grid-cols-5'). */
   cardsGridClassName?: string
-  /** Hide the decorative status hairline while keeping badge/tone semantics. */
-  hideCardToneBars?: boolean
   facts?: (overview: MonitoringOverview | null) => readonly FactVm[]
   series: readonly SeriesConfig[]
   /**
@@ -98,6 +98,9 @@ export type InfraViewConfig = {
   snapshots?: (overview: MonitoringOverview | null) => Partial<Record<MonitoringMetric, MonitoringTooltipSnapshot>>
   technicalDetails?: (overview: MonitoringOverview | null) => TechnicalDetailsVm | null
   historyHeading?: { title: string; hint: string }
+  /** Server-style layout: one host panel (status + metric blocks + facts) instead
+      of a separate health banner, card grid and facts row. */
+  hostStrip?: { sparkMetric: MonitoringMetric }
   /** Server only: cards open the container breakdown dialog. */
   breakdown?: boolean
 }

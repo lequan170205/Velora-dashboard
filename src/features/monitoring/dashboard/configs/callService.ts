@@ -22,7 +22,6 @@ export const callServiceConfig: InfraViewConfig = {
     rangeLabel: 'Call service history range',
     placement: 'top',
   },
-  hideCardToneBars: true,
   health: (overview) => {
     const call = overview?.call
     const serviceUp = call?.up ?? null
@@ -57,22 +56,24 @@ export const callServiceConfig: InfraViewConfig = {
 
     const cards: readonly StatCardVm[] = [
       {
-        label: 'Connected call sockets',
+        label: 'Call sockets',
         value: formatCount(call?.socketConnections ?? Number.NaN),
         helper: 'Clients currently connected to call signaling.',
         badge: hasData ? 'Live' : 'Waiting',
-        tone: 'neutral',
+        tone: hasData ? 'good' : 'neutral',
       },
       {
-        label: 'Process memory',
+        label: 'Memory',
         value: formatBytes(call?.residentMemoryBytes ?? Number.NaN),
+        detail: 'process RSS',
         helper: 'Resident memory for call-service only.',
         badge: hasData ? 'Service only' : 'Waiting',
-        tone: 'neutral',
+        tone: hasData ? 'good' : 'neutral',
       },
       {
-        label: 'Process CPU',
+        label: 'CPU',
         value: formatCpu(call?.cpuUsageRatio ?? Number.NaN),
+        detail: 'host share',
         helper: 'Share of total host CPU capacity used by the call-service process.',
         badge: badgeForThreshold(call?.cpuUsageRatio ?? null, 0.7, 0.9),
         tone: toneForThreshold(call?.cpuUsageRatio ?? null, 0.7, 0.9),
@@ -96,6 +97,7 @@ export const callServiceConfig: InfraViewConfig = {
   series: [
     {
       metric: 'call_cpu',
+      variant: 'hero' as const,
       title: 'Call service CPU',
       question: 'How busy is the call signaling process?',
       description: 'Share of total host CPU capacity used by the call-service Node.js process. The value includes all host cores in its denominator.',

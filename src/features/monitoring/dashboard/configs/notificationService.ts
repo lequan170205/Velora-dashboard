@@ -39,7 +39,6 @@ export const notificationServiceConfig: InfraViewConfig = {
     rangeLabel: "Notification service history range",
     placement: "top",
   },
-  hideCardToneBars: true,
   health: (overview) => {
     const notification = overview?.notification;
     const serviceUp = notification?.up ?? null;
@@ -141,7 +140,7 @@ export const notificationServiceConfig: InfraViewConfig = {
 
     const deliveryCards: readonly StatCardVm[] = [
       {
-        label: "APNs delivery attempts",
+        label: "APNs attempts",
         value: formatNotificationRate(apnsRate ?? Number.NaN),
         detail:
           apnsRate === null
@@ -158,7 +157,7 @@ export const notificationServiceConfig: InfraViewConfig = {
             : apnsRate === 0
               ? "Idle"
               : "Active",
-        tone: "neutral",
+        tone: !hasData || apnsRate === null ? "neutral" : "good",
       },
       {
         label: "APNs transport failures",
@@ -186,18 +185,18 @@ export const notificationServiceConfig: InfraViewConfig = {
 
     const processCards: readonly StatCardVm[] = [
       {
-        label: "Process memory",
+        label: "Memory",
         value: formatBytes(notification?.residentMemoryBytes ?? Number.NaN),
-        detail: hasData ? "Notification-service only" : "Waiting for data",
+        detail: hasData ? "process RSS" : "Waiting for data",
         helper:
           "Resident memory used by the notification-service process only.",
         badge: hasData ? "Service only" : "Waiting",
-        tone: "neutral",
+        tone: hasData ? "good" : "neutral",
       },
       {
-        label: "Process CPU",
+        label: "CPU",
         value: formatCpu(notification?.cpuUsageRatio ?? Number.NaN),
-        detail: hasData ? "Whole-host share" : "Waiting for data",
+        detail: hasData ? "host share" : "Waiting for data",
         helper:
           "Share of total host CPU capacity used by notification-service.",
         badge: badgeForThreshold(notification?.cpuUsageRatio ?? null, 0.7, 0.9),
@@ -252,6 +251,7 @@ export const notificationServiceConfig: InfraViewConfig = {
   series: [
     {
       metric: "notification_apns_request_rate",
+      variant: "hero" as const,
       title: "APNs delivery attempts / second",
       question: "How much VoIP push traffic is being sent?",
       description:

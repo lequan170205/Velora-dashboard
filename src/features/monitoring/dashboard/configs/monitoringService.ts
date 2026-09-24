@@ -42,7 +42,6 @@ export const monitoringServiceConfig: InfraViewConfig = {
     rangeLabel: 'Monitoring history range',
     placement: 'top',
   },
-  hideCardToneBars: true,
   health: (overview) => {
     if (!overview || overview.service.up === null) {
       return {
@@ -93,35 +92,37 @@ export const monitoringServiceConfig: InfraViewConfig = {
 
     const cards: readonly StatCardVm[] = [
       {
-        label: 'Monitoring service memory',
+        label: 'Memory',
         value: formatBytes(overview?.process.residentMemoryBytes ?? Number.NaN),
+        detail: 'process RSS',
         helper: 'RAM used by this service process only — not total server memory.',
         badge: hasData ? 'Service only' : 'Waiting',
-        tone: 'neutral',
+        tone: hasData ? 'good' : 'neutral',
       },
       {
-        label: 'Monitoring service CPU',
+        label: 'CPU',
         value: formatCpu(processCpuRatio ?? Number.NaN),
+        detail: 'host share',
         helper: 'Share of total host CPU capacity used by this service process.',
         badge: badgeForThreshold(processCpuRatio, 0.7, 0.9),
         tone: toneForThreshold(processCpuRatio, 0.7, 0.9),
       },
       {
-        label: 'Internal traffic',
+        label: 'Traffic',
         value: formatRate(overview?.rpc.requestsPerSecond ?? Number.NaN),
         helper: 'Monitoring requests handled each second.',
         badge: requestRate === null ? 'Waiting' : requestRate <= 0.001 ? 'Idle' : 'Active',
-        tone: 'neutral',
+        tone: requestRate === null ? 'neutral' : 'good',
       },
       {
-        label: 'Successful requests',
+        label: 'Success rate',
         value: formatSuccessRate(overview?.rpc.errorRate ?? Number.NaN),
         helper: `Request success rate. Errors: ${formatPercent(overview?.rpc.errorRate ?? Number.NaN, 2)}.`,
         badge: successState.label,
         tone: successState.tone,
       },
       {
-        label: 'Service responsiveness',
+        label: 'Event-loop p99',
         value: formatSeconds(overview?.process.eventLoopP99Seconds ?? Number.NaN),
         helper: 'Delay before this Node.js service can react to incoming work. Lower is better.',
         badge: responsivenessState.label,
@@ -133,6 +134,7 @@ export const monitoringServiceConfig: InfraViewConfig = {
   series: [
     {
       metric: 'memory',
+      variant: 'hero' as const,
       title: 'Monitoring service memory',
       question: 'Is this service using more memory over time?',
       description: 'RAM used by the monitoring-service process only, not the whole Ubuntu server. A steady climb matters more than a single spike.',

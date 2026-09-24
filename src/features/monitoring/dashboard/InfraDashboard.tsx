@@ -13,6 +13,7 @@ import { ErrorBanner } from './components/ErrorBanner'
 import { FactsRow } from './components/FactsRow'
 import { HealthBanner } from './components/HealthBanner'
 import { HistoryChart } from './components/HistoryChart'
+import { HostStrip } from './components/HostStrip'
 import { InfraToolbar } from './components/InfraToolbar'
 import { StatCardGrid, StatCardGroups } from './components/StatCard'
 import { TechnicalDetails } from './components/TechnicalDetails'
@@ -28,6 +29,38 @@ type InfraDashboardProps = {
 
 /* Initial-load placeholder mirroring the real page: toolbar, stat cards with
    the exact per-config count, and one chart card per configured series. */
+function HostStripSkeleton() {
+  return (
+    <div className="rounded-card border border-line bg-panel">
+      <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-3 w-20" />
+      </div>
+      <div className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-3 sm:p-3">
+        <div className="flex flex-col gap-3 rounded-control p-3">
+          <Skeleton className="h-2.5 w-10" />
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-3 w-28" />
+        </div>
+        {[0, 1].map((block) => (
+          <div key={block} className="flex flex-col gap-3 rounded-control p-3">
+            <Skeleton className="h-2.5 w-10" />
+            <Skeleton className="h-7 w-20" />
+            <Skeleton className="h-1.5 w-full" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-6 border-t border-line px-4 py-3 sm:px-5">
+        {[0, 1, 2].map((fact) => (
+          <Skeleton key={fact} className="h-3 w-24" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function InfraDashboardSkeleton({ config }: { config: InfraViewConfig }) {
   const cardCount =
     config.cards?.({ overview: null, hasData: false }).length
@@ -37,11 +70,7 @@ function InfraDashboardSkeleton({ config }: { config: InfraViewConfig }) {
     ?? 6
 
   const toolbar = (
-    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-      <div className="min-w-0">
-        <Skeleton className="h-3 w-44" />
-        <Skeleton className="mt-2 h-4 w-64 sm:w-[520px]" />
-      </div>
+    <div className="flex justify-end">
       <ToolbarControlsSkeleton />
     </div>
   )
@@ -49,7 +78,9 @@ function InfraDashboardSkeleton({ config }: { config: InfraViewConfig }) {
   return (
     <section className="flex flex-col gap-4" aria-busy="true" aria-label={`${config.toolbar.title} loading`}>
       {config.toolbar.placement === 'top' && toolbar}
-      <StatCardsSkeleton count={cardCount} gridClassName={config.cardsGridClassName} />
+      {config.hostStrip ? <HostStripSkeleton /> : (
+        <StatCardsSkeleton count={cardCount} gridClassName={config.cardsGridClassName} />
+      )}
       {config.toolbar.placement === 'history' && toolbar}
       {config.historyHeading && (
         <div className="flex items-baseline gap-2">
@@ -158,27 +189,32 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
       )}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {config.series.map((item) => (
-          <HistoryChart
+          <div
             key={item.metric}
-            points={historyByMetric[item.metric] ?? []}
-            metric={item.metric}
-            title={item.title}
-            question={item.question}
-            description={item.description}
-            valueFormatter={item.formatter}
-            axisFormatter={item.axisFormatter}
-            accentToken={item.accentToken}
-            emptyTitle={item.emptyTitle}
-            emptyDescription={item.emptyDescription}
-            emptyStateKind={item.emptyStateKind}
-            yAxis={item.yAxis}
-            currentValue={currentValues[item.metric]}
-            currentSnapshot={snapshots?.[item.metric]}
-            tooltipDetails={item.tooltipDetails ? (value) => item.tooltipDetails?.(overview, value) ?? [] : undefined}
-            historyError={historyErrors[item.metric] ?? null}
-            now={now}
-            loading={initialLoading || historyRefreshing}
-          />
+            className={item.variant === 'hero' ? 'md:col-span-2' : undefined}
+          >
+            <HistoryChart
+              points={historyByMetric[item.metric] ?? []}
+              metric={item.metric}
+              title={item.title}
+              question={item.question}
+              description={item.description}
+              valueFormatter={item.formatter}
+              axisFormatter={item.axisFormatter}
+              accentToken={item.accentToken}
+              emptyTitle={item.emptyTitle}
+              emptyDescription={item.emptyDescription}
+              emptyStateKind={item.emptyStateKind}
+              yAxis={item.yAxis}
+              currentValue={currentValues[item.metric]}
+              currentSnapshot={snapshots?.[item.metric]}
+              tooltipDetails={item.tooltipDetails ? (value) => item.tooltipDetails?.(overview, value) ?? [] : undefined}
+              historyError={historyErrors[item.metric] ?? null}
+              now={now}
+              loading={initialLoading || historyRefreshing}
+              variant={item.variant}
+            />
+          </div>
         ))}
       </div>
     </section>
@@ -189,38 +225,49 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
       {config.toolbar.placement === 'top' && toolbar}
 
       <ErrorBanner error={error} title={config.errorTitle} hasData={hasData} />
-      <HealthBanner
-        tone={health.tone}
-        label={health.label}
-        title={health.title}
-        detail={health.detail}
-        generatedAt={overview?.generatedAt}
-        refreshing={refreshing}
-      />
 
-      {cardGroups ? (
-        <StatCardGroups
-          groups={cardGroups}
+      {config.hostStrip ? (
+        <HostStrip
+          health={health}
+          cards={cards ?? []}
+          facts={facts ?? []}
+          sparkPoints={historyByMetric[config.hostStrip.sparkMetric]}
+          generatedAt={overview?.generatedAt}
           refreshing={refreshing}
           onDialog={config.breakdown ? (metric) => setActiveMetric(metric ?? null) : undefined}
-          hideToneBars={config.hideCardToneBars}
         />
       ) : (
-        cards && (
-          <StatCardGrid
-            cards={cards}
-            gridClassName={config.cardsGridClassName}
+        <>
+          <HealthBanner
+            tone={health.tone}
+            label={health.label}
+            title={health.title}
+            detail={health.detail}
+            generatedAt={overview?.generatedAt}
             refreshing={refreshing}
-            onDialog={config.breakdown ? (metric) => setActiveMetric(metric ?? null) : undefined}
-            hideToneBars={config.hideCardToneBars}
           />
-        )
+          {cardGroups ? (
+            <StatCardGroups
+              groups={cardGroups}
+              refreshing={refreshing}
+              onDialog={config.breakdown ? (metric) => setActiveMetric(metric ?? null) : undefined}
+            />
+          ) : (
+            cards && (
+              <StatCardGrid
+                cards={cards}
+                gridClassName={config.cardsGridClassName}
+                refreshing={refreshing}
+                onDialog={config.breakdown ? (metric) => setActiveMetric(metric ?? null) : undefined}
+              />
+            )
+          )}
+          {facts && facts.length > 0 && <FactsRow facts={facts} />}
+        </>
       )}
 
-      {facts && facts.length > 0 && <FactsRow facts={facts} />}
-
       {config.toolbar.placement === 'history' && (
-        <section aria-label="History" className="mt-2 flex flex-col gap-3">
+        <section aria-label="History" className="flex flex-col gap-3">
           {toolbar}
           {charts}
         </section>

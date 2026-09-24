@@ -73,16 +73,11 @@ export function LogsView({ preset = null }: LogsViewProps) {
 
   return (
     <section className="flex flex-col gap-4" aria-labelledby="logs-view-title" aria-busy={initialLoading}>
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-            Loki · Docker stdout/stderr
-          </p>
-          <h2 className="sr-only" id="logs-view-title">Service logs</h2>
-          <p className="mt-0.5 max-w-prose text-[13px] leading-relaxed text-ink-2">
-            Search recent backend logs without exposing Loki or arbitrary LogQL to the browser.
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <h2 className="sr-only" id="logs-view-title">Service logs</h2>
+        <p className="text-xs text-ink-3" title="Search recent backend logs without exposing Loki or arbitrary LogQL to the browser">
+          Loki · Docker stdout/stderr
+        </p>
         <div className="flex shrink-0 items-center gap-2">
           <span
             className={cn(
@@ -96,16 +91,22 @@ export function LogsView({ preset = null }: LogsViewProps) {
           <Button variant="ghost" size="sm" onClick={() => setLive(!live)}>
             {live ? <><Pause size={13} aria-hidden="true" /> Pause</> : <><Play size={13} aria-hidden="true" /> Resume</>}
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
+          <button
+            type="button"
+            onClick={refreshNow}
             disabled={refreshing}
             aria-busy={refreshing}
-            onClick={refreshNow}
+            aria-label="Refresh logs"
+            title="Refresh logs"
+            className={cn(
+              'inline-flex size-8 items-center justify-center rounded-control border border-line bg-raised text-ink-2',
+              'transition-colors duration-150 hover:border-line-strong hover:bg-inset hover:text-ink',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+              'disabled:pointer-events-none disabled:opacity-50',
+            )}
           >
-            <RefreshCw size={13} aria-hidden="true" className={refreshing ? 'animate-spin' : undefined} />
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </Button>
+            <RefreshCw size={14} aria-hidden="true" className={refreshing ? 'animate-spin' : undefined} />
+          </button>
         </div>
       </div>
 
@@ -293,17 +294,14 @@ export function LogsView({ preset = null }: LogsViewProps) {
         )}
       </div>
 
-      <div className="flex flex-col gap-0.5 text-xs leading-relaxed text-ink-3">
-        <span>
-          {hasUsableData
-            ? response?.mayHaveMore
-              ? 'Showing the newest 200 matching lines; narrow the filters to inspect more precisely.'
-              : 'Showing all matching lines returned for this bounded query.'
-            : 'A successful log result is required to report matching lines.'}
-        </span>
-        <span>Filters apply automatically; text search waits briefly while typing to avoid unnecessary Loki queries.</span>
-        <span>Select a log line to inspect its full message and metadata without leaving the live log view.</span>
-      </div>
+      <p className="px-1 text-xs leading-relaxed text-ink-3">
+        {hasUsableData
+          ? response?.mayHaveMore
+            ? 'Showing the newest 200 matching lines — narrow the filters to inspect more precisely.'
+            : 'Showing all matching lines returned for this bounded query.'
+          : 'A successful log result is required to report matching lines.'}
+        <span className="sr-only"> Filters apply automatically; text search waits briefly while typing to avoid unnecessary Loki queries. Select a log line to inspect its full message and metadata.</span>
+      </p>
 
       <LogDetailDialog entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
     </section>

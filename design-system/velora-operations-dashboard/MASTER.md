@@ -71,7 +71,8 @@ allowed only on chart fills and the login backdrop (subtle orange radials).
 - Radius: controls 8 · cards 12 · dialogs 16 · pills 999
 - Dark mode shadows are effectively none (borders carry structure); light mode
   uses soft rgba(23,26,54,…) shadows
-- Status never rides on color alone: tone badges always carry text
+- Healthy states are silent: no badge, no tone bar, no green pill. Tone appears
+  only when a threshold is crossed, and warn/bad badges always carry text
 - Hover changes surface/border only; `prefers-reduced-motion` disables transitions
 
 ## Components
@@ -79,8 +80,20 @@ allowed only on chart fills and the login backdrop (subtle orange radials).
 - Primitives in `src/shared/components/ui`: Button (primary/secondary/ghost/danger ×
   sm/md), Badge (good/warn/bad/neutral/info/brand, optional dot), Card, Input,
   NativeSelect, Select (Radix), Label, Skeleton, EmptyState, Tooltip
-- Shell: 248 px fixed sidebar (drawer below 1024 px), sticky topbar with live
-  indicator, theme toggle, account menu
+- Shell: 248 px fixed sidebar (drawer below 1024 px) with an orange inset tick
+  on the active nav item; sticky topbar with live indicator, theme toggle,
+  account menu
+- Server view renders a single HostStrip panel: status line + three metric
+  blocks (lead metric with sparkline, capacity metrics with notched meter
+  bars) + one quiet mono facts row
+- Service views: compact status strip (dot + title + updated time), grouped
+  stat cards, one-line info notes
+- Toolbars are controls only (range segmented control + icon refresh,
+  right-aligned) — the topbar already names the page; no prose headers
+- Charts: first series of each view is a full-width hero (taller plot, larger
+  current value); the rest are 2-up small multiples. Headers are title left,
+  mono value right, stale pill only when data is old; footers are one quiet
+  `min · max` mono line
 - Infra views are config-driven: `dashboard/configs/*.ts` produce view models,
   `InfraDashboard` renders them
 - Tables use the unlayered `.au-table` classes; form fields use `.au-field`,
@@ -103,6 +116,9 @@ allowed only on chart fills and the login backdrop (subtle orange radials).
 ## Content rules
 
 - Short labels: "Alerts", "Logs", "Quality", "Recent"
+- Numbers, IDs, and timestamps are always mono with `tabular-nums`
+- Helper sentences live in tooltips and accessible names — visible chrome
+  carries at most one short context line per page section
 - Status text is one phrase; freshness is one timestamp
 - Empty and error states include one short recovery sentence
 - Never remove diagnostic information; move secondary context into tooltips,

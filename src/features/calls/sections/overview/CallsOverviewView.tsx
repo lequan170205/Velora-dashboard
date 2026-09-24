@@ -29,10 +29,17 @@ const pill = (tone: 'good' | 'muted' | 'bad') =>
 
 const legState = (leg: RecentCallLeg) => {
   if (leg.failure) return { label: `${leg.failure.stage}:${leg.failure.errorCode ?? 'unknown'}`, tone: 'bad' as const }
-  if (leg.mediaReady) return { label: 'Media ready', tone: 'good' as const }
-  if (leg.controlPlaneActive) return { label: 'Signaling ready', tone: 'muted' as const }
-  return { label: 'Setup', tone: 'muted' as const }
+  if (leg.mediaReady) return { label: '✓ media', tone: 'good' as const }
+  if (leg.controlPlaneActive) return { label: '✓ signaling', tone: 'muted' as const }
+  return { label: '… setup', tone: 'muted' as const }
 }
+
+/* Healthy states stay quiet — plain mono text, no pill. Only failures carry a
+   tone so the eye lands on what needs attention. */
+const legStateView = (state: ReturnType<typeof legState>) =>
+  state.tone === 'bad'
+    ? <span className={pill('bad')}>{state.label}</span>
+    : <span className="whitespace-nowrap font-mono text-[11px] text-ink-3">{state.label}</span>
 
 function MetricTile({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
@@ -158,7 +165,7 @@ function RecentTelemetry({
                       </td>
                       <td className="whitespace-nowrap">{leg.platform} · {leg.appVersion}</td>
                       <td className="whitespace-nowrap">{leg.role ?? '—'} · {leg.direction ?? '—'}</td>
-                      <td><span className={pill(state.tone)}>{state.label}</span></td>
+                      <td>{legStateView(state)}</td>
                       <td className="text-right text-ink-3"><ArrowRight size={15} aria-hidden="true" /></td>
                     </tr>
                   )
@@ -185,7 +192,7 @@ function RecentTelemetry({
                     {new Date(leg.lastOccurredAt).toLocaleString()} · {leg.platform} {leg.appVersion}
                   </p>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className={pill(state.tone)}>{state.label}</span>
+                    {legStateView(state)}
                     <span className={pill('muted')}>{leg.role ?? '—'} · {leg.direction ?? '—'}</span>
                   </div>
                 </button>
@@ -244,16 +251,13 @@ export function CallsOverviewView({
 
   return (
     <section className="flex flex-col gap-4" aria-labelledby="calls-overview-title" aria-busy={summaryLoading || recentLoading}>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Call telemetry</p>
-          <h2 className="sr-only" id="calls-overview-title">Calls overview</h2>
-          <p className="mt-0.5 max-w-prose text-[13px] leading-relaxed text-ink-2">
-            Spot degraded call behavior, find the affected leg, then inspect its attempts.
-          </p>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="sr-only" id="calls-overview-title">Calls overview</h2>
+        <p className="text-xs text-ink-3">
+          Spot degraded behavior, find the affected leg, inspect its attempts
+        </p>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-xs tabular-nums text-ink-3">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 font-mono text-xs lowercase tabular-nums text-ink-3">
             {filterUpdating && <LoaderCircle size={12} aria-hidden="true" className="animate-spin" />}
             {freshness}
           </span>
@@ -303,9 +307,9 @@ export function CallsOverviewView({
       )}
 
       <section className="flex flex-col gap-3" aria-labelledby="recent-telemetry-heading">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Drill down</p>
-          <h3 id="recent-telemetry-heading" className="text-sm font-semibold text-ink">Recent telemetry</h3>
+        <div className="flex items-baseline gap-2">
+          <h3 id="recent-telemetry-heading" className="text-sm font-medium text-ink">Recent telemetry</h3>
+          <span className="text-xs text-ink-3">drill down</span>
         </div>
 
         {recentLoading ? (
@@ -355,8 +359,8 @@ export function CallsOverviewView({
             <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
               <span className="text-xs font-semibold text-ink">Failure events</span>
               <span className={cn(
-                'rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
-                failureEventCount > 0 ? 'bg-bad-soft text-bad' : 'bg-ok-soft text-ok',
+                'font-mono text-xs font-semibold tabular-nums',
+                failureEventCount > 0 ? 'text-bad' : 'text-ink-3',
               )}>
                 {failureEventCount}
               </span>

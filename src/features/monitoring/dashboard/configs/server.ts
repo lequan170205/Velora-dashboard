@@ -14,6 +14,7 @@ import type { InfraViewConfig, ServerMetric, StatCardVm } from '../types'
 const SERIES = [
   {
     metric: 'host_cpu' as const,
+    variant: 'hero' as const,
     title: 'Server CPU usage',
     question: 'How busy is the server?',
     description: 'CPU usage across the monitored host. Sustained high usage can slow every Velora service.',
@@ -140,7 +141,7 @@ export const serverConfig: InfraViewConfig = {
     placement: 'history',
   },
   breakdown: true,
-  hideCardToneBars: true,
+  hostStrip: { sparkMetric: 'host_cpu' },
   health: (overview) => {
     const hostUp = overview?.host.up ?? null
     const serverHealthy = hostUp === true
@@ -165,27 +166,31 @@ export const serverConfig: InfraViewConfig = {
 
     const cards: readonly StatCardVm[] = [
       {
-        label: 'CPU usage',
+        label: 'CPU',
         value: formatPercent(host?.cpuUsageRatio ?? Number.NaN),
-        helper: 'Real CPU usage across the monitored host.',
+        helper: 'CPU usage across all cores on the monitored host. Opens the container breakdown.',
         badge: badgeForThreshold(host?.cpuUsageRatio ?? null, 0.7, 0.9),
         tone: toneForThreshold(host?.cpuUsageRatio ?? null, 0.7, 0.9),
         dialog: 'cpu',
       },
       {
-        label: 'RAM used',
-        value: `${formatBytes(host?.memoryUsedBytes ?? Number.NaN)} / ${formatBytes(host?.memoryTotalBytes ?? Number.NaN)}`,
-        helper: `${formatBytes(host?.memoryAvailableBytes ?? Number.NaN)} available · comparable to free -h.`,
+        label: 'RAM',
+        value: formatPercent(host?.memoryUsageRatio ?? Number.NaN),
+        detail: `${formatBytes(host?.memoryUsedBytes ?? Number.NaN)} / ${formatBytes(host?.memoryTotalBytes ?? Number.NaN)} · ${formatBytes(host?.memoryAvailableBytes ?? Number.NaN)} free`,
+        helper: 'Host memory pressure, the useful view behind free -h. Opens the container breakdown.',
         badge: badgeForThreshold(host?.memoryUsageRatio ?? null, 0.75, 0.9),
         tone: toneForThreshold(host?.memoryUsageRatio ?? null, 0.75, 0.9),
+        meter: { ratio: host?.memoryUsageRatio ?? Number.NaN, warnAt: 0.75, badAt: 0.9 },
         dialog: 'memory',
       },
       {
-        label: 'Disk used',
-        value: `${formatBytes(host?.diskUsedBytes ?? Number.NaN)} / ${formatBytes(host?.diskTotalBytes ?? Number.NaN)}`,
-        helper: `${formatBytes(host?.diskAvailableBytes ?? Number.NaN)} available on the monitored filesystem.`,
+        label: 'Disk',
+        value: formatPercent(host?.diskUsageRatio ?? Number.NaN),
+        detail: `${formatBytes(host?.diskUsedBytes ?? Number.NaN)} / ${formatBytes(host?.diskTotalBytes ?? Number.NaN)} · ${formatBytes(host?.diskAvailableBytes ?? Number.NaN)} free`,
+        helper: 'Usage of the filesystem node exporter reports for the Docker host. Opens the container breakdown.',
         badge: badgeForThreshold(host?.diskUsageRatio ?? null, 0.8, 0.92),
         tone: toneForThreshold(host?.diskUsageRatio ?? null, 0.8, 0.92),
+        meter: { ratio: host?.diskUsageRatio ?? Number.NaN, warnAt: 0.8, badAt: 0.92 },
         dialog: 'disk',
       },
     ]
@@ -194,9 +199,9 @@ export const serverConfig: InfraViewConfig = {
   facts: (overview) => {
     const host = overview?.host
     return [
-      { label: 'Swap', value: `${formatBytes(host?.swapUsedBytes ?? Number.NaN)} / ${formatBytes(host?.swapTotalBytes ?? Number.NaN)}` },
-      { label: 'Load', value: formatLoad(host?.load1 ?? Number.NaN) },
-      { label: 'Uptime', value: formatUptime(host?.uptimeSeconds ?? Number.NaN) },
+      { label: 'swap', value: `${formatBytes(host?.swapUsedBytes ?? Number.NaN)} / ${formatBytes(host?.swapTotalBytes ?? Number.NaN)}` },
+      { label: 'load', value: formatLoad(host?.load1 ?? Number.NaN) },
+      { label: 'uptime', value: formatUptime(host?.uptimeSeconds ?? Number.NaN) },
     ]
   },
   series: SERIES,

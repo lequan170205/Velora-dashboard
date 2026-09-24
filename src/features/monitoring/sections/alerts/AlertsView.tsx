@@ -3,6 +3,7 @@ import {
   BellRing,
   CheckCircle2,
   CircleOff,
+  RefreshCw,
   TriangleAlert,
 } from "lucide-react";
 
@@ -111,28 +112,41 @@ function FilterChips<T extends string>({
   );
 }
 
-function CountTile({
-  label,
-  hint,
-  value,
-  tone,
+/* Counts read as one inline rail inside a single panel — value carries tone
+   only when the count is non-zero, so a healthy board stays visually quiet. */
+function CountRail({
+  counts,
 }: {
-  label: string;
-  hint: string;
-  value: number | null;
-  tone: "neutral" | "warn" | "bad";
+  counts: { total: number | null; firing: number | null; critical: number | null; pending: number | null } | null;
 }) {
+  const items = [
+    { label: "active", value: counts?.total ?? null, tone: "" },
+    { label: "firing", value: counts?.firing ?? null, tone: counts?.firing ? "text-bad" : "" },
+    { label: "critical", value: counts?.critical ?? null, tone: counts?.critical ? "text-bad" : "" },
+    { label: "pending", value: counts?.pending ?? null, tone: counts?.pending ? "text-warn" : "" },
+  ];
+
   return (
-    <article className="flex flex-col gap-1 rounded-card border border-line bg-panel px-4 py-3.5">
-      <span className="text-[13px] font-medium text-ink-2">{label}</span>
-      <span className={cn(
-        "font-mono text-[26px] font-semibold leading-tight tabular-nums",
-        tone === "bad" ? "text-bad" : tone === "warn" ? "text-warn" : "text-ink",
-      )}>
-        {value ?? "—"}
-      </span>
-      <span className="text-xs text-ink-3">{hint}</span>
-    </article>
+    <div
+      className="grid grid-cols-2 divide-line rounded-card border border-line bg-panel sm:grid-cols-4 sm:divide-x"
+      aria-label="Active alert counts"
+    >
+      {items.map((item) => (
+        <div key={item.label} className="flex flex-col gap-0.5 px-4 py-3">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-ink-3">
+            {item.label}
+          </span>
+          <span
+            className={cn(
+              "font-mono text-xl font-semibold leading-none tabular-nums text-ink",
+              item.tone,
+            )}
+          >
+            {item.value ?? "—"}
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -171,27 +185,38 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
       aria-labelledby="alerts-view-title"
       aria-busy={initialLoading}
     >
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-            Prometheus · active rule state
-          </p>
-          <h2 className="sr-only" id="alerts-view-title">
-            Active alerts
-          </h2>
-          <p className="mt-0.5 max-w-prose text-[13px] leading-relaxed text-ink-2">
-            Pending and firing Prometheus rules across Velora.
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <h2 className="sr-only" id="alerts-view-title">
+          Active alerts
+        </h2>
+        <p className="text-xs text-ink-3">
+          Live Prometheus rule state · resolved alerts disappear
+        </p>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs lowercase tabular-nums text-ink-3">
+            {response?.generatedAt
+              ? `${isStale ? "stale · " : ""}updated ${formatTimestamp(response.generatedAt)} · auto 15s`
+              : error
+                ? "unavailable"
+                : "waiting for Prometheus"}
+          </span>
+          <button
+            type="button"
+            onClick={refreshNow}
+            disabled={refreshing}
+            aria-busy={refreshing}
+            aria-label="Refresh alerts"
+            title="Refresh alerts"
+            className={cn(
+              "inline-flex size-8 items-center justify-center rounded-control border border-line bg-raised text-ink-2",
+              "transition-colors duration-150 hover:border-line-strong hover:bg-inset hover:text-ink",
+              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+              "disabled:pointer-events-none disabled:opacity-50",
+            )}
+          >
+            <RefreshCw size={14} aria-hidden="true" className={refreshing ? "animate-spin" : undefined} />
+          </button>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={refreshing}
-          aria-busy={refreshing}
-          onClick={refreshNow}
-        >
-          {refreshing ? "Refreshing…" : "Refresh"}
-        </Button>
       </div>
 
       {error && (
@@ -220,76 +245,41 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
         </div>
       )}
 
-      <div
-        className="grid grid-cols-2 gap-3 xl:grid-cols-4"
-        aria-label="Active alert counts"
-      >
-        {initialLoading ? (
-          Array.from({ length: 4 }, (_, index) => <CountTileSkeleton key={index} />)
-        ) : (
-          <>
-            <CountTile
-              label="Total active"
-              hint="Pending + firing"
-              value={counts?.total ?? null}
-              tone="neutral"
-            />
-            <CountTile
-              label="Critical"
-              hint="Critical severity"
-              value={counts?.critical ?? null}
-              tone={counts?.critical ? "bad" : "neutral"}
-            />
-            <CountTile
-              label="Firing"
-              hint="Threshold duration met"
-              value={counts?.firing ?? null}
-              tone={counts?.firing ? "bad" : "neutral"}
-            />
-            <CountTile
-              label="Pending"
-              hint="Waiting for rule duration"
-              value={counts?.pending ?? null}
-              tone="neutral"
-            />
-          </>
-        )}
-      </div>
+      {initialLoading ? (
+        <div
+          className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+          aria-label="Loading active alert counts"
+        >
+          {Array.from({ length: 4 }, (_, index) => (
+            <CountTileSkeleton key={index} />
+          ))}
+        </div>
+      ) : (
+        <CountRail counts={counts} />
+      )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <FilterChips
-            label="State"
-            value={stateFilter}
-            onChange={setStateFilter}
-            options={[
-              { value: "all", label: "All" },
-              { value: "firing", label: "Firing" },
-              { value: "pending", label: "Pending" },
-            ]}
-          />
-          <FilterChips
-            label="Severity"
-            value={severityFilter}
-            onChange={setSeverityFilter}
-            options={[
-              { value: "all", label: "All" },
-              { value: "critical", label: "Critical" },
-              { value: "warning", label: "Warning" },
-              { value: "info", label: "Info" },
-            ]}
-          />
-        </div>
-        <div className="flex items-center gap-3 text-xs tabular-nums text-ink-3">
-          <span>Auto-refresh · 15s</span>
-          <span>
-            {response?.generatedAt
-              ? `${isStale ? "Stale · " : ""}Updated ${formatTimestamp(response.generatedAt)}`
-              : error
-                ? "Unavailable"
-                : "Waiting for Prometheus"}
-          </span>
-        </div>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <FilterChips
+          label="State"
+          value={stateFilter}
+          onChange={setStateFilter}
+          options={[
+            { value: "all", label: "All" },
+            { value: "firing", label: "Firing" },
+            { value: "pending", label: "Pending" },
+          ]}
+        />
+        <FilterChips
+          label="Severity"
+          value={severityFilter}
+          onChange={setSeverityFilter}
+          options={[
+            { value: "all", label: "All" },
+            { value: "critical", label: "Critical" },
+            { value: "warning", label: "Warning" },
+            { value: "info", label: "Info" },
+          ]}
+        />
       </div>
 
       {initialLoading ? (
@@ -340,7 +330,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
             return (
               <article
                 key={alertKey(alert)}
-                className="flex flex-col gap-2 rounded-card border border-line bg-panel p-4"
+                className="flex flex-col gap-2 rounded-card border border-line bg-panel px-4 py-3.5"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -518,6 +508,10 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
         </div>
       )}
 
+      <p className="px-1 text-xs leading-relaxed text-ink-3">
+        Prometheus rule evaluation only — Alertmanager is not deployed yet, so
+        there are no silences, grouping, or external notifications.
+      </p>
     </section>
   );
 }

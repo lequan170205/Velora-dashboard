@@ -41,6 +41,8 @@ type HistoryChartProps = {
   historyError?: string | null
   now: number
   loading?: boolean
+  /** Lead metric: taller plot, larger current value. */
+  variant?: 'hero'
 }
 
 type ThresholdState = {
@@ -176,6 +178,7 @@ export function HistoryChart({
   historyError,
   now,
   loading = false,
+  variant,
 }: HistoryChartProps) {
   const chartTheme = useChartTheme()
   const gradientId = useId()
@@ -254,28 +257,25 @@ export function HistoryChart({
 
   return (
     <article
-      className="flex flex-col gap-3 rounded-card border border-line bg-panel p-4"
+      className="flex h-full flex-col gap-3 rounded-card border border-line bg-panel p-4"
       aria-label={`${title}. ${question}. ${description}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-ink">{title}</h3>
+            <h3 className="text-sm font-medium text-ink">{title}</h3>
             {hasStaleHistory && data.length > 0 && (
               <span
                 className="rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-medium text-warn"
                 title={historyError ?? 'The last history sample is older than expected for this series.'}
               >
-                Stale history
+                {freshnessLabel ?? 'Stale history'}
               </span>
             )}
           </div>
-          {freshnessLabel && latestTimestamp !== undefined && (
+          {latestTimestamp !== undefined && freshnessLabel && (
             <time
-              className={cn(
-                'mt-0.5 block text-[11px] tabular-nums',
-                historyFreshness === 'stale' ? 'text-warn' : 'text-ink-3',
-              )}
+              className="sr-only"
               dateTime={new Date(latestTimestamp).toISOString()}
               title={`Last history sample: ${new Date(latestTimestamp).toLocaleString()}`}
             >
@@ -286,25 +286,24 @@ export function HistoryChart({
 
         {headingValue !== undefined && Number.isFinite(headingValue) && (
           <div className="shrink-0 text-right">
-            <div className="flex items-center justify-end gap-1.5">
-              <span className="text-[10px] font-medium uppercase tracking-wider text-ink-3">
-                {hasLiveCurrent ? 'Current' : 'Latest sample'}
+            {currentThresholdState && currentThresholdState.tone !== 'good' && (
+              <span
+                className={cn(
+                  'rounded-full px-1.5 py-px text-[10px] font-medium',
+                  currentThresholdState.tone === 'warn' && 'bg-warn-soft text-warn',
+                  currentThresholdState.tone === 'bad' && 'bg-bad-soft text-bad',
+                )}
+                aria-label={`${currentThresholdState.label} threshold status`}
+              >
+                {currentThresholdState.label}
               </span>
-              {currentThresholdState && (
-                <span
-                  className={cn(
-                    'rounded-full px-1.5 py-px text-[10px] font-medium',
-                    currentThresholdState.tone === 'good' && 'bg-ok-soft text-ok',
-                    currentThresholdState.tone === 'warn' && 'bg-warn-soft text-warn',
-                    currentThresholdState.tone === 'bad' && 'bg-bad-soft text-bad',
-                  )}
-                  aria-label={`${currentThresholdState.label} threshold status`}
-                >
-                  {currentThresholdState.label}
-                </span>
+            )}
+            <p
+              className={cn(
+                'mt-0.5 font-mono font-semibold tabular-nums text-ink',
+                variant === 'hero' ? 'text-xl' : 'text-lg',
               )}
-            </div>
-            <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-ink">
+            >
               {valueFormatter(headingValue)}
             </p>
             {hasLiveCurrent && currentValue?.context && (
@@ -319,7 +318,8 @@ export function HistoryChart({
       ) : data.length === 0 ? (
         <div
           className={cn(
-            'flex h-44 flex-col items-center justify-center gap-1.5 rounded-control border border-dashed border-line px-4 text-center',
+            'flex flex-col items-center justify-center gap-1.5 rounded-control border border-dashed border-line px-4 text-center',
+            variant === 'hero' ? 'h-52 sm:h-60' : 'h-40',
             emptyState.kind === 'error' && 'border-warn-soft',
           )}
           role={emptyState.kind === 'error' ? 'alert' : 'status'}
@@ -335,7 +335,11 @@ export function HistoryChart({
         </div>
       ) : (
         <>
-          <div className="au-chart h-44" role="img" aria-label={`${title} history`}>
+          <div
+            className={cn('au-chart', variant === 'hero' ? 'h-52 sm:h-60' : 'h-40')}
+            role="img"
+            aria-label={`${title} history`}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
                 <defs>
@@ -451,10 +455,12 @@ export function HistoryChart({
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex items-center justify-between gap-3 border-t border-line pt-2.5" aria-label={`${title} range summary`}>
-            <span className="text-xs text-ink-3"><span className="mr-1.5 text-[10px] font-medium uppercase tracking-wide">Low</span><span className="font-mono tabular-nums text-ink-2">{min === undefined ? '—' : valueFormatter(min)}</span></span>
-            <span className="text-xs text-ink-3"><span className="mr-1.5 text-[10px] font-medium uppercase tracking-wide">{hasStaleHistory ? 'Last' : 'Latest'}</span><span className="font-mono tabular-nums text-ink-2">{latestHistoryValue === undefined ? '—' : valueFormatter(latestHistoryValue)}</span></span>
-            <span className="text-xs text-ink-3"><span className="mr-1.5 text-[10px] font-medium uppercase tracking-wide">High</span><span className="font-mono tabular-nums text-ink-2">{max === undefined ? '—' : valueFormatter(max)}</span></span>
+          <div className="flex items-center justify-between gap-3" aria-label={`${title} range summary`}>
+            <span className="font-mono text-[11px] tabular-nums text-ink-3">
+              min {min === undefined ? '—' : valueFormatter(min)}
+              <span className="mx-1.5 text-ink-3/60">·</span>
+              max {max === undefined ? '—' : valueFormatter(max)}
+            </span>
           </div>
         </>
       )}

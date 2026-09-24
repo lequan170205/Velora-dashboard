@@ -161,6 +161,7 @@ body {
   background-color: var(--au-accent-soft);
   color: var(--au-accent);
   font-weight: 500;
+  box-shadow: inset 2px 0 0 var(--au-accent);
 }
 
 .au-field {

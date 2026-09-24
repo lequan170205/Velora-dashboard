@@ -32,7 +32,6 @@ export const conversationConfig: InfraViewConfig = {
     rangeLabel: 'Conversation history range',
     placement: 'top',
   },
-  hideCardToneBars: true,
   health: (overview) => {
     const conversation = overview?.conversation
     const serviceUp = conversation?.up ?? null
@@ -101,7 +100,7 @@ export const conversationConfig: InfraViewConfig = {
         detail: hasData ? 'Connected now' : 'Waiting for data',
         helper: 'Realtime Socket.IO clients currently connected.',
         badge: hasData ? 'Live' : 'Waiting',
-        tone: 'neutral',
+        tone: hasData ? 'good' : 'neutral',
       },
     ]
 
@@ -112,7 +111,7 @@ export const conversationConfig: InfraViewConfig = {
         detail: rateDetail(conversation?.messagesPerSecond, 'messages'),
         helper: 'Persisted user messages, excluding idempotent retries.',
         badge: !hasData ? 'Waiting' : hasTraffic ? 'Active' : 'Idle',
-        tone: 'neutral',
+        tone: !hasData ? 'neutral' : 'good',
       },
       {
         label: 'Send attempts',
@@ -120,7 +119,7 @@ export const conversationConfig: InfraViewConfig = {
         detail: rateDetail(sendRequestsPerSecond, 'send attempts'),
         helper: 'All send_message attempts, including successful, rejected, and failed outcomes.',
         badge: !hasData ? 'Waiting' : hasTraffic ? 'Active' : 'Idle',
-        tone: 'neutral',
+        tone: !hasData ? 'neutral' : 'good',
       },
     ]
 
@@ -224,6 +223,7 @@ export const conversationConfig: InfraViewConfig = {
   series: [
     {
       metric: 'conversation_message_rate',
+      variant: 'hero' as const,
       title: 'New messages / second',
       question: 'How much real chat throughput is being created?',
       description: 'New user messages persisted per second. Idempotent retries are excluded.',
