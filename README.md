@@ -29,9 +29,11 @@ Set the Velora API Gateway base URL in `.env.local`:
 
 ```env
 VITE_API_URL=https://your-api-gateway.example.com
+VITE_LANGFUSE_URL=https://langfuse.example.com
+VITE_LANGFUSE_EMBED=true
 ```
 
-If the dashboard is served from the same origin as the API Gateway, `VITE_API_URL` may be left empty. Do not commit real environment files or credentials.
+If the dashboard is served from the same origin as the API Gateway, `VITE_API_URL` may be left empty. `VITE_LANGFUSE_URL` must point to an authenticated HTTPS reverse proxy or tunnel for the self-hosted Langfuse web service; the homelab's `127.0.0.1:3030` is only suitable for local browser development. Vite exposes `VITE_*` values to the browser, so never put Langfuse API keys or secrets there. Do not commit real environment files or credentials.
 
 Start the development server:
 
@@ -63,6 +65,8 @@ Velora Dashboard
 ```
 
 The dashboard also uses the API Gateway for ADMIN authentication and call operations telemetry.
+
+RAG traces and evaluations are opened through the self-hosted Langfuse view. The generic Logs page keeps scoped filters for the Langfuse web/worker and backing containers, plus the local RAG embedding/reranker/vision services.
 
 Key monitoring endpoints currently include:
 

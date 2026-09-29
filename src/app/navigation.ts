@@ -1,7 +1,7 @@
 import {
   Activity,
   Bell,
-  BrainCircuit,
+  ChartNoAxesCombined,
   Film,
   Gauge,
   KeyRound,
@@ -77,12 +77,6 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: Users,
       },
       {
-        to: "/rag",
-        label: "RAG",
-        title: "RAG monitoring",
-        icon: BrainCircuit,
-      },
-      {
         to: "/reels",
         label: "Reels",
         title: "Reel pipeline",
@@ -93,6 +87,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Observability",
     items: [
+      { to: "/langfuse", label: "Langfuse", title: "Langfuse traces", icon: ChartNoAxesCombined },
       { to: "/alerts", label: "Alerts", title: "Active alerts", icon: Bell },
       { to: "/logs", label: "Logs", title: "Service logs", icon: ScrollText },
     ],

@@ -5,5 +5,4 @@ export { callServiceConfig } from "./callService";
 export { notificationServiceConfig } from "./notificationService";
 export { authServiceConfig } from "./authService";
 export { userServiceConfig } from "./userService";
-export { ragConfig } from "./rag";
 export { reelsConfig } from "./reels";
