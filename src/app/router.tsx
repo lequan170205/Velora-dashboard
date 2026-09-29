@@ -8,7 +8,6 @@ import {
 
 import { AlertsView, LogsView } from "../features/monitoring";
 import { InfraDashboard } from "../features/monitoring/dashboard/InfraDashboard";
-import { LangfuseView } from "../features/observability/LangfuseView";
 import {
   authServiceConfig,
   callServiceConfig,
@@ -145,7 +144,6 @@ export const router = createHashRouter([
         path: "user-service",
         element: <InfraDashboard config={userServiceConfig} />,
       },
-      { path: "langfuse", element: <LangfuseView /> },
       { path: "reels", element: <InfraDashboard config={reelsConfig} /> },
       { path: "alerts", element: <AlertsRoute /> },
       { path: "logs", element: <LogsRoute /> },

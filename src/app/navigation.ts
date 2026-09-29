@@ -1,7 +1,6 @@
 import {
   Activity,
   Bell,
-  ChartNoAxesCombined,
   Film,
   Gauge,
   KeyRound,
@@ -87,7 +86,6 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Observability",
     items: [
-      { to: "/langfuse", label: "Langfuse", title: "Langfuse traces", icon: ChartNoAxesCombined },
       { to: "/alerts", label: "Alerts", title: "Active alerts", icon: Bell },
       { to: "/logs", label: "Logs", title: "Service logs", icon: ScrollText },
     ],
