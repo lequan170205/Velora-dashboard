@@ -109,14 +109,14 @@ Do not use a wildcard CORS origin with credentialed requests.
 Open **Demo tools → Stress test** (`#/stress-test`) after signing in as an admin.
 
 1. Create a dedicated non-bot test conversation in the mobile app and add the dashboard account as a member. Use test recipients without real push tokens; test messages are stored and invoke the normal notification hooks.
-2. Select that conversation and run **Smoke** first. Preflight verifies sender sync, receiver fan-out and a replay of the same message identity before starting load.
+2. Select that conversation and run **Smoke** first. Preflight requires sender sync and receiver fan-out before starting load. It also probes a retry with the same message identity; a retry failure is shown separately and does not block load with fresh message IDs.
 3. Choose **Demo**, adjust the stage sockets/rate/duration if needed, and start. Defaults: 5/15/30 sender sockets at 2/10/25 total messages/s for 60s each, 30s cooldown, then 15s recovery.
 4. Watch client latency/outcomes and server CPU/RAM, send throughput and handler p95 on the same page. Stop ends scheduling, disconnects the load sockets and keeps partial results.
 5. Export JSON/CSV. The last five completed or stopped reports and the last successful run configuration are retained locally in this browser.
 
 The page reuses `fetchApi` and `/auth/socket-token`, including the existing 401 refresh flow. It obtains a fresh token before preflight and every stage, checks the session every minute during load, and keeps the token only in the run closure. No manual JWT entry, service secret or backend changes are needed. Session failure stops the run; it does not bypass authentication or conversation membership.
 
-This browser generator uses **one signed-in user**, multiple sender sockets and one observer. Socket count is not a distinct-user count. Sender latency ends at `message_synced`, earlier than the full handler metric on the server; the two p95 values measure different intervals. A timeout does not prove the message was not stored. The retry probe does not prove exactly-once dispatch.
+This browser generator uses **one signed-in user**, multiple sender sockets and one observer. Socket count is not a distinct-user count. Sender latency ends at `message_synced`, earlier than the full handler metric on the server; the two p95 values measure different intervals. A timeout does not prove the message was not stored. The retry probe does not prove exactly-once dispatch. A run with successful load but failed retry is labeled **Load passed / retry failed**, never **Passed**. JSON/CSV retain the retry result; load delivery counters exclude probe/setup events. Missing database uniqueness still needs a database repair; continuing a fresh-ID load test does not fix that defect.
 
 Keep the tab visible. Hiding it, leaving the route or going offline stops the run because browser timer throttling would distort the requested rate. Missed scheduling slots and in-flight saturation are recorded as skipped work, so the requested rate is not falsely reported as achieved. Per-run limits are 100 sender sockets, 100 messages/s, 10,000 planned messages and 20 minutes. CPU alert firing is not required for a successful load test.
 

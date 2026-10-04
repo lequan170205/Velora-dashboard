@@ -10,7 +10,7 @@ async function load(relative) {
   return import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 }
 const { runChat, percentile, validateStages, csvReport } = await load('../src/features/stress-test/runner.ts')
-function fixture({ reject = false, delay = 5, duplicateReplay = false } = {}) {
+function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false } = {}) {
   const sockets = [], messages = new Map()
   let maximum = 0, current = 0, sent = 0
   class FakeSocket extends EventEmitter {
@@ -27,12 +27,13 @@ function fixture({ reject = false, delay = 5, duplicateReplay = false } = {}) {
         current--
         if (reject) { super.emit('message_failed', payload); return }
         const previous = messages.get(payload.clientMessageId)
-        const message = previous ?? { ...payload, id: `db-${messages.size + 1}` }
+        if (previous && rejectReplay) { super.emit('message_failed', payload); return }
+        const message = missingUniqueIndex ? { ...payload, id: `db-${sent}` } : previous ?? { ...payload, id: `db-${messages.size + 1}` }
         messages.set(payload.clientMessageId, message)
         super.emit('message_synced', { ...message, clientMessageId: 'unrelated' })
         super.emit('message_synced', { ...message, conversationId: 'wrong-room' })
         super.emit('message_synced', message)
-        if (!previous || duplicateReplay) for (const socket of sockets) if (socket !== this && socket.connected && socket.room === payload.conversationId) socket.receive('new_message', message)
+        if (!dropDelivery && (!previous || duplicateReplay || missingUniqueIndex)) for (const socket of sockets) if (socket !== this && socket.connected && socket.room === payload.conversationId) socket.receive('new_message', message)
       }, isLoad ? delay : 5)
       return this
     }
@@ -71,14 +72,32 @@ test('real runner verifies preflight, correlation, fan-out, stage accounting and
   assert.ok(f.messages.size === 7)
 })
 
-test('bad membership or duplicate replay prevents any load generation', async () => {
-  for (const setting of [{ reject: true }, { duplicateReplay: true }]) {
+test('bad membership or missing receiver event still prevents any load generation', async () => {
+  for (const setting of [{ reject: true }, { dropDelivery: true }]) {
     const f = fixture(setting)
     const report = await runChat(options(f))
     assert.equal(report.passed, false)
     assert.equal(report.preflight, false)
     assert.equal(report.stages.length, 0)
     assert.equal(report.totals.attempted, 0)
+    assert.ok(f.sockets.every((s) => !s.connected))
+  }
+})
+
+test('retry failures do not block fresh-ID load or become an overall pass', async () => {
+  for (const setting of [{ duplicateReplay: true }, { missingUniqueIndex: true }, { rejectReplay: true }]) {
+    const f = fixture(setting)
+    const report = await runChat(options(f))
+    assert.equal(report.preflight, true)
+    assert.equal(report.retryCheck.status, 'failed')
+    assert.ok(report.retryCheck.detail)
+    assert.equal(report.loadPassed, true)
+    assert.equal(report.passed, false)
+    assert.equal(report.stopReason, null)
+    assert.equal(report.totals.synced, 5)
+    assert.equal(report.delivery.received, 5)
+    assert.equal(report.delivery.duplicates, 0)
+    assert.ok(csvReport(report).includes('"true","failed"'))
     assert.ok(f.sockets.every((s) => !s.connected))
   }
 })

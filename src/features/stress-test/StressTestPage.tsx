@@ -22,6 +22,7 @@ function download(name: string, text: string, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 const ms = (value: number | null | undefined) => value == null ? '—' : `${Math.round(value)} ms`
+const resultLabel = (report: Report) => report.passed ? 'Passed' : report.loadPassed ? 'Load passed / retry failed' : 'Incomplete / failed'
 function initialConfig() {
   const saved = readStorage<{ conversationId?: string; profile?: string; stages?: Stage[] }>(CONFIG_KEY, {})
   const profile = saved.profile && Object.hasOwn(PROFILES, saved.profile) ? saved.profile : 'smoke'
@@ -113,7 +114,7 @@ export function StressTestPage() {
   let stagesError: string | null = null
   try { validateStages(stages) } catch (error) { stagesError = error instanceof Error ? error.message : 'Check stage settings.' }
   const totals = report?.totals
-  const status = active ? report?.phase ?? 'Starting' : report ? report.passed ? 'Passed' : 'Incomplete / failed' : 'Ready'
+  const status = active ? report?.phase ?? 'Starting' : report ? resultLabel(report) : 'Ready'
   const resources = monitoring.data
   const statsCards = [
     ['Synced', `${totals?.synced ?? 0} / ${totals?.attempted ?? 0}`, 'Settled load attempts'],
@@ -129,6 +130,7 @@ export function StressTestPage() {
       <Badge tone={active ? 'info' : report?.passed ? 'good' : report ? 'warn' : 'neutral'}>{status}</Badge>
     </div>
     {error && <p role="alert" className="rounded-card border border-bad/30 bg-bad-soft p-4 text-sm text-bad">{error}</p>}
+    {report?.retryCheck?.status === 'failed' && <div role="status" className="rounded-card border border-warn/30 bg-warn-soft p-4 text-sm text-ink-2"><p className="font-semibold">Retry check failed. Load test can continue.</p><p className="mt-1">{report.retryCheck.detail} Each load message uses a new ID. This run measures load; retry correctness remains failed.</p></div>}
     <div className="grid items-start gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
       <Card><CardContent className="space-y-5">
         <div><h2 className="font-semibold">Run configuration</h2><p className="mt-1 text-sm text-ink-2">One signed-in user, multiple sender sockets, one receiver socket.</p></div>
@@ -175,7 +177,7 @@ export function StressTestPage() {
       </div>
     </div>
     <Card><CardContent><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Saved runs</h2><span className="text-xs text-ink-3">Last 5 runs in this browser</span></div>
-      {!history.length ? <p className="mt-3 text-sm text-ink-2">Finish a smoke test to save the first result.</p> : <ul className="mt-3 divide-y divide-line">{history.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="text-sm font-medium">{item.profile} · {new Date(item.startedAt).toLocaleString()}</p><p className="mt-1 text-xs text-ink-3">{item.passed ? 'Passed' : 'Incomplete / failed'} · {item.totals.synced} synced · ACK p95 {ms(item.totals.p95)}</p></div><Button size="sm" variant="secondary" onClick={() => { if (!active) { setReport(item); setStages(structuredClone(item.plan)); setProfile(item.profile); setConversationId(conversations.some((c) => c.id === item.conversationId) ? item.conversationId : ''); setConfirmed(false) } }} disabled={active}>View result</Button></li>)}</ul>}
+      {!history.length ? <p className="mt-3 text-sm text-ink-2">Finish a smoke test to save the first result.</p> : <ul className="mt-3 divide-y divide-line">{history.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="text-sm font-medium">{item.profile} · {new Date(item.startedAt).toLocaleString()}</p><p className="mt-1 text-xs text-ink-3">{resultLabel(item)} · {item.totals.synced} synced · ACK p95 {ms(item.totals.p95)}</p></div><Button size="sm" variant="secondary" onClick={() => { if (!active) { setReport(item); setStages(structuredClone(item.plan)); setProfile(item.profile); setConversationId(conversations.some((c) => c.id === item.conversationId) ? item.conversationId : ''); setConfirmed(false) } }} disabled={active}>View result</Button></li>)}</ul>}
       <p className="mt-4 text-xs text-ink-3">Synthetic text tests backend persistence and fan-out. It does not measure mobile encryption, native push UI or WebRTC/SFU media capacity. Retry preflight checks one identity; it does not prove exactly-once delivery.</p>
     </CardContent></Card>
   </section>

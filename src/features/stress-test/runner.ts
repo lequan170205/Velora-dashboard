@@ -18,7 +18,8 @@ export type StageResult = Stats & Stage & { skipped: number; emittedRps: number 
 export type Report = {
   id: string; conversationId: string; profile: string; startedAt: string; finishedAt: string | null;
   phase: string; senderSockets: number; signedInUsers: 1; inFlight: number; skipped: number;
-  preflight: boolean; passed: boolean; stopReason: string | null; totals: Stats;
+  preflight: boolean; loadPassed: boolean; passed: boolean; stopReason: string | null; totals: Stats;
+  retryCheck: { status: 'pending' | 'passed' | 'failed'; detail: string | null };
   delivery: { received: number; duplicates: number; p95: number | null };
   stages: StageResult[]; samples: { time: string; sent: number; synced: number; p95: number | null }[];
   plan: Stage[];
@@ -55,7 +56,8 @@ export function validateStages(stages: Stage[]) {
 }
 export function csvReport(report: Report) {
   const columns = ['name', 'sockets', 'rps', 'seconds', 'emittedRps', 'attempted', 'synced', 'failed', 'timeout', 'disconnected', 'skipped', 'p50', 'p95', 'p99'] as const
-  return [columns.join(','), ...report.stages.map((s) => columns.map((key) => `"${String(s[key] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n')
+  const quote = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
+  return [[...columns, 'loadPassed', 'retryCheck', 'retryDetail'].join(','), ...report.stages.map((s) => [...columns.map((key) => s[key]), report.loadPassed, report.retryCheck?.status ?? 'unknown', report.retryCheck?.detail].map(quote).join(','))].join('\n')
 }
 
 export async function runChat(options: RunnerOptions): Promise<Report> {
@@ -73,7 +75,8 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     id: `stress-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, conversationId,
     profile: options.profile, startedAt: new Date().toISOString(), finishedAt: null,
     phase: 'Checking session', senderSockets: 0, signedInUsers: 1, inFlight: 0, skipped: 0,
-    preflight: false, passed: false, stopReason: null, totals: stats([]),
+    preflight: false, loadPassed: false, passed: false, stopReason: null, totals: stats([]),
+    retryCheck: { status: 'pending', detail: null },
     delivery: { received: 0, duplicates: 0, p95: null }, stages: [], samples: [], plan: structuredClone(options.stages),
   }
   let observer: SocketLike | undefined
@@ -86,7 +89,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     report.senderSockets = senders.length
     const received = attempts.filter((a) => deliveries.has(a.id))
     report.delivery = { received: received.length,
-      duplicates: [...deliveries.values()].reduce((sum, d) => sum + Math.max(0, d.count - 1), 0),
+      duplicates: received.reduce((sum, a) => sum + Math.max(0, deliveries.get(a.id)!.count - 1), 0),
       p95: percentile(received.map((a) => deliveries.get(a.id)!.ms), .95) }
     options.onUpdate(structuredClone(report))
   }
@@ -178,7 +181,11 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     if (!deliveries.has(probeId)) throw new RunError('Preflight receiver event missing. Load was not started.')
     const replay = await send(sender, probeId)
     await delay(250)
-    if (replay.outcome !== 'synced' || replay.messageId !== first.messageId || deliveries.get(probeId)?.count !== 1) throw new RunError('Preflight replay did not reconcile one message identity.')
+    checkStopped()
+    const retryDetail = replay.outcome !== 'synced' ? `Replay outcome: ${replay.outcome}.`
+      : replay.messageId !== first.messageId ? 'Replay returned a different stored message ID.'
+      : deliveries.get(probeId)?.count !== 1 ? 'Observer received duplicate events for the retry probe.' : null
+    report.retryCheck = { status: retryDetail ? 'failed' : 'passed', detail: retryDetail }
     report.preflight = true
     sessionTimer = setInterval(() => { void ensureSession().catch(() => {}) }, options.sessionIntervalMs ?? 60000)
     updateTimer = setInterval(() => {
@@ -240,7 +247,8 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     report.finishedAt = new Date().toISOString()
     report.phase = report.stopReason ? 'Stopped' : 'Complete'
     update()
-    report.passed = !report.stopReason && report.preflight && attempts.length > 0 && report.totals.synced === attempts.length && report.skipped === 0 && report.delivery.received === attempts.length && report.delivery.duplicates === 0
+    report.loadPassed = !report.stopReason && report.preflight && attempts.length > 0 && report.totals.synced === attempts.length && report.skipped === 0 && report.delivery.received === attempts.length && report.delivery.duplicates === 0
+    report.passed = report.loadPassed && report.retryCheck.status === 'passed'
     update()
   }
   return report
