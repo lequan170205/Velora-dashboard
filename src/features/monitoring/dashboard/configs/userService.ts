@@ -57,12 +57,12 @@ export const userServiceConfig: InfraViewConfig = {
                 ? "User service is healthy"
                 : "Waiting for User telemetry",
       detail:
-        "Request, search, recommendation, and storage rates use rolling five-minute Prometheus windows.",
+        "Request, search, recommendation, and storage rates use rolling one-minute Prometheus windows.",
     };
   },
   cardGroups: ({ overview, hasData }) => {
     const user = overview?.user;
-    const detail = hasData ? "Rolling 5 min" : "Waiting for data";
+    const detail = hasData ? "Rolling 1 min" : "Waiting for data";
     const groups: readonly StatCardGroupVm[] = [
       {
         id: "health",
@@ -78,7 +78,7 @@ export const userServiceConfig: InfraViewConfig = {
       {
         id: "operations",
         heading: "User operations",
-        hint: "Rolling 5 min",
+        hint: "Rolling 1 min",
         gridClassName: "sm:grid-cols-2 xl:grid-cols-3",
         cards: [
           { label: "All requests", value: formatRate(user?.requestsPerSecond ?? Number.NaN), detail, helper: "All User RPC requests per second.", badge: "Traffic", tone: "neutral" },
@@ -89,7 +89,7 @@ export const userServiceConfig: InfraViewConfig = {
       {
         id: "discovery",
         heading: "Search and recommendations",
-        hint: "Rolling 5 min",
+        hint: "Rolling 1 min",
         gridClassName: "sm:grid-cols-2 xl:grid-cols-4",
         cards: [
           { label: "Search requests", value: formatRate(user?.searchRequestsPerSecond ?? Number.NaN), detail, helper: "Public-user search requests per second.", badge: "Search", tone: "neutral" },
@@ -132,7 +132,7 @@ export const userServiceConfig: InfraViewConfig = {
     ];
     return groups;
   },
-  historyHeading: { title: "History", hint: "Rolling five-minute rates and quantiles" },
+  historyHeading: { title: "History", hint: "Rolling one-minute rates and quantiles" },
   historyEnabled: (overview) => overview?.user !== undefined,
   series: [
     { metric: "user_request_rate", title: "User requests / second", question: "How much User Service traffic is arriving?", description: "All user-service RPC request traffic.", formatter: formatRate, axisFormatter: formatRate, accentToken: "blue", emptyTitle: "No User traffic yet", emptyDescription: "This chart appears after user-service receives requests.", emptyStateKind: "no-traffic" },

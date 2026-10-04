@@ -61,12 +61,12 @@ export const authServiceConfig: InfraViewConfig = {
                   ? "Authentication service is healthy"
                   : "Waiting for Auth telemetry",
       detail:
-        "Traffic and latency use rolling five-minute Prometheus windows; refresh recovery is tracked separately from invalid or replayed tokens.",
+        "Traffic and latency use rolling one-minute Prometheus windows; refresh recovery is tracked separately from invalid or replayed tokens.",
     };
   },
   cardGroups: ({ overview, hasData }) => {
     const auth = overview?.auth;
-    const detail = hasData ? "Rolling 5 min" : "Waiting for data";
+    const detail = hasData ? "Rolling 1 min" : "Waiting for data";
     const groups: readonly StatCardGroupVm[] = [
       {
         id: "health",
@@ -82,7 +82,7 @@ export const authServiceConfig: InfraViewConfig = {
       {
         id: "traffic",
         heading: "Authentication traffic",
-        hint: "Rolling 5 min",
+        hint: "Rolling 1 min",
         gridClassName: "sm:grid-cols-2 xl:grid-cols-4",
         cards: [
           { label: "All requests", value: formatRate(auth?.requestsPerSecond ?? Number.NaN), detail, helper: "All Auth RPC requests per second.", badge: "Traffic", tone: "neutral" },
@@ -94,7 +94,7 @@ export const authServiceConfig: InfraViewConfig = {
       {
         id: "refresh",
         heading: "Session and refresh health",
-        hint: "Rolling 5 min",
+        hint: "Rolling 1 min",
         gridClassName: "sm:grid-cols-2 xl:grid-cols-4",
         cards: [
           { label: "Refresh requests", value: formatRate(auth?.refreshRequestsPerSecond ?? Number.NaN), detail, helper: "Refresh-token requests per second.", badge: "Sessions", tone: "neutral" },
@@ -128,7 +128,7 @@ export const authServiceConfig: InfraViewConfig = {
     ];
     return groups;
   },
-  historyHeading: { title: "History", hint: "Rolling five-minute rates and quantiles" },
+  historyHeading: { title: "History", hint: "Rolling one-minute rates and quantiles" },
   historyEnabled: (overview) => overview?.auth !== undefined,
   series: [
     { metric: "auth_request_rate", title: "Auth requests / second", question: "How much authentication traffic is arriving?", description: "All auth-service RPC request traffic.", formatter: formatRate, axisFormatter: formatRate, accentToken: "blue", emptyTitle: "No Auth traffic yet", emptyDescription: "This chart appears after auth-service receives requests.", emptyStateKind: "no-traffic" },

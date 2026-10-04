@@ -79,6 +79,12 @@ GET /monitoring/logs?...filters
 
 The dashboard uses the same ADMIN session cookie flow as the backend. Requests are sent with credentials enabled, and the client attempts `/auth/refresh` once when an authenticated request returns `401`.
 
+## Monitoring cadence
+
+One default applies to every monitoring view: overview, status and alerts refresh every 5 seconds; history every 10 seconds. History opens at 15 minutes with 10-second points, while 1h/6h/24h ranges remain available at coarser resolution. Polling pauses in hidden tabs. Container resources refresh every 5 seconds only while the breakdown dialog is open.
+
+The backend uses 5-second Prometheus scrapes and rolling 1-minute rate/CPU/p95 windows. CPU alerting requires a 1-minute average above 70% for 60 seconds; other alert windows remain unchanged. These are sampled, rolling measurements, so brief spikes may be smoothed. The chat p95 measures successful send handler execution, not database-only latency or client delivery time.
+
 ## Production origin and cookie configuration
 
 The API Gateway must allow the deployed dashboard origin because authenticated requests use cookies with CORS credentials.

@@ -2,6 +2,7 @@ import type { MonitoringMetric } from './api'
 import type { Tone } from './formatters'
 
 export const RANGE_OPTIONS = [
+  { label: '15m', accessibleLabel: 'Last 15 minutes', hours: 0.25, stepSeconds: 10 },
   { label: '1h', accessibleLabel: 'Last hour', hours: 1, stepSeconds: 60 },
   { label: '6h', accessibleLabel: 'Last 6 hours', hours: 6, stepSeconds: 180 },
   { label: '24h', accessibleLabel: 'Last 24 hours', hours: 24, stepSeconds: 300 },

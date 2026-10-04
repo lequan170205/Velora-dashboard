@@ -53,7 +53,7 @@ export const reelsConfig: InfraViewConfig = {
     const reels = overview?.reels
     const media = reels?.media
     const index = reels?.index
-    const detail = hasData ? 'Latest / rolling 5 min' : 'Waiting for data'
+    const detail = hasData ? 'Latest / rolling 1 min' : 'Waiting for data'
     const groups: readonly StatCardGroupVm[] = [
       {
         id: 'end-to-end',
@@ -72,7 +72,7 @@ export const reelsConfig: InfraViewConfig = {
       {
         id: 'media',
         heading: 'Media processing',
-        hint: 'Worker telemetry · rolling 5 min',
+        hint: 'Worker telemetry · rolling 1 min',
         gridClassName: 'sm:grid-cols-2 xl:grid-cols-3',
         cards: [
           { label: 'Throughput', value: formatRate(media?.throughputPerSecond ?? Number.NaN), detail, helper: 'Successful media pipelines completed per second.', badge: 'Success', tone: 'neutral' },
@@ -86,7 +86,7 @@ export const reelsConfig: InfraViewConfig = {
       {
         id: 'indexing',
         heading: 'Reel indexing',
-        hint: 'Worker + index output · rolling 5 min',
+        hint: 'Worker + index output · rolling 1 min',
         gridClassName: 'sm:grid-cols-2 xl:grid-cols-4',
         cards: [
           { label: 'Throughput', value: formatRate(index?.throughputPerSecond ?? Number.NaN), detail, helper: 'Successful indexing pipelines completed per second.', badge: 'Success', tone: 'neutral' },
@@ -122,7 +122,7 @@ export const reelsConfig: InfraViewConfig = {
     ]
     return groups
   },
-  historyHeading: { title: 'History', hint: 'Five-minute worker rates, quantiles, and queue depth' },
+  historyHeading: { title: 'History', hint: 'One-minute worker rates, quantiles, and queue depth' },
   historyEnabled: (overview) => overview?.reels !== undefined,
   series: [
     { metric: 'reel_queued', title: 'Queued Reels', question: 'Is end-to-end Reel backlog building up?', description: 'Current Reels waiting for media processing or indexing.', formatter: formatCount, axisFormatter: formatCount, accentToken: 'blue', emptyTitle: 'No queue samples yet', emptyDescription: 'Samples appear after the first successful Content snapshot.' },

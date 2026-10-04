@@ -3,7 +3,7 @@ import { useState } from 'react'
 
 import type { MonitoringMetric, MonitoringPoint } from '../api'
 import { fetchMonitoringTimeseries } from '../api'
-import { HISTORY_REFRESH_INTERVAL_MS } from '../freshness'
+import { HISTORY_REFRESH_INTERVAL_MS, MONITORING_REFRESH_INTERVAL_MS } from '../freshness'
 import { RANGE_OPTIONS, type RangeHours } from '../model'
 import { useOverviewQuery } from '../hooks/useOverviewQuery'
 import { useContainerResourcesQuery } from '../hooks/useContainerResourcesQuery'
@@ -19,8 +19,6 @@ import { StatCardGrid, StatCardGroups } from './components/StatCard'
 import { TechnicalDetails } from './components/TechnicalDetails'
 import { Skeleton, StatCardsSkeleton, ChartsSkeleton, ToolbarControlsSkeleton } from '@/shared/components/ui'
 import { useNow } from '@/shared/lib/useNow'
-
-const OVERVIEW_REFRESH_INTERVAL_MS = 15_000
 
 type InfraDashboardProps = {
   config: InfraViewConfig
@@ -95,9 +93,9 @@ function InfraDashboardSkeleton({ config }: { config: InfraViewConfig }) {
 
 export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
   const queryClient = useQueryClient()
-  const [rangeHours, setRangeHours] = useState<RangeHours>(1)
+  const [rangeHours, setRangeHours] = useState<RangeHours>(RANGE_OPTIONS[0].hours)
   const [activeMetric, setActiveMetric] = useState<ServerMetric | null>(null)
-  const now = useNow(15_000)
+  const now = useNow(MONITORING_REFRESH_INTERVAL_MS)
 
   const overviewQuery = useOverviewQuery(config.errorMessage)
   const overview = overviewQuery.data ?? null
@@ -123,7 +121,7 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
       refetchIntervalInBackground: false,
       placeholderData: (previous: unknown) => previous,
       gcTime: 5 * 60_000,
-      staleTime: 30_000,
+      staleTime: HISTORY_REFRESH_INTERVAL_MS,
       enabled: historyEnabled,
     })),
   })
@@ -154,7 +152,7 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
   const snapshots = config.snapshots?.(overview)
   const technicalDetails = config.technicalDetails?.(overview) ?? null
 
-  const containerResources = useContainerResourcesQuery(config.breakdown === true)
+  const containerResources = useContainerResourcesQuery(config.breakdown === true && activeMetric !== null)
 
   if (initialLoading) return <InfraDashboardSkeleton config={config} />
 

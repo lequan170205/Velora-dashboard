@@ -11,7 +11,7 @@ import {
 } from '../../formatters'
 import type { InfraViewConfig, StatCardGroupVm, StatCardVm } from '../types'
 
-const CONVERSATION_WINDOW = 'rolling 5 min'
+const CONVERSATION_WINDOW = 'rolling 1 min'
 
 const formatConversationRate = (value: number) => {
   if (!Number.isFinite(value)) return '—'
@@ -28,7 +28,7 @@ export const conversationConfig: InfraViewConfig = {
     eyebrow: 'Conversation service · realtime',
     title: 'Chat service performance',
     titleId: 'conversation-observability-title',
-    description: 'Validated message persistence throughput, measured reliability, latency, socket connections, and runtime health from conversation-service.',
+    description: 'Message throughput, send outcomes, processing latency, socket connections, and runtime health from conversation-service.',
     rangeLabel: 'Conversation history range',
     placement: 'top',
   },
@@ -52,17 +52,17 @@ export const conversationConfig: InfraViewConfig = {
       : serviceUp === null
         ? 'Conversation-service status is unavailable'
         : !hasTraffic
-          ? 'Conversation service online · no sends in 5 min'
+          ? 'Conversation service online · no sends in 1 min'
           : reliabilityTone === 'good'
-            ? 'Measured message persistence is healthy'
+            ? 'Measured sends are healthy'
             : reliabilityTone === 'warn' || reliabilityTone === 'bad'
-              ? 'Measured message persistence needs attention'
+              ? 'Measured sends need attention'
               : 'Conversation service is online'
 
     const detail = serviceUp === true
       ? !hasTraffic
         ? 'Connections and scrape status are live. Send rates and outcomes will appear when traffic resumes.'
-        : 'Send rates include successful, rejected, and failed attempts. Persistence p95 covers successful sends.'
+        : 'Send rates include successful, rejected, and failed attempts. Send p95 covers successful handler execution, including work after saving.'
       : 'Prometheus must be able to scrape conversation-service before throughput and latency can be trusted.'
 
     return { tone: reliabilityTone, label: 'Quick read', title, detail }
@@ -125,10 +125,10 @@ export const conversationConfig: InfraViewConfig = {
 
     const outcomeCards: readonly StatCardVm[] = [
       {
-        label: 'Successful persistence',
+        label: 'Successful sends',
         value: outcomeValue(successRate, 'sends'),
         detail: outcomeDetail(successRate, 'sends'),
-        helper: 'Share of measured persistence attempts that completed successfully.',
+        helper: 'Share of send_message handler attempts recorded as successful.',
         badge: !hasData
           ? 'Waiting'
           : !hasTraffic
@@ -163,10 +163,10 @@ export const conversationConfig: InfraViewConfig = {
           : toneForThreshold(rejectRate, 0.01, 0.05),
       },
       {
-        label: 'Persistence errors',
+        label: 'Send errors',
         value: outcomeValue(errorRate, 'errors'),
         detail: outcomeDetail(errorRate, 'sends'),
-        helper: 'Failures raised while persisting a validated message.',
+        helper: 'Errors in send_message handling, including work after saving.',
         badge: !hasData
           ? 'Waiting'
           : !hasTraffic
@@ -181,7 +181,7 @@ export const conversationConfig: InfraViewConfig = {
           : toneForThreshold(errorRate, 0.01, 0.05),
       },
       {
-        label: 'p95 persistence latency',
+        label: 'p95 send latency',
         value: !hasData
           ? '—'
           : !hasTraffic
@@ -196,7 +196,7 @@ export const conversationConfig: InfraViewConfig = {
             : p95Latency === null
               ? 'Unavailable'
               : `${CONVERSATION_WINDOW} sample`,
-        helper: 'Time spent in the measured SendMessageUseCase persistence path.',
+        helper: 'Successful send_message handler duration, including authentication, saving, and post-save work; not pure database latency.',
         badge: !hasData
           ? 'Waiting'
           : !hasTraffic
@@ -214,12 +214,12 @@ export const conversationConfig: InfraViewConfig = {
 
     const groups: readonly StatCardGroupVm[] = [
       { id: 'live', heading: 'Live', hint: 'Now', gridClassName: 'sm:grid-cols-2', cards: liveCards },
-      { id: 'traffic', heading: 'Traffic', hint: 'Rolling 5 min', gridClassName: 'sm:grid-cols-2', cards: trafficCards },
-      { id: 'outcomes', heading: 'Outcomes', hint: 'Rolling 5 min', gridClassName: 'sm:grid-cols-2 xl:grid-cols-4', cards: outcomeCards },
+      { id: 'traffic', heading: 'Traffic', hint: 'Rolling 1 min', gridClassName: 'sm:grid-cols-2', cards: trafficCards },
+      { id: 'outcomes', heading: 'Outcomes', hint: 'Rolling 1 min', gridClassName: 'sm:grid-cols-2 xl:grid-cols-4', cards: outcomeCards },
     ]
     return groups
   },
-  historyHeading: { title: 'History', hint: 'Rates are rolling 5-minute averages' },
+  historyHeading: { title: 'History', hint: 'Rates are rolling 1-minute averages' },
   series: [
     {
       metric: 'conversation_message_rate',
@@ -248,13 +248,13 @@ export const conversationConfig: InfraViewConfig = {
     },
     {
       metric: 'conversation_p95_send_latency',
-      title: 'Message persistence p95 latency',
-      question: 'How quickly are validated messages persisted?',
-      description: '95% of measured SendMessageUseCase persistence attempts complete within this duration.',
+      title: 'Message send p95 latency',
+      question: 'How quickly do successful send handlers complete?',
+      description: '95% of successful send_message handler executions complete within this duration; this includes work after saving.',
       formatter: formatSeconds,
       axisFormatter: formatSeconds,
       accentToken: 'amber',
-      emptyTitle: 'No persistence latency samples yet',
+      emptyTitle: 'No send latency samples yet',
       emptyDescription: 'Latency history requires validated send traffic.',
       emptyStateKind: 'no-traffic',
     },

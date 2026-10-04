@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react'
 import { fetchMonitoringStatus } from '../api'
 import {
   getMonitoringConnectionState,
+  MONITORING_REFRESH_INTERVAL_MS,
   type MonitoringConnectionState,
 } from '../freshness'
 
-const STATUS_REFRESH_INTERVAL_MS = 15_000
 const NOW_TICK_MS = 5_000
 
 const useNow = (intervalMs: number): number => {
@@ -28,7 +28,8 @@ export function useMonitoringConnection(): MonitoringConnectionState {
   const { dataUpdatedAt, isFetching, isError } = useQuery({
     queryKey: ['monitoring', 'status'],
     queryFn: ({ signal }) => fetchMonitoringStatus(signal),
-    refetchInterval: STATUS_REFRESH_INTERVAL_MS,
+    refetchInterval: MONITORING_REFRESH_INTERVAL_MS,
+    staleTime: MONITORING_REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: false,
     gcTime: 0,
   })

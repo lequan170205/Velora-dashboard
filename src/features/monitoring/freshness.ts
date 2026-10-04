@@ -1,7 +1,8 @@
 export type MonitoringConnectionState = 'live' | 'refreshing' | 'stale' | 'disconnected'
 export type MonitoringHistoryFreshnessState = 'fresh' | 'stale' | 'unknown'
 
-export const HISTORY_REFRESH_INTERVAL_MS = 60_000
+export const MONITORING_REFRESH_INTERVAL_MS = 5_000
+export const HISTORY_REFRESH_INTERVAL_MS = 10_000
 
 export const getMonitoringConnectionState = ({
   now,
@@ -20,11 +21,11 @@ export const getMonitoringConnectionState = ({
 
   const ageMs = now - lastSuccessfulAt
 
-  if (hasError && ageMs > 90_000) {
+  if (hasError && ageMs > MONITORING_REFRESH_INTERVAL_MS * 6) {
     return 'disconnected'
   }
 
-  if (ageMs > 30_000) {
+  if (ageMs > MONITORING_REFRESH_INTERVAL_MS * 3) {
     return 'stale'
   }
 

@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { fetchMonitoringOverview } from '../api'
-
-const OVERVIEW_REFRESH_INTERVAL_MS = 15_000
+import { MONITORING_REFRESH_INTERVAL_MS } from '../freshness'
 
 export function useOverviewQuery(errorMessage: string) {
   return useQuery({
@@ -15,7 +14,8 @@ export function useOverviewQuery(errorMessage: string) {
         throw new Error(errorMessage)
       }
     },
-    refetchInterval: OVERVIEW_REFRESH_INTERVAL_MS,
+    refetchInterval: MONITORING_REFRESH_INTERVAL_MS,
+    staleTime: MONITORING_REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: false,
     gcTime: 0,
   })

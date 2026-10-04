@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { fetchMonitoringAlerts } from '../alertsApi'
-
-const ALERTS_REFRESH_INTERVAL_MS = 15_000
+import { MONITORING_REFRESH_INTERVAL_MS } from '../freshness'
 
 export function useAlertsQuery() {
   const query = useQuery({
     queryKey: ['monitoring', 'alerts'],
     queryFn: ({ signal }) => fetchMonitoringAlerts(signal),
-    refetchInterval: ALERTS_REFRESH_INTERVAL_MS,
+    refetchInterval: MONITORING_REFRESH_INTERVAL_MS,
+    staleTime: MONITORING_REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: false,
     gcTime: 0,
   })

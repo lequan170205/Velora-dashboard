@@ -10,7 +10,7 @@ import {
 } from "../../formatters";
 import type { InfraViewConfig, StatCardGroupVm, StatCardVm } from "../types";
 
-const DELIVERY_WINDOW = "rolling 5 min";
+const DELIVERY_WINDOW = "rolling 1 min";
 
 const formatNotificationRate = (value: number) => {
   if (!Number.isFinite(value)) return "—";
@@ -77,7 +77,7 @@ export const notificationServiceConfig: InfraViewConfig = {
 
     const detail =
       serviceUp === true
-        ? "APNs rates are rolling five-minute averages. The retry scheduler normally completes a database query every few seconds."
+        ? "APNs rates are rolling one-minute averages. The retry scheduler normally completes a database query every few seconds."
         : "Prometheus must be able to scrape notification-service before delivery health can be trusted.";
 
     return { tone, label: "Quick read", title, detail };
@@ -246,7 +246,7 @@ export const notificationServiceConfig: InfraViewConfig = {
   },
   historyHeading: {
     title: "History",
-    hint: "APNs rates are rolling 5-minute averages",
+    hint: "APNs rates are rolling 1-minute averages",
   },
   series: [
     {

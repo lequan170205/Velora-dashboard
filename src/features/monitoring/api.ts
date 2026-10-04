@@ -358,7 +358,7 @@ export const fetchMonitoringTimeseries = async ({
   metric,
   from,
   to,
-  stepSeconds = 60,
+  stepSeconds = 10,
   signal,
 }: {
   metric: MonitoringMetric;

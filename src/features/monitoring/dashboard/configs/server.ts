@@ -17,7 +17,7 @@ const SERIES = [
     variant: 'hero' as const,
     title: 'Server CPU usage',
     question: 'How busy is the server?',
-    description: 'CPU usage across the monitored host. Sustained high usage can slow every Velora service.',
+    description: 'Rolling 1-minute CPU usage across the monitored host. Sustained high usage can slow every Velora service.',
     formatter: formatPercent,
     axisFormatter: formatPercent,
     accentToken: 'indigo' as const,
@@ -168,7 +168,7 @@ export const serverConfig: InfraViewConfig = {
       {
         label: 'CPU',
         value: formatPercent(host?.cpuUsageRatio ?? Number.NaN),
-        helper: 'CPU usage across all cores on the monitored host. Opens the container breakdown.',
+        helper: 'Rolling 1-minute CPU usage across all cores on the monitored host. Opens the container breakdown.',
         badge: badgeForThreshold(host?.cpuUsageRatio ?? null, 0.7, 0.9),
         tone: toneForThreshold(host?.cpuUsageRatio ?? null, 0.7, 0.9),
         dialog: 'cpu',
