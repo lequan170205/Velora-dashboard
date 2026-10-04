@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import {
   createHashRouter,
   Navigate,
@@ -28,6 +28,8 @@ import { LoginScreen } from "./LoginScreen";
 import { useAuth } from "./providers/auth";
 import { SessionLoader } from "./SessionLoader";
 import { AppShell } from "./shell/AppShell";
+
+const StressTestPage = lazy(() => import('../features/stress-test/StressTestPage').then((module) => ({ default: module.StressTestPage })));
 
 function AuthGate() {
   const { status } = useAuth();
@@ -120,6 +122,7 @@ export const router = createHashRouter([
     children: [
       { index: true, element: <Navigate to="/server" replace /> },
       { path: "server", element: <ServerRoute /> },
+      { path: "stress-test", element: <Suspense fallback={<SessionLoader />}><StressTestPage /></Suspense> },
       {
         path: "service",
         element: <InfraDashboard config={monitoringServiceConfig} />,
