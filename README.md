@@ -108,7 +108,7 @@ Do not use a wildcard CORS origin with credentialed requests.
 
 Open **Demo tools → Stress test** (`#/stress-test`) after signing in as an admin.
 
-1. Create a dedicated non-bot test conversation in the mobile app and add the dashboard account as a member. Use test recipients without real push tokens; test messages are stored and invoke the normal notification hooks.
+1. Create a dedicated non-bot test conversation in the mobile app and add the dashboard account as a member. Use test recipients only; test messages are stored and invoke the normal notification hooks. Test devices with registered tokens may receive push notifications.
 2. Select that conversation and run **Smoke** first. Preflight requires sender sync and receiver fan-out before starting load. It also probes a retry with the same message identity; a retry failure is shown separately and does not block load with fresh message IDs.
 3. Choose **Demo**, adjust the stage sockets/rate/duration if needed, and start. Defaults: 5/15/30 sender sockets at 2/10/25 total messages/s for 60s each, 30s cooldown, then 15s recovery.
 4. Watch client latency/outcomes and server CPU/RAM, send throughput and handler p95 on the same page. Stop ends scheduling, disconnects the load sockets and keeps partial results.
@@ -128,7 +128,7 @@ GitHub Actions runs on pushes and pull requests targeting `main`. CI installs th
 
 ### Distributed chat demo (20 rooms)
 
-1. Enter the exact email of an existing test account to create rooms with that account and the signed-in admin, or choose a dedicated source conversation whose members are test accounts without bots or real push recipients. A group needs at least two existing users; the creator is injected by the API.
+1. Enter the exact email of an existing test account to create rooms with that account and the signed-in admin, or choose a dedicated source conversation whose members are test accounts without bots. Test devices may receive push notifications. A group needs at least two existing users; the creator is injected by the API.
 2. Acknowledge the fixture choice, then use **Prepare / reuse 20 test groups**. This uses the chosen test email or copies the source member set into named groups through the normal authenticated API, preserves the source, and selects all 20 groups. It does not delete anything or create user accounts. Repeating preparation reloads and reuses matching groups; ambiguous POST failures stop rather than retry blindly. Same-browser tabs share a preparation lock.
 3. Verify the **Multiple conversations** selection and run a low-rate Smoke first. Every selected room must pass sender-sync and observer-delivery checks before load starts; replay correctness is recorded separately for each room.
 4. Select **Distributed — 20 rooms, up to 50/s**: 20/50/100 sender sockets at 10/25/50 total messages/s for 60s each, 30s cooldown, then 20 sockets at 5/s for 30s. This offers 5,250 load messages, excluding fixture/preflight/setup writes. Rates are targets, not measured capacity.
