@@ -17,7 +17,7 @@ export async function getSocketToken(signal?: AbortSignal) {
 export async function getConversations(signal?: AbortSignal): Promise<ConversationOption[]> {
   const items = new Map<string, ConversationOption>()
   let cursor = ''
-  for (let page = 0; page < 10; page++) {
+  for (let page = 0; page < 100; page++) {
     const response = await fetchApi(`/conversations?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, { signal })
     if (!response.ok) throw new Error('Unable to load your conversations.')
     const payload: unknown = await response.json()

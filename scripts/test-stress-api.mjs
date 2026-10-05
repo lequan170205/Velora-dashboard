@@ -46,3 +46,10 @@ test('group creation submits the standard group contract once and never retries 
   await assert.rejects(createTestGroup('Fixture', ['admin', 'peer'], new AbortController().signal))
   assert.equal(calls.length, 2)
 })
+
+test('accounts with more than 1000 conversations remain usable', async () => {
+  let page = 0
+  globalThis.stressFetch = async () => response(Array.from({ length: page < 19 ? 100 : 24 }, (_, n) => ({ id: `room-${page}-${n}`, participantIds: ['admin', 'peer'] })).map((room, index, rows) => { if (index === rows.length - 1) page++; return room }))
+  assert.equal((await getConversations()).length, 1924)
+  assert.equal(page, 20)
+})
