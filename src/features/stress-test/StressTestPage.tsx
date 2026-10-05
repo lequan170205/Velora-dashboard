@@ -57,6 +57,13 @@ export function StressTestPage() {
   const controller = useRef<AbortController | null>(null)
   const mounted = useRef(true)
   const monitoring = useOverviewQuery('Unable to load server observation')
+  const serverSamples = useRef<NonNullable<Report['serverSamples']>>([])
+  useEffect(() => {
+    const sample = monitoring.data
+    if (!active || !sample || serverSamples.current.at(-1)?.generatedAt === sample.generatedAt) return
+    serverSamples.current.push({ generatedAt: sample.generatedAt, hostCpuRatio: sample.host.cpuUsageRatio, chatPhases: sample.conversation.sendPhases ?? [] })
+    if (serverSamples.current.length > 300) serverSamples.current.shift()
+  }, [active, monitoring.data])
 
   useEffect(() => {
     mounted.current = true
@@ -111,6 +118,7 @@ export function StressTestPage() {
   async function start() {
     if (active || controller.current || !confirmed || !roomsValid) return
     const abort = new AbortController(); controller.current = abort
+    serverSamples.current = []
     setActive(true); setError(null); setReport(null)
     try {
       const origin = socketOrigin()
@@ -120,9 +128,11 @@ export function StressTestPage() {
         conversationId: runIds[0], conversationIds: runIds, profile, stages: structuredClone(stages), signal: abort.signal,
         ensureSession: async () => { token = await getSocketToken(abort.signal) },
         createSocket: () => io(origin, { path: '/socket.io', transports: ['websocket'], auth: { token }, reconnection: false, forceNew: true, autoConnect: false, timeout: 8000 }),
-        onUpdate: (snapshot) => { if (mounted.current) setReport(snapshot) },
+        onUpdate: (snapshot) => { if (mounted.current) setReport({ ...snapshot, serverSamples: [...serverSamples.current] }) },
       })
       token = ''
+      result.serverSamples = [...serverSamples.current]
+      if (mounted.current) setReport(result)
       const stored = readStorage<Report[]>(HISTORY_KEY, [])
       const next = [result, ...(Array.isArray(stored) ? stored.filter((r) => r?.finishedAt) : [])].slice(0, 5)
       try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); localStorage.setItem(CONFIG_KEY, JSON.stringify({ conversationId, conversationIds: selectedIds, mode, profile, stages })) }
@@ -141,7 +151,7 @@ export function StressTestPage() {
   const planned = stages.reduce((sum, stage) => sum + stage.rps * stage.seconds, 0)
   const duration = stages.reduce((sum, stage) => sum + stage.seconds, 0)
   let stagesError: string | null = null
-  try { validateStages(stages); if (profile === 'distributed' && runIds.length !== 20) throw new Error('Select 20 rooms for the distributed preset.') } catch (error) { stagesError = error instanceof Error ? error.message : 'Check stage settings.' }
+  try { validateStages(stages); if (['distributed', 'diagnostic'].includes(profile) && runIds.length !== 20) throw new Error('Select 20 rooms for the distributed preset.') } catch (error) { stagesError = error instanceof Error ? error.message : 'Check stage settings.' }
   const totals = report?.totals
   const status = preparing ? preparation ?? 'Preparing rooms' : active ? report?.phase ?? 'Starting' : report ? resultLabel(report) : 'Ready'
   const resources = monitoring.data
@@ -181,13 +191,13 @@ export function StressTestPage() {
           <p className="text-xs leading-relaxed text-ink-3">Uses the chosen test email or source members. Choose test accounts only; this creates real groups without changing the source.</p>
           {preparation && <p role="status" className="text-sm text-ink-2">{preparation}</p>}
           <Label htmlFor="stress-workload">Room distribution</Label>
-          <NativeSelect id="stress-workload" value={mode} disabled={busy} onChange={(e) => { setMode(e.target.value); setConfirmed(false); setReport(null); if (profile === 'distributed') changeProfile('smoke') }}><option value="single">Single conversation</option><option value="multiple">Multiple conversations</option></NativeSelect>
+          <NativeSelect id="stress-workload" value={mode} disabled={busy} onChange={(e) => { setMode(e.target.value); setConfirmed(false); setReport(null); if (['distributed', 'diagnostic'].includes(profile)) changeProfile('smoke') }}><option value="single">Single conversation</option><option value="multiple">Multiple conversations</option></NativeSelect>
           {mode === 'multiple' && <fieldset className="space-y-2"><legend className="text-sm font-medium">Selected rooms ({selectedIds.length}/20)</legend>
             <div className="max-h-56 overflow-y-auto rounded-control border border-line p-2">{conversations.filter((c) => selectedIds.includes(c.id) || c.name?.startsWith('Velora stress ')).map((c) => <label key={c.id} className="flex min-h-9 cursor-pointer items-start gap-2 py-1 text-sm text-ink-2"><input type="checkbox" className="mt-1 size-4 shrink-0 accent-brand" checked={selectedIds.includes(c.id)} disabled={busy || (!selectedIds.includes(c.id) && selectedIds.length >= 20)} onChange={(e) => { setSelectedIds((ids) => e.target.checked ? [...ids, c.id] : ids.filter((id) => id !== c.id)); setConfirmed(false); setReport(null) }} /><span className="break-all">{roomLabel(c)}</span></label>)}</div>
           </fieldset>}
         </div>
         <div><Label htmlFor="stress-profile">Preset</Label><NativeSelect id="stress-profile" value={profile} disabled={busy} onChange={(e) => changeProfile(e.target.value)}>
-          <option value="smoke">Smoke — verify first</option><option value="demo">Demo — ramp and recover</option><option value="distributed">Distributed — 20 rooms, up to 50/s</option><option value="recovery">Recovery — light traffic</option>
+          <option value="smoke">Smoke — verify first</option><option value="demo">Demo — ramp and recover</option><option value="distributed">Distributed — 20 rooms, up to 50/s</option><option value="diagnostic">Diagnostic — 20 rooms, 5 to 50/s</option><option value="recovery">Recovery — light traffic</option>
         </NativeSelect></div>
         <div className="rounded-control border border-line bg-raised p-3 text-sm"><span className="font-mono font-semibold">{planned.toLocaleString()}</span> planned messages · <span className="font-mono">{duration}s</span><p className="mt-1 text-xs text-ink-3">Plus auth checks, setup writes and response draining.</p></div>
         {stagesError && <p role="alert" className="text-sm text-bad">{stagesError}</p>}
@@ -216,6 +226,10 @@ export function StressTestPage() {
             ['Chat sends/s', resources?.conversation.sendRequestsPerSecond?.toFixed(1) ?? '—'],
             ['Handler p95', ms(resources?.conversation.p95SendLatencySeconds == null ? null : resources.conversation.p95SendLatencySeconds * 1000)],
           ].map(([label, value]) => <div key={label}><p className="text-xs text-ink-3">{label}</p><p className="mt-1 font-mono text-lg font-semibold">{value}</p></div>)}</div>
+          <div className="mt-5 border-t border-line pt-4"><h3 className="text-sm font-semibold">Chat processing steps</h3>
+            {resources?.conversation.sendPhases?.length ? <div className="mt-2 overflow-x-auto"><table className="w-full text-left text-xs"><thead><tr className="text-ink-3"><th className="py-2">Step</th><th>p95</th><th>Calls/s</th><th>Errors/s</th></tr></thead><tbody>{resources.conversation.sendPhases.map((step) => <tr className="border-t border-line" key={step.phase}><th className="py-2 font-medium">{({ socket_auth: 'Socket authentication', membership: 'Membership read', queue_wait: 'Room write queue', mongo_write: 'MongoDB transaction attempt', persist_total: 'Persistence total (includes nested steps)', cache_invalidation: 'Redis cache invalidation', conversation_read: 'Conversation read', user_lookup: 'Participant lookup RPC', fanout: 'Socket fan-out enqueue', notification: 'Notification HTTP acceptance' } as Record<string, string>)[step.phase] ?? step.phase}</th><td className="font-mono">{ms(step.p95Seconds == null || step.callsPerSecond === 0 ? null : step.p95Seconds * 1000)}</td><td>{step.callsPerSecond.toFixed(1)}</td><td>{step.errorsPerSecond.toFixed(1)}</td></tr>)}</tbody></table></div> : <p className="mt-2 text-xs text-ink-3">Waiting for processing samples.</p>}
+            <p className="mt-2 text-xs text-ink-3">Steps overlap: do not add their p95 values. Fan-out measures enqueue, not delivery. Notification runs after sender sync.</p>
+          </div>
           <p className="mt-4 text-xs leading-relaxed text-ink-3">Server metrics refresh every 5s; rates use a 1-minute window. Sender ACK happens before all handler work finishes, so ACK p95 and handler p95 differ.</p>
         </CardContent></Card>
       </div>

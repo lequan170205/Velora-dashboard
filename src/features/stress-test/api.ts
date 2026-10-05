@@ -9,7 +9,11 @@ export function socketOrigin() {
 }
 export async function getSocketToken(signal?: AbortSignal) {
   const response = await fetchApi('/auth/socket-token', { signal, cache: 'no-store' })
-  if (!response.ok) throw new Error('Unable to refresh the Socket.IO session.')
+  if (!response.ok) {
+    const error = new Error('Unable to refresh the Socket.IO session.')
+    error.name = response.status === 401 ? 'StressSessionExpired' : 'StressSessionUnavailable'
+    throw error
+  }
   const payload = await response.json() as { accessToken?: string }
   if (!payload.accessToken) throw new Error('Socket token is unavailable.')
   return payload.accessToken

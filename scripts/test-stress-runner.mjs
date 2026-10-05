@@ -118,7 +118,7 @@ test('session renewal is periodic; failed renewal stops the run without persisti
   const report = await runChat(options(f, { sessionIntervalMs: 100, ensureSession: async () => { renewals++; if (renewals >= 3) throw new Error('private-token-do-not-save') } }))
   assert.ok(renewals >= 3)
   assert.equal(report.passed, false)
-  assert.equal(report.stopReason, 'Session unavailable. Sign in again or check the API.')
+  assert.equal(report.stopReason, 'Authentication service or network unavailable. Load test stopped.')
   assert.equal(JSON.stringify(report).includes('private-token-do-not-save'), false)
   assert.ok(f.sockets.every((s) => !s.connected))
 })
@@ -184,4 +184,24 @@ test('distributed preset requires exactly 20 unique rooms and rejects empty sele
   await assert.rejects(runChat(options(f, { conversationIds: ['a', 'a'], profile: 'distributed' })))
   await assert.rejects(runChat(options(f, { conversationIds: Array.from({ length: 21 }, (_, n) => `r${n}`) })))
   assert.equal(f.sockets.length, 0)
+})
+
+ test('session timeout and genuine expiry have distinct safe stop reasons', async () => {
+   const expired = new Error('private-token'); expired.name = 'StressSessionExpired'
+   for (const [ensureSession, expected] of [
+     [() => new Promise(() => {}), 'Session check timed out. Authentication did not complete within its deadline.'],
+     [async () => { throw expired }, 'Session expired. Sign in again.'],
+   ]) {
+     const f = fixture(); const report = await runChat(options(f, { ensureSession, sessionTimeoutMs: 20 }))
+     assert.equal(report.stopReason, expected); assert.equal(f.sent(), 0)
+     assert.ok(!JSON.stringify(report).includes('private-token'))
+   }
+ })
+
+test('diagnostic ramp stops before higher load when the previous stage misses its deadline', async () => {
+  const f = fixture({ delay: 100 })
+  const rooms = Array.from({ length: 20 }, (_, i) => `room-${i}`)
+  const report = await runChat(options(f, { profile: 'diagnostic', conversationIds: rooms, conversationId: rooms[0], ackTimeoutMs: 30, stages: [{ name: 'First', sockets: 1, rps: 1, seconds: 1 }, { name: 'Higher', sockets: 1, rps: 5, seconds: 1 }] }))
+  assert.equal(report.stages.length, 1); assert.equal(report.stages[0].timeout, 1)
+  assert.match(report.stopReason, /Higher load was not started/)
 })

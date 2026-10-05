@@ -49,6 +49,7 @@ export type MonitoringOverview = {
     rejectRate: NullableMetric;
     errorRate: NullableMetric;
     p95SendLatencySeconds: NullableMetric;
+    sendPhases?: { phase: string; callsPerSecond: number; errorsPerSecond: number; p95Seconds: NullableMetric }[];
   };
   call: {
     up: boolean | null;

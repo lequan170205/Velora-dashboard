@@ -17,6 +17,11 @@ export const PROFILES: Record<string, Stage[]> = {
     { name: 'Cooldown', sockets: 0, rps: 0, seconds: 30 },
     { name: 'Recovery', sockets: 20, rps: 5, seconds: 30 },
   ],
+  diagnostic: [
+    ...[5, 10, 15, 25, 50].map((rps) => ({ name: `${rps}/s`, sockets: 20, rps, seconds: 60 })),
+    { name: 'Cooldown', sockets: 0, rps: 0, seconds: 30 },
+    { name: 'Recovery', sockets: 20, rps: 5, seconds: 30 },
+  ],
   recovery: [{ name: 'Recovery', sockets: 1, rps: 1, seconds: 15 }],
 }
 export type Attempt = { stage: string; id: string; conversationId?: string; outcome: string; ms: number }
@@ -24,6 +29,7 @@ export type Stats = { attempted: number; synced: number; failed: number; timeout
 export type StageResult = Stats & Stage & { skipped: number; emittedRps: number; syncedRps?: number }
 export type Report = {
   id: string; conversationId: string; conversationIds?: string[]; rooms?: (Stats & { conversationId: string; received: number })[]; profile: string; startedAt: string; finishedAt: string | null;
+  serverSamples?: { generatedAt: string; hostCpuRatio: number | null; chatPhases: { phase: string; callsPerSecond: number; errorsPerSecond: number; p95Seconds: number | null }[] }[];
   phase: string; senderSockets: number; signedInUsers: 1; inFlight: number; skipped: number;
   preflight: boolean; loadPassed: boolean; passed: boolean; stopReason: string | null; totals: Stats;
   retryCheck: { status: 'pending' | 'passed' | 'failed'; detail: string | null };
@@ -37,7 +43,7 @@ export type RunnerOptions = {
   conversationId: string; conversationIds?: string[]; profile: string; stages: Stage[]; signal: AbortSignal;
   ensureSession: () => Promise<void>; createSocket: () => SocketLike;
   onUpdate: (report: Report) => void;
-  ackTimeoutMs?: number; sessionIntervalMs?: number;
+  ackTimeoutMs?: number; sessionIntervalMs?: number; sessionTimeoutMs?: number;
 }
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 class RunError extends Error {}
@@ -72,7 +78,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
   const { signal, conversationId } = options
   const conversationIds = [...new Set(options.conversationIds ?? [conversationId])]
   if (!conversationIds.length || conversationIds.length > 20 || conversationIds.some((id) => typeof id !== 'string' || !id.trim())) throw new Error('Choose 1–20 test conversations.')
-  if (options.profile === 'distributed' && conversationIds.length !== 20) throw new Error('The distributed preset requires 20 test conversations.')
+  if (['distributed', 'diagnostic'].includes(options.profile) && conversationIds.length !== 20) throw new Error('The distributed preset requires 20 test conversations.')
   const allowedRooms = new Set(conversationIds)
   const ackTimeoutMs = options.ackTimeoutMs ?? 8000
   const allSockets = new Set<SocketLike>()
@@ -121,11 +127,16 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     if (!sessionCheck) sessionCheck = new Promise<void>((resolve, reject) => {
       const cleanup = () => { clearTimeout(timer); signal.removeEventListener('abort', stopped) }
       const stopped = () => { cleanup(); reject(new RunError('Stopped')) }
-      const timer = setTimeout(() => { cleanup(); reject(new RunError('Session check timed out')) }, 10000)
+      const timer = setTimeout(() => { cleanup(); reject(new RunError('Session check timed out')) }, options.sessionTimeoutMs ?? 10000)
       signal.addEventListener('abort', stopped, { once: true })
       Promise.resolve().then(options.ensureSession).then(() => { cleanup(); resolve() }, (error) => { cleanup(); reject(error) })
-    }).catch(() => {
-      report.stopReason ??= 'Session unavailable. Sign in again or check the API.'
+    }).catch((error: unknown) => {
+      const reason = error instanceof RunError && error.message === 'Session check timed out'
+        ? 'Session check timed out. Authentication did not complete within its deadline.'
+        : error instanceof Error && error.name === 'StressSessionExpired'
+          ? 'Session expired. Sign in again.'
+          : 'Authentication service or network unavailable. Load test stopped.'
+      report.stopReason ??= reason
       for (const socket of allSockets) socket.disconnect()
     }).finally(() => { sessionCheck = null })
     await sessionCheck
@@ -267,6 +278,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
       report.skipped += skipped
       const stageStats = stats(attempts.slice(before))
       report.stages.push({ ...stage, skipped, emittedRps: (attempts.length - before) / Math.max(.001, sendingSeconds), syncedRps: stageStats.synced / Math.max(.001, (performance.now() - started) / 1000), ...stageStats })
+      if (options.profile === 'diagnostic' && stage.rps > 0 && (skipped > 0 || stageStats.synced !== stageStats.attempted)) report.stopReason ??= 'Stage did not meet target: failed, timed-out or skipped messages. Higher load was not started.'
     }
   } catch (error) {
     // Only our fixed operational messages reach the report; auth/transport payloads do not.

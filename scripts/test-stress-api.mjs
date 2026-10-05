@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import ts from 'typescript'
 const source = (await readFile(new URL('../src/features/stress-test/api.ts', import.meta.url), 'utf8')).replace("import { fetchApi } from '../../shared/api/client'", 'const fetchApi = (...args) => globalThis.stressFetch(...args)')
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
-const { getConversations, fixtureMembersByEmail, createTestGroup } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
+const { getConversations, fixtureMembersByEmail, createTestGroup, getSocketToken } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 afterEach(() => { delete globalThis.stressFetch })
 const response = (payload) => ({ ok: true, json: async () => payload })
 
@@ -52,4 +52,11 @@ test('accounts with more than 1000 conversations remain usable', async () => {
   globalThis.stressFetch = async () => response(Array.from({ length: page < 19 ? 100 : 24 }, (_, n) => ({ id: `room-${page}-${n}`, participantIds: ['admin', 'peer'] })).map((room, index, rows) => { if (index === rows.length - 1) page++; return room }))
   assert.equal((await getConversations()).length, 1924)
   assert.equal(page, 20)
+})
+
+test('socket token distinguishes expired credentials from upstream outage without response-body leaks', async () => {
+  for (const [status, name] of [[401, 'StressSessionExpired'], [503, 'StressSessionUnavailable']]) {
+    globalThis.stressFetch = async () => ({ ok: false, status, json: async () => ({ token: 'private token' }) })
+    await assert.rejects(getSocketToken(), (error) => error.name === name && !error.message.includes('private token'))
+  }
 })
