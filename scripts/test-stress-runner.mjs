@@ -205,3 +205,14 @@ test('diagnostic ramp stops before higher load when the previous stage misses it
   assert.equal(report.stages.length, 1); assert.equal(report.stages[0].timeout, 1)
   assert.match(report.stopReason, /Higher load was not started/)
 })
+
+test('periodic session checks do not pause traffic on already authenticated sockets', async () => {
+  const f = fixture(); let checks = 0
+  const report = await runChat(options(f, {
+    stages: [{ name: 'Steady', sockets: 1, rps: 10, seconds: 1 }], sessionIntervalMs: 50,
+    ensureSession: async () => { checks++; if (checks > 1) await new Promise((resolve) => setTimeout(resolve, 100)) },
+  }))
+  assert.ok(checks > 2); assert.equal(report.stopReason, null)
+  assert.equal(report.stages[0].attempted, 10); assert.equal(report.skipped, 0)
+  assert.equal(report.totals.synced, 10)
+})

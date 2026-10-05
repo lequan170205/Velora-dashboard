@@ -256,7 +256,9 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
         const due = stage.rps ? Math.min(planned, Math.floor(elapsed * stage.rps / 1000) + 1) : 0
         if (due > offered) {
           skipped += Math.max(0, due - offered - 1); offered = due
-          if (tasks.size >= 100 || sessionCheck) skipped++
+          // Established sockets are already authenticated. A periodic HTTP session
+          // check can run alongside them; failure still disconnects all sockets.
+          if (tasks.size >= 100) skipped++
           else {
             const socket = senders[(offered - 1) % senders.length]
             const id = `${report.id}-${stageIndex}-${offered}`
