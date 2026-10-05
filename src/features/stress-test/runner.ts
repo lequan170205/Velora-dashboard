@@ -162,8 +162,9 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     await new Promise<void>((resolve, reject) => {
       const cleanup = () => { clearTimeout(timer); socket.off('connect', ready); socket.off('connect_error', failed); signal.removeEventListener('abort', failed) }
       const ready = () => { cleanup(); resolve() }
-      const failed = () => { cleanup(); socket.disconnect(); reject(new RunError('Socket connection failed. Check the API origin and session.')) }
-      const timer = setTimeout(failed, ackTimeoutMs)
+      const failed = () => { cleanup(); socket.disconnect(); reject(new RunError('Socket connection failed before sending. Check the API origin, network and session.')) }
+      const timedOut = () => { cleanup(); socket.disconnect(); reject(new RunError(`Socket connection timed out after ${ackTimeoutMs} ms. No setup message was sent.`)) }
+      const timer = setTimeout(timedOut, ackTimeoutMs)
       socket.on('connect', ready); socket.on('connect_error', failed)
       signal.addEventListener('abort', failed, { once: true })
       socket.connect()
@@ -206,7 +207,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
       report.phase = `Preflight: room ${index + 1}/${conversationIds.length}`; update()
       const probeId = `${report.id}-room-${index}-probe`
       const first = await send(sender, probeId, id)
-      if (first.outcome !== 'synced' || !first.messageId) throw new RunError(`Preflight send failed in room ${index + 1}. Check membership.`)
+      if (first.outcome !== 'synced' || !first.messageId) throw new RunError(`Preflight room ${index + 1}: ${first.outcome === 'synced' ? 'missing stored message ID' : first.outcome} after ${Math.round(first.ms)} ms. Load was not started.`)
       const deadline = performance.now() + ackTimeoutMs
       while (!deliveries.has(probeId) && performance.now() < deadline) { checkStopped(); await delay(25) }
       if (!deliveries.has(probeId)) throw new RunError(`Preflight receiver event missing in room ${index + 1}. Load was not started.`)
@@ -242,9 +243,11 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
           const socket = await connect(); senders.push(socket)
           const index = base + offset
           const setup = await send(socket, `${report.id}-setup-${stageIndex}-${index}`, conversationIds[index % conversationIds.length])
-          if (setup.outcome !== 'synced') throw new RunError('Sender setup failed. Check session or conversation membership.')
+          if (setup.outcome !== 'synced') throw new RunError(`Sender ${index + 1} setup in room ${index % conversationIds.length + 1}: ${setup.outcome} after ${Math.round(setup.ms)} ms. Load was not started.`)
         }))
-        if (warmup.some((result) => result.status === 'rejected')) throw new RunError('Sender setup failed. Check session or conversation membership.')
+        const failedWarmup = warmup.find((result) => result.status === 'rejected')
+        if (failedWarmup?.status === 'rejected') throw failedWarmup.reason instanceof RunError
+          ? failedWarmup.reason : new RunError('Sender setup could not complete. Check the API and network. Load was not started.')
       }
       report.phase = stage.name; update()
       const before = attempts.length

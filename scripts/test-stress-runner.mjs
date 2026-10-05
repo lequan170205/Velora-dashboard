@@ -10,17 +10,28 @@ async function load(relative) {
   return import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 }
 const { runChat, percentile, validateStages, csvReport } = await load('../src/features/stress-test/runner.ts')
-function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false } = {}) {
+function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false, setupOutcome, connectOutcome } = {}) {
   const sockets = [], messages = new Map()
   let maximum = 0, current = 0, sent = 0
   class FakeSocket extends EventEmitter {
     connected = false
     rooms = new Set()
-    connect() { setTimeout(() => { this.connected = true; super.emit('connect') }, 1); return this }
+    connect() {
+      if (sockets.indexOf(this) >= 2 && connectOutcome) {
+        if (connectOutcome === 'failed') setTimeout(() => super.emit('connect_error', new Error('SECRET-TRANSPORT')), 1)
+        return this
+      }
+      setTimeout(() => { this.connected = true; super.emit('connect') }, 1); return this
+    }
     disconnect() { if (this.connected) { this.connected = false; super.emit('disconnect') }; return this }
     emit(event, payload) {
       if (event === 'join_conversation') { this.rooms.add(payload); return this }
       if (event !== 'send_message') return super.emit(event, payload)
+      if (payload.clientMessageId.includes('setup') && setupOutcome) {
+        if (setupOutcome === 'failed') setTimeout(() => super.emit('message_failed', { ...payload, detail: 'SECRET-BACKEND' }), 1)
+        if (setupOutcome === 'disconnected') setTimeout(() => this.disconnect(), 1)
+        return this
+      }
       sent++; current++; maximum = Math.max(maximum, current)
       const isLoad = !payload.clientMessageId.endsWith('probe') && !payload.clientMessageId.includes('setup')
       setTimeout(() => {
@@ -146,6 +157,32 @@ test('raw transport exceptions are sanitized before snapshots or saved reports',
   const report = await runChat(options(f, { createSocket: () => { throw new Error('SECRET-CREDENTIAL-IN-TRANSPORT') } }))
   assert.equal(report.passed, false)
   assert.equal(JSON.stringify(report).includes('SECRET-CREDENTIAL-IN-TRANSPORT'), false)
+})
+
+test('warmup distinguishes connection failure and deadline without reporting credentials', async () => {
+  for (const connectOutcome of ['failed', 'timeout']) {
+    const f = fixture({ connectOutcome })
+    const report = await runChat(options(f, { ackTimeoutMs: 40 }))
+    assert.equal(report.preflight, true)
+    assert.equal(report.stages.length, 0)
+    assert.match(report.stopReason, connectOutcome === 'failed' ? /Socket connection failed before sending/ : /Socket connection timed out after 40 ms/)
+    assert.equal(report.totals.attempted, 0)
+    assert.ok(f.sockets.every((s) => !s.connected))
+    assert.ok(!JSON.stringify(report).includes('SECRET'))
+  }
+})
+
+test('warmup reports setup outcome and room separately from actual load results', async () => {
+  for (const setupOutcome of ['failed', 'timeout', 'disconnected']) {
+    const f = fixture({ setupOutcome })
+    const report = await runChat(options(f, { ackTimeoutMs: 40 }))
+    assert.equal(report.preflight, true)
+    assert.equal(report.stages.length, 0)
+    assert.match(report.stopReason, new RegExp(`Sender 2 setup in room 1: ${setupOutcome} after`))
+    assert.equal(report.totals.attempted, 0)
+    assert.ok(f.sockets.every((s) => !s.connected))
+    assert.ok(!JSON.stringify(report).includes('SECRET'))
+  }
 })
 
 test('stop remains responsive when the shared session refresh never responds', async () => {
