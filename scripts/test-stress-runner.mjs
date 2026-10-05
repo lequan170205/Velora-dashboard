@@ -15,11 +15,11 @@ function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUn
   let maximum = 0, current = 0, sent = 0
   class FakeSocket extends EventEmitter {
     connected = false
-    room = null
+    rooms = new Set()
     connect() { setTimeout(() => { this.connected = true; super.emit('connect') }, 1); return this }
     disconnect() { if (this.connected) { this.connected = false; super.emit('disconnect') }; return this }
     emit(event, payload) {
-      if (event === 'join_conversation') { this.room = payload; return this }
+      if (event === 'join_conversation') { this.rooms.add(payload); return this }
       if (event !== 'send_message') return super.emit(event, payload)
       sent++; current++; maximum = Math.max(maximum, current)
       const isLoad = !payload.clientMessageId.endsWith('probe') && !payload.clientMessageId.includes('setup')
@@ -33,7 +33,7 @@ function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUn
         super.emit('message_synced', { ...message, clientMessageId: 'unrelated' })
         super.emit('message_synced', { ...message, conversationId: 'wrong-room' })
         super.emit('message_synced', message)
-        if (!dropDelivery && (!previous || duplicateReplay || missingUniqueIndex)) for (const socket of sockets) if (socket !== this && socket.connected && socket.room === payload.conversationId) socket.receive('new_message', message)
+        if (!dropDelivery && (!previous || duplicateReplay || missingUniqueIndex)) for (const socket of sockets) if (socket !== this && socket.connected && socket.rooms.has(payload.conversationId)) socket.receive('new_message', message)
       }, isLoad ? delay : 5)
       return this
     }
@@ -156,5 +156,32 @@ test('stop remains responsive when the shared session refresh never responds', a
   const report = await Promise.race([run, new Promise((_, reject) => setTimeout(() => reject(new Error('Stop did not finish')), 500))])
   assert.equal(report.stopReason, 'Stopped by operator')
   assert.equal(report.totals.attempted, 0)
+  assert.equal(f.sockets.length, 0)
+})
+
+
+test('distributed load preflights every room and attributes each delivery to its room', async () => {
+  const f = fixture()
+  const ids = ['room-a', 'room-b', 'room-c', 'room-d', 'room-e']
+  const report = await runChat(options(f, { conversationIds: ids, stages: [{ name: 'Distributed', sockets: 5, rps: 20, seconds: 1 }] }))
+  assert.equal(report.passed, true)
+  assert.deepEqual(report.conversationIds, ids)
+  assert.equal(report.rooms.length, 5)
+  for (const room of report.rooms) {
+    assert.equal(room.attempted, 4)
+    assert.equal(room.synced, 4)
+    assert.equal(room.received, 4)
+  }
+  assert.equal(report.retryCheck.status, 'passed')
+  assert.equal(f.sockets[0].rooms.size, 5)
+  assert.ok(f.sockets.every((socket) => !socket.connected))
+  assert.ok(csvReport(report).includes('conversationCount'))
+})
+
+test('distributed preset requires exactly 20 unique rooms and rejects empty selections before connecting', async () => {
+  const f = fixture()
+  await assert.rejects(runChat(options(f, { conversationIds: [] })))
+  await assert.rejects(runChat(options(f, { conversationIds: ['a', 'a'], profile: 'distributed' })))
+  await assert.rejects(runChat(options(f, { conversationIds: Array.from({ length: 21 }, (_, n) => `r${n}`) })))
   assert.equal(f.sockets.length, 0)
 })
