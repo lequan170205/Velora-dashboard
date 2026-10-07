@@ -6,3 +6,6 @@ dist/
 !.env.example
 .vercel/
 .DS_Store
+scripts/stress/private/
+scripts/stress/results/
+stress-private/

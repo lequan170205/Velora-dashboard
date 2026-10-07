@@ -124,9 +124,50 @@ This scenario measures synthetic chat persistence/fan-out; it does not test mobi
 
 JSON includes `diagnostics.messages` for the first 500 load attempts, with message/room identity, emit time, settlement, sender ACK and observer receipt. Later attempts still count in totals; `diagnostics.omitted` reports those without a trace. Late ACKs keep their timeout outcome. Only timing and identity fields are copied; message content, tokens and raw transport errors are excluded. Traces stop when sockets disconnect. `serverCreatedAt` is the server record-construction timestamp, **not** the commit time; correlate it with backend save logs and check clock alignment before comparing timestamps across machines.
 
-## CI
+## Node multi-user load runner
 
-GitHub Actions runs on pushes and pull requests targeting `main`. CI installs the standalone lockfile and runs the tests and TypeScript + Vite production build from the repository root.
+The private fixture manifest is intentionally kept outside Git (for example, in `~/Downloads/velora-stress.json`). It contains fixture passwords and must be mode `0600`. Validate without contacting the API with:
+
+```bash
+node scripts/stress/cli.mjs --config /absolute/path/manifest.json --plan
+node scripts/stress/cli.mjs --config /absolute/path/manifest.json --run --output /absolute/path/results.json
+```
+
+The runner logs only aggregate identity/timing counters; it never prints passwords, tokens, raw payloads, transport errors, or message bodies. It uses one Socket.IO connection per configured fixture account, real mobile login/rotating refresh/logout, and the normal `join_conversation`/`send_message` protocol. Results are synthetic plain-text chat persistence/fan-out measurements—not mobile encryption, native push, WebRTC, or long-term capacity validation.
+
+The initial scenario uses 50 distinct fixture users, 20 rooms, 5 total messages/s
+for 180 seconds (900 load messages). Every account passes JWT identity, actual
+membership and sender/recipient preflight before load. Setup writes are reported
+separately. A replay must return the same stored identity without another event
+to any recipient. Fixtures are prepared using the backend operator scripts in
+`scripts/ops/CHAT-STRESS-FIXTURES.md`; their passwords stay outside both repos.
+
+Each run uses a fixed online cohort. To compare 50, 100 and 150 users, prepare
+separate manifests and runs; a 50-user stage cannot silently keep 150 sockets
+online. Within one cohort, rates may ramp across stages. A missed ACK, missing
+recipient, duplicate, disconnect or skipped slot fails the stage and prevents
+escalation. The 30% settled error threshold stops a run early; it is not the pass
+threshold. ACK and delivery deadlines remain 8 seconds. Latency percentiles use
+timely successful observations; late events retain separate failure counts.
+
+Traffic pacing does not wait for ACKs. Pending work is capped at 100; missed
+schedule slots are skipped without catch-up bursts. Login/HTTP setup uses at
+most two concurrent requests, and does not change application database pools.
+Tokens rotate per user, with one refresh in flight and a stable request ID if
+the rotation response is lost. HTTP requests and WebSocket handshakes identify the
+Node runner as `VeloraStressDemo/1.0`; the runner does not impersonate a browser
+or require weakening edge protection. Ctrl+C disconnects owned sockets and attempts
+logout of owned sessions with two concurrent requests, a 5-second request
+timeout, and a cohort-sized overall budget (up to 130 seconds for 50 sessions).
+Cleanup is separate from the 8-second message deadline. Check cleanup failures
+in the result, too.
+
+JSON and a sibling CSV are saved automatically. Without `--output`, they go in
+ignored `stress-private/results/`. JSON includes per-room/per-sender counts and
+up to 500 diagnostic traces; it contains no credentials or message bodies.
+Delivery percentiles use a bounded sample only above 10,000 observations and
+explicitly mark that case. Keep Dashboard open separately to observe the server;
+the Node runner continues without needing a visible browser tab.
 
 ### Distributed chat demo (20 rooms)
 
@@ -137,3 +178,7 @@ GitHub Actions runs on pushes and pull requests targeting `main`. CI installs th
 5. Watch emitted/s, synced/s, latency, failures, skipped work and server observation. The 100 in-flight cap remains; generator saturation records skipped slots. Sender warmup is bounded to five concurrent setup operations. CSV includes actual emitted rate, synced rate over the stage including response draining, and conversation count. JSON also contains per-room results. Export before leaving the page.
 
 One account with 100 sender sockets is **one authenticated user**, not 100 users. This workload spreads writes across rooms; it does not demonstrate 50 messages/s in one hot conversation. Keep the single-room workload for that separate question. Stop/error criteria and the 8-second sender-sync deadline are unchanged.
+
+## CI
+
+GitHub Actions runs on pushes and pull requests targeting `main`. CI installs the standalone lockfile and runs the tests and TypeScript + Vite production build from the repository root.
