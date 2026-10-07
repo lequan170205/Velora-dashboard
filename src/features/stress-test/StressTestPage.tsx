@@ -9,7 +9,7 @@ import { Badge } from '../../shared/components/ui/badge'
 import { useOverviewQuery } from '../monitoring/hooks/useOverviewQuery'
 import { formatBytes, formatPercent } from '../monitoring/formatters'
 import { createTestGroup, fixtureMembersByEmail, getConversations, getSocketToken, socketOrigin, type ConversationOption } from './api'
-import { csvReport, PROFILES, runChat, validateStages, type Report, type Stage } from './runner'
+import { csvReport, PROFILES, runChat, SOCKET_CONNECT_TIMEOUT_MS, validateStages, type Report, type Stage } from './runner'
 
 import { prepareRooms } from './fixtures'
 
@@ -127,7 +127,7 @@ export function StressTestPage() {
       const result = await runChat({
         conversationId: runIds[0], conversationIds: runIds, profile, stages: structuredClone(stages), signal: abort.signal,
         ensureSession: async () => { token = await getSocketToken(abort.signal) },
-        createSocket: () => io(origin, { path: '/socket.io', transports: ['websocket'], auth: { token }, reconnection: false, forceNew: true, autoConnect: false, timeout: 8000 }),
+        createSocket: () => io(origin, { path: '/socket.io', transports: ['websocket'], auth: { token }, reconnection: false, forceNew: true, autoConnect: false, timeout: SOCKET_CONNECT_TIMEOUT_MS }),
         onUpdate: (snapshot) => { if (mounted.current) setReport({ ...snapshot, serverSamples: [...serverSamples.current] }) },
       })
       token = ''

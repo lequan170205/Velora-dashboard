@@ -1,5 +1,8 @@
 import type { Socket } from 'socket.io-client'
 
+export const SOCKET_CONNECT_TIMEOUT_MS = 30_000
+export const MESSAGE_ACK_TIMEOUT_MS = 8_000
+
 export type Stage = { name: string; sockets: number; rps: number; seconds: number }
 export const PROFILES: Record<string, Stage[]> = {
   smoke: [{ name: 'Smoke', sockets: 1, rps: 1, seconds: 5 }],
@@ -36,6 +39,7 @@ export type Report = {
   delivery: { received: number; duplicates: number; p95: number | null };
   stages: StageResult[]; samples: { time: string; sent: number; synced: number; p95: number | null; emittedRps?: number; syncedRps?: number }[];
   plan: Stage[];
+  deadlines?: { connectionMs: number; messageAckMs: number };
 }
 type Message = { clientMessageId?: string; id?: string; conversationId?: string }
 type SocketLike = Pick<Socket, 'connected' | 'on' | 'off' | 'emit' | 'connect' | 'disconnect'>
@@ -43,7 +47,7 @@ export type RunnerOptions = {
   conversationId: string; conversationIds?: string[]; profile: string; stages: Stage[]; signal: AbortSignal;
   ensureSession: () => Promise<void>; createSocket: () => SocketLike;
   onUpdate: (report: Report) => void;
-  ackTimeoutMs?: number; sessionIntervalMs?: number; sessionTimeoutMs?: number;
+  connectTimeoutMs?: number; ackTimeoutMs?: number; sessionIntervalMs?: number; sessionTimeoutMs?: number;
 }
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 class RunError extends Error {}
@@ -80,7 +84,8 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
   if (!conversationIds.length || conversationIds.length > 20 || conversationIds.some((id) => typeof id !== 'string' || !id.trim())) throw new Error('Choose 1–20 test conversations.')
   if (['distributed', 'diagnostic'].includes(options.profile) && conversationIds.length !== 20) throw new Error('The distributed preset requires 20 test conversations.')
   const allowedRooms = new Set(conversationIds)
-  const ackTimeoutMs = options.ackTimeoutMs ?? 8000
+  const connectTimeoutMs = options.connectTimeoutMs ?? SOCKET_CONNECT_TIMEOUT_MS
+  const ackTimeoutMs = options.ackTimeoutMs ?? MESSAGE_ACK_TIMEOUT_MS
   const allSockets = new Set<SocketLike>()
   const senders: SocketLike[] = []
   const pending = new Map<string, { socket: SocketLike; conversationId: string; finish: (outcome: string, messageId?: string) => void }>()
@@ -96,6 +101,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     preflight: false, loadPassed: false, passed: false, stopReason: null, totals: stats([]),
     retryCheck: { status: 'pending', detail: null },
     delivery: { received: 0, duplicates: 0, p95: null }, stages: [], samples: [], plan: structuredClone(options.stages),
+    deadlines: { connectionMs: connectTimeoutMs, messageAckMs: ackTimeoutMs },
   }
   let observer: SocketLike | undefined
   let sessionCheck: Promise<void> | null = null
@@ -163,8 +169,8 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
       const cleanup = () => { clearTimeout(timer); socket.off('connect', ready); socket.off('connect_error', failed); signal.removeEventListener('abort', failed) }
       const ready = () => { cleanup(); resolve() }
       const failed = () => { cleanup(); socket.disconnect(); reject(new RunError('Socket connection failed before sending. Check the API origin, network and session.')) }
-      const timedOut = () => { cleanup(); socket.disconnect(); reject(new RunError(`Socket connection timed out after ${ackTimeoutMs} ms. No setup message was sent.`)) }
-      const timer = setTimeout(timedOut, ackTimeoutMs)
+      const timedOut = () => { cleanup(); socket.disconnect(); reject(new RunError(`Socket connection timed out after ${connectTimeoutMs} ms. No setup message was sent.`)) }
+      const timer = setTimeout(timedOut, connectTimeoutMs)
       socket.on('connect', ready); socket.on('connect_error', failed)
       signal.addEventListener('abort', failed, { once: true })
       socket.connect()

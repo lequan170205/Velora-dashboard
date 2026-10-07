@@ -10,20 +10,21 @@ async function load(relative) {
   return import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 }
 const { runChat, percentile, validateStages, csvReport } = await load('../src/features/stress-test/runner.ts')
-function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false, setupOutcome, connectOutcome } = {}) {
+function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false, setupOutcome, connectOutcome, connectDelay = 1 } = {}) {
   const sockets = [], messages = new Map()
   let maximum = 0, current = 0, sent = 0
   class FakeSocket extends EventEmitter {
     connected = false
+    connectTimer
     rooms = new Set()
     connect() {
       if (sockets.indexOf(this) >= 2 && connectOutcome) {
         if (connectOutcome === 'failed') setTimeout(() => super.emit('connect_error', new Error('SECRET-TRANSPORT')), 1)
         return this
       }
-      setTimeout(() => { this.connected = true; super.emit('connect') }, 1); return this
+      this.connectTimer = setTimeout(() => { this.connected = true; super.emit('connect') }, connectDelay); return this
     }
-    disconnect() { if (this.connected) { this.connected = false; super.emit('disconnect') }; return this }
+    disconnect() { clearTimeout(this.connectTimer); if (this.connected) { this.connected = false; super.emit('disconnect') }; return this }
     emit(event, payload) {
       if (event === 'join_conversation') { this.rooms.add(payload); return this }
       if (event !== 'send_message') return super.emit(event, payload)
@@ -53,7 +54,7 @@ function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUn
   return { sockets, messages, sent: () => sent, maximum: () => maximum, createSocket: () => { const s = new FakeSocket(); sockets.push(s); return s } }
 }
 function options(f, overrides = {}) {
-  return { conversationId: 'test-room', profile: 'smoke', stages: [{ name: 'Smoke', sockets: 2, rps: 5, seconds: 1 }], signal: new AbortController().signal, ensureSession: async () => {}, createSocket: f.createSocket, onUpdate: () => {}, ackTimeoutMs: 500, ...overrides }
+  return { conversationId: 'test-room', profile: 'smoke', stages: [{ name: 'Smoke', sockets: 2, rps: 5, seconds: 1 }], signal: new AbortController().signal, ensureSession: async () => {}, createSocket: f.createSocket, onUpdate: () => {}, connectTimeoutMs: 500, ackTimeoutMs: 500, ...overrides }
 }
 
 test('validates bounded stages, distinguishes cooldown, and computes percentiles', () => {
@@ -162,7 +163,7 @@ test('raw transport exceptions are sanitized before snapshots or saved reports',
 test('warmup distinguishes connection failure and deadline without reporting credentials', async () => {
   for (const connectOutcome of ['failed', 'timeout']) {
     const f = fixture({ connectOutcome })
-    const report = await runChat(options(f, { ackTimeoutMs: 40 }))
+    const report = await runChat(options(f, { connectTimeoutMs: 40, ackTimeoutMs: 40 }))
     assert.equal(report.preflight, true)
     assert.equal(report.stages.length, 0)
     assert.match(report.stopReason, connectOutcome === 'failed' ? /Socket connection failed before sending/ : /Socket connection timed out after 40 ms/)
@@ -170,6 +171,32 @@ test('warmup distinguishes connection failure and deadline without reporting cre
     assert.ok(f.sockets.every((s) => !s.connected))
     assert.ok(!JSON.stringify(report).includes('SECRET'))
   }
+})
+
+test('slow connection warmup has its own deadline and does not extend message ACKs', async () => {
+  for (const delay of [5, 100]) {
+    const f = fixture({ connectDelay: 100, delay })
+    const report = await runChat(options(f, {
+      connectTimeoutMs: 300, ackTimeoutMs: 40,
+      stages: [{ name: 'Steady', sockets: 1, rps: 1, seconds: 1 }],
+    }))
+    assert.equal(report.preflight, true)
+    assert.deepEqual(report.deadlines, { connectionMs: 300, messageAckMs: 40 })
+    assert.equal(report.totals.synced, delay === 5 ? 1 : 0)
+    assert.equal(report.totals.timeout, delay === 5 ? 0 : 1)
+    assert.ok(f.sockets.every((s) => !s.connected))
+  }
+})
+
+test('stop during a pending connection removes listeners and sends nothing', async () => {
+  const f = fixture({ connectDelay: 1000 })
+  const controller = new AbortController()
+  const run = runChat(options(f, { signal: controller.signal, connectTimeoutMs: 1500 }))
+  setTimeout(() => controller.abort('Stopped by operator'), 20)
+  const report = await run
+  assert.equal(report.stopReason, 'Stopped by operator')
+  assert.equal(f.sent(), 0)
+  assert.ok(f.sockets.every((s) => !s.connected && s.listenerCount('connect') === 0 && s.listenerCount('connect_error') === 0))
 })
 
 test('warmup reports setup outcome and room separately from actual load results', async () => {
