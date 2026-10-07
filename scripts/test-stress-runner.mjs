@@ -9,8 +9,8 @@ async function load(relative) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
   return import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 }
-const { runChat, percentile, validateStages, csvReport } = await load('../src/features/stress-test/runner.ts')
-function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false, setupOutcome, connectOutcome, connectDelay = 1 } = {}) {
+const { runChat, percentile, validateStages, csvReport, DIAGNOSTIC_TRACE_LIMIT } = await load('../src/features/stress-test/runner.ts')
+function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false, setupOutcome, connectOutcome, connectDelay = 1, loadMetadata = {} } = {}) {
   const sockets = [], messages = new Map()
   let maximum = 0, current = 0, sent = 0
   class FakeSocket extends EventEmitter {
@@ -40,10 +40,12 @@ function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUn
         if (reject) { super.emit('message_failed', payload); return }
         const previous = messages.get(payload.clientMessageId)
         if (previous && rejectReplay) { super.emit('message_failed', payload); return }
-        const message = missingUniqueIndex ? { ...payload, id: `db-${sent}` } : previous ?? { ...payload, id: `db-${messages.size + 1}` }
+        const metadata = isLoad ? { createdAt: '2026-10-07T14:00:00.000Z', ...loadMetadata } : {}
+        const message = missingUniqueIndex ? { ...payload, ...metadata, id: `db-${sent}` } : previous ?? { ...payload, ...metadata, id: `db-${messages.size + 1}` }
         messages.set(payload.clientMessageId, message)
         super.emit('message_synced', { ...message, clientMessageId: 'unrelated' })
         super.emit('message_synced', { ...message, conversationId: 'wrong-room' })
+        if (isLoad) sockets[0].receive('message_synced', { ...message, createdAt: '1900-01-01T00:00:00.000Z' })
         super.emit('message_synced', message)
         if (!dropDelivery && (!previous || duplicateReplay || missingUniqueIndex)) for (const socket of sockets) if (socket !== this && socket.connected && socket.rooms.has(payload.conversationId)) socket.receive('new_message', message)
       }, isLoad ? delay : 5)
@@ -279,4 +281,55 @@ test('periodic session checks do not pause traffic on already authenticated sock
   assert.ok(checks > 2); assert.equal(report.stopReason, null)
   assert.equal(report.stages[0].attempted, 10); assert.equal(report.skipped, 0)
   assert.equal(report.totals.synced, 10)
+})
+
+test('diagnostic traces correlate only load ACKs from the sender and exclude payloads', async () => {
+  const f = fixture({ loadMetadata: { accessToken: 'SECRET-TOKEN', content: 'SECRET-CONTENT', detail: 'SECRET-DETAIL' } })
+  const report = await runChat(options(f))
+  assert.equal(report.passed, true)
+  assert.equal(report.diagnostics.messages.length, 5)
+  assert.equal(report.diagnostics.omitted, 0)
+  for (const trace of report.diagnostics.messages) {
+    assert.equal(trace.outcome, 'synced')
+    assert.equal(trace.serverCreatedAt, '2026-10-07T14:00:00.000Z')
+    assert.equal(trace.conversationId, 'test-room')
+    assert.equal(trace.stage, 'Smoke')
+    for (const key of ['emittedAt', 'ackReceivedAt', 'settledAt', 'observerReceivedAt']) assert.ok(Number.isFinite(Date.parse(trace[key])))
+    assert.ok(trace.ackElapsedMs >= 0 && trace.observerElapsedMs >= 0)
+    assert.ok(!trace.clientMessageId.includes('probe') && !trace.clientMessageId.includes('setup'))
+  }
+  assert.equal(JSON.stringify(report).includes('SECRET'), false)
+})
+
+test('late ACKs remain timeout failures and are recorded independently of settlement', async () => {
+  const f = fixture({ delay: 100 })
+  const report = await runChat(options(f, { ackTimeoutMs: 40, stages: [{ name: 'Late', sockets: 1, rps: 1, seconds: 1 }] }))
+  assert.equal(report.passed, false)
+  assert.equal(report.totals.timeout, 1)
+  assert.equal(report.totals.synced, 0)
+  assert.equal(report.totals.p95, null)
+  const trace = report.diagnostics.messages[0]
+  assert.equal(trace.outcome, 'timeout')
+  assert.ok(trace.ackElapsedMs > report.deadlines.messageAckMs)
+  assert.ok(Date.parse(trace.ackReceivedAt) > Date.parse(trace.settledAt))
+  assert.ok(trace.observerReceivedAt)
+})
+
+test('malformed server timestamps are not copied to diagnostic exports', async () => {
+  const f = fixture({ loadMetadata: { createdAt: 'SECRET-INVALID-TIMESTAMP' } })
+  const report = await runChat(options(f))
+  assert.equal(report.passed, true)
+  assert.ok(report.diagnostics.messages.every((trace) => trace.serverCreatedAt === undefined))
+  assert.equal(JSON.stringify(report).includes('SECRET'), false)
+})
+
+test('diagnostic storage is bounded without dropping load accounting', async () => {
+  const f = fixture()
+  const report = await runChat(options(f, { stages: [{ name: 'Bounded', sockets: 1, rps: 100, seconds: 6 }] }))
+  assert.equal(report.diagnostics.limit, DIAGNOSTIC_TRACE_LIMIT)
+  assert.equal(report.diagnostics.messages.length, DIAGNOSTIC_TRACE_LIMIT)
+  assert.equal(report.diagnostics.omitted, report.totals.attempted - DIAGNOSTIC_TRACE_LIMIT)
+  assert.ok(report.diagnostics.omitted > 0)
+  assert.equal(report.totals.attempted + report.skipped, 600)
+  assert.equal(report.totals.synced, report.totals.attempted)
 })

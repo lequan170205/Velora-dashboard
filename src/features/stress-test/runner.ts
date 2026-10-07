@@ -2,6 +2,7 @@ import type { Socket } from 'socket.io-client'
 
 export const SOCKET_CONNECT_TIMEOUT_MS = 30_000
 export const MESSAGE_ACK_TIMEOUT_MS = 8_000
+export const DIAGNOSTIC_TRACE_LIMIT = 500
 
 export type Stage = { name: string; sockets: number; rps: number; seconds: number }
 export const PROFILES: Record<string, Stage[]> = {
@@ -30,6 +31,12 @@ export const PROFILES: Record<string, Stage[]> = {
 export type Attempt = { stage: string; id: string; conversationId?: string; outcome: string; ms: number }
 export type Stats = { attempted: number; synced: number; failed: number; timeout: number; disconnected: number; p50: number | null; p95: number | null; p99: number | null }
 export type StageResult = Stats & Stage & { skipped: number; emittedRps: number; syncedRps?: number }
+export type MessageTrace = {
+  clientMessageId: string; conversationId: string; stage: string; emittedAt: string;
+  outcome: string | null; settledAt?: string; elapsedMs?: number;
+  ackReceivedAt?: string; ackElapsedMs?: number; serverCreatedAt?: string;
+  observerReceivedAt?: string; observerElapsedMs?: number;
+}
 export type Report = {
   id: string; conversationId: string; conversationIds?: string[]; rooms?: (Stats & { conversationId: string; received: number })[]; profile: string; startedAt: string; finishedAt: string | null;
   serverSamples?: { generatedAt: string; hostCpuRatio: number | null; chatPhases: { phase: string; callsPerSecond: number; errorsPerSecond: number; p95Seconds: number | null }[] }[];
@@ -40,8 +47,9 @@ export type Report = {
   stages: StageResult[]; samples: { time: string; sent: number; synced: number; p95: number | null; emittedRps?: number; syncedRps?: number }[];
   plan: Stage[];
   deadlines?: { connectionMs: number; messageAckMs: number };
+  diagnostics?: { limit: number; omitted: number; messages: MessageTrace[] };
 }
-type Message = { clientMessageId?: string; id?: string; conversationId?: string }
+type Message = { clientMessageId?: string; id?: string; conversationId?: string; createdAt?: string }
 type SocketLike = Pick<Socket, 'connected' | 'on' | 'off' | 'emit' | 'connect' | 'disconnect'>
 export type RunnerOptions = {
   conversationId: string; conversationIds?: string[]; profile: string; stages: Stage[]; signal: AbortSignal;
@@ -94,6 +102,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
   const sentAt = new Map<string, number>()
   const messageRooms = new Map<string, string>()
   const deliveries = new Map<string, { count: number; ms: number }>()
+  const traces = new Map<string, { trace: MessageTrace; socket: SocketLike; start: number }>()
   const report: Report = {
     id: `stress-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`, conversationId: conversationIds[0], conversationIds, rooms: [],
     profile: options.profile, startedAt: new Date().toISOString(), finishedAt: null,
@@ -102,6 +111,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     retryCheck: { status: 'pending', detail: null },
     delivery: { received: 0, duplicates: 0, p95: null }, stages: [], samples: [], plan: structuredClone(options.stages),
     deadlines: { connectionMs: connectTimeoutMs, messageAckMs: ackTimeoutMs },
+    diagnostics: { limit: DIAGNOSTIC_TRACE_LIMIT, omitted: 0, messages: [] },
   }
   let observer: SocketLike | undefined
   let sessionCheck: Promise<void> | null = null
@@ -154,6 +164,13 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     allSockets.add(socket)
     socket.on('message_synced', (message: Message) => {
       if (message?.conversationId && !allowedRooms.has(message.conversationId)) return
+      const diagnostic = traces.get(message?.clientMessageId ?? '')
+      if (diagnostic?.socket === socket && (!message.conversationId || message.conversationId === diagnostic.trace.conversationId) && !diagnostic.trace.ackReceivedAt) {
+        // A late ACK is diagnostic evidence; it never changes the settled outcome.
+        diagnostic.trace.ackReceivedAt = new Date().toISOString()
+        diagnostic.trace.ackElapsedMs = Math.round(performance.now() - diagnostic.start)
+        if (typeof message.createdAt === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(message.createdAt) && Number.isFinite(Date.parse(message.createdAt))) diagnostic.trace.serverCreatedAt = new Date(message.createdAt).toISOString()
+      }
       const entry = pending.get(message?.clientMessageId ?? '')
       if (entry?.socket === socket && (!message.conversationId || message.conversationId === entry.conversationId)) entry.finish('synced', message.id)
     })
@@ -177,15 +194,25 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     })
     return socket
   }
-  const send = (socket: SocketLike, id: string, targetRoom = conversationIds[0]): Promise<{ outcome: string; ms: number; messageId?: string }> => {
+  const send = (socket: SocketLike, id: string, targetRoom = conversationIds[0], stage?: string): Promise<{ outcome: string; ms: number; messageId?: string }> => {
     const start = performance.now()
     sentAt.set(id, start)
     messageRooms.set(id, targetRoom)
+    let trace: MessageTrace | undefined
+    if (stage) {
+      if (traces.size < DIAGNOSTIC_TRACE_LIMIT) {
+        trace = { clientMessageId: id, conversationId: targetRoom, stage, emittedAt: new Date().toISOString(), outcome: null }
+        traces.set(id, { trace, socket, start })
+        report.diagnostics!.messages.push(trace)
+      } else report.diagnostics!.omitted++
+    }
     return new Promise((resolve) => {
       const finish = (outcome: string, messageId?: string) => {
         if (!pending.has(id)) return
         clearTimeout(timer); pending.delete(id)
-        resolve({ outcome, messageId, ms: performance.now() - start })
+        const ms = performance.now() - start
+        if (trace) { trace.outcome = outcome; trace.settledAt = new Date().toISOString(); trace.elapsedMs = Math.round(ms) }
+        resolve({ outcome, messageId, ms })
       }
       const timer = setTimeout(() => finish('timeout'), ackTimeoutMs)
       pending.set(id, { socket, conversationId: targetRoom, finish })
@@ -203,6 +230,11 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
       if (!id || !id.startsWith(report.id) || !sentAt.has(id) || message.conversationId !== messageRooms.get(id)) return
       const previous = deliveries.get(id)
       deliveries.set(id, { count: (previous?.count ?? 0) + 1, ms: previous?.ms ?? performance.now() - sentAt.get(id)! })
+      const diagnostic = traces.get(id)
+      if (diagnostic && !diagnostic.trace.observerReceivedAt) {
+        diagnostic.trace.observerReceivedAt = new Date().toISOString()
+        diagnostic.trace.observerElapsedMs = Math.round(performance.now() - diagnostic.start)
+      }
     })
     for (const id of conversationIds) observer.emit('join_conversation', id)
     await delay(250)
@@ -272,7 +304,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
             const socket = senders[(offered - 1) % senders.length]
             const id = `${report.id}-${stageIndex}-${offered}`
             const targetRoom = conversationIds[(offered - 1) % conversationIds.length]
-            const task = send(socket, id, targetRoom).then((result) => {
+            const task = send(socket, id, targetRoom, stage.name).then((result) => {
               attempts.push({ id, conversationId: targetRoom, stage: stage.name, outcome: result.outcome, ms: result.ms })
               completed++; if (result.outcome !== 'synced') errors++
             }).finally(() => tasks.delete(task))

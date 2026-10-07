@@ -122,6 +122,8 @@ Keep the tab visible. Hiding it, leaving the route or going offline stops the ru
 
 This scenario measures synthetic chat persistence/fan-out; it does not test mobile encryption, native push UI or WebRTC/SFU media capacity. Backend monitoring remains the source of server metrics. Node fixture tests and browser verification are local checks, not production capacity measurements.
 
+JSON includes `diagnostics.messages` for the first 500 load attempts, with message/room identity, emit time, settlement, sender ACK and observer receipt. Later attempts still count in totals; `diagnostics.omitted` reports those without a trace. Late ACKs keep their timeout outcome. Only timing and identity fields are copied; message content, tokens and raw transport errors are excluded. Traces stop when sockets disconnect. `serverCreatedAt` is the server record-construction timestamp, **not** the commit time; correlate it with backend save logs and check clock alignment before comparing timestamps across machines.
+
 ## CI
 
 GitHub Actions runs on pushes and pull requests targeting `main`. CI installs the standalone lockfile and runs the tests and TypeScript + Vite production build from the repository root.
