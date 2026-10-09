@@ -34,7 +34,7 @@ export class Ledger {
   constructor(accounts, { now = performance.now.bind(performance), deadline = 8000, signal } = {}) {
     this.now = now; this.deadline = deadline; this.records = new Map(); this.pending = new Set()
     this.bits = new Map(accounts.map((a, i) => [a.id, 1n << BigInt(i)]))
-    this.traces = []; this.omitted = 0; this.replayWaiters = new Map()
+    this.replayWaiters = new Map()
     this.abort = () => { for (const e of this.pending) this.finish(e, 'operator stop') }
     this.signal = signal; signal?.addEventListener('abort', this.abort, { once: true })
   }
@@ -43,13 +43,10 @@ export class Ledger {
     const e = { id, room, sender, kind, stage, recipients,
       expected: recipients.reduce((mask, id) => mask | this.bits.get(id), 0n),
       seen: 0n, timely: 0n, ackMs: null, ackCount: 0, storedId: null,
-      duplicate: 0, unexpected: 0, lateAck: 0, deliveryMs: [], started: this.now(), done: false }
+      duplicate: 0, unexpected: 0, lateAck: 0, deliveryMs: [], started: this.now(), done: false,
+      emittedAt: new Date().toISOString(), observedAckMs: null, ackReceivedAt: null,
+      serverCreatedAt: null, firstDeliveryMs: null, lastDeliveryMs: null }
     e.promise = new Promise(resolve => { e.resolve = resolve })
-    if (this.traces.length < 500) {
-      e.trace = { clientMessageId: id, conversationId: room, senderId: sender,
-        kind, emittedAt: new Date().toISOString() }
-      this.traces.push(e.trace)
-    } else this.omitted++
     this.records.set(id, e); this.pending.add(e)
     e.timer = setTimeout(() => this.finish(e, 'deadline'), this.deadline)
     return e
@@ -61,6 +58,11 @@ export class Ledger {
       e.unexpected++; return false
     }
     e.storedId ??= msg.id
+    // This is the timestamp assigned inside the final transaction attempt,
+    // not a commit time. It comes from the existing DTO; no extra request.
+    if (!e.serverCreatedAt && typeof msg.createdAt === 'string' && Number.isFinite(Date.parse(msg.createdAt))) {
+      e.serverCreatedAt = new Date(msg.createdAt).toISOString()
+    }
     return true
   }
   ack(msg, receiver) {
@@ -68,6 +70,9 @@ export class Ledger {
     if (!e || !this.valid(e, msg, receiver, true)) return
     e.ackCount++
     const elapsed = this.now() - e.started
+    if (e.observedAckMs === null) {
+      e.observedAckMs = elapsed; e.ackReceivedAt = new Date().toISOString()
+    }
     if (e.ackMs === null && elapsed < this.deadline) e.ackMs = elapsed
     else if (elapsed >= this.deadline && e.ackMs === null) e.lateAck++
     const waiter = this.replayWaiters.get(e.id)
@@ -81,6 +86,7 @@ export class Ledger {
     if (e.seen & bit) { e.duplicate++; return }
     e.seen |= bit
     const elapsed = this.now() - e.started
+    e.firstDeliveryMs ??= elapsed; e.lastDeliveryMs = elapsed
     if (elapsed < this.deadline) { e.timely |= bit; e.deliveryMs.push(elapsed) }
     this.complete(e)
   }
@@ -92,11 +98,27 @@ export class Ledger {
   finish(e, error = null) {
     if (e.done) return
     e.done = true; e.error = error; clearTimeout(e.timer); this.pending.delete(e)
-    if (e.trace) Object.assign(e.trace, { ackMs: e.ackMs, expected: e.recipients.length, timely: this.count(e.timely), error })
     e.resolve(e)
   }
   count(mask) { let n = 0; while (mask) { mask &= mask - 1n; n++ } return n }
   good(e) { return !e.error && e.ackMs !== null && e.timely === e.expected && !e.unexpected && !e.duplicate }
+  diagnostics() {
+    // Select after the run so failures after message 500 are still visible.
+    // The existing bounded ledger already owns all records; no payloads copied.
+    const selected = [...this.records.values()].sort((a, b) =>
+      Number(!this.good(b)) - Number(!this.good(a)) ||
+      (b.observedAckMs ?? 0) - (a.observedAckMs ?? 0) || a.started - b.started,
+    ).slice(0, 500)
+    return { selection: 'failures_then_slowest_ack', limit: 500,
+      omitted: this.records.size - selected.length,
+      messages: selected.map(e => ({ clientMessageId: e.id, conversationId: e.room,
+        senderId: e.sender, storedId: e.storedId, kind: e.kind, emittedAt: e.emittedAt,
+        ackMs: e.ackMs, observedAckMs: e.observedAckMs, ackReceivedAt: e.ackReceivedAt,
+        serverCreatedAt: e.serverCreatedAt, firstDeliveryMs: e.firstDeliveryMs,
+        lastDeliveryMs: e.lastDeliveryMs, expected: e.recipients.length,
+        timely: this.count(e.timely), lateAck: e.lateAck, duplicate: e.duplicate,
+        unexpected: e.unexpected, error: e.error ?? null })) }
+  }
   replay(e, send) {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { this.replayWaiters.delete(e.id); reject(new Error('replay ACK deadline')) }, this.deadline)

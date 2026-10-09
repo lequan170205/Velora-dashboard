@@ -250,7 +250,7 @@ export async function run(input, options = {}) {
     report.preflightResults = ledger.summary([...ledger.records.values()].filter(e => e.kind !== 'load'))
     report.users = config.accounts.map(a => ({ id: a.id, ...ledger.summary(load.filter(e => e.sender === a.id)) }))
     report.perRoom = config.rooms.map(r => ({ id: r.id, members: r.participantIds.length, ...ledger.summary(load.filter(e => e.room === r.id)) }))
-    report.diagnostics = { messages: ledger.traces, omitted: ledger.omitted }
+    report.diagnostics = ledger.diagnostics()
     report.passed = report.preflight && !report.stopReason && report.stages.length === config.stages.length &&
       report.stages.every(s => s.passed) && report.totals.failedMessages === 0 &&
       report.preflightResults.failedMessages === 0 && !(report.cleanup?.failed)

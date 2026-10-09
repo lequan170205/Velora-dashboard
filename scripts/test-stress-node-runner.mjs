@@ -96,7 +96,42 @@ test('diagnostics are capped and cancellation settles every pending record', asy
   const controller = new AbortController(), l = new Ledger(config().accounts, { signal: controller.signal })
   const entries = Array.from({ length: 510 }, (_, i) => l.begin({ id: String(i), room: 'r0', sender: 'a', recipients: ['b'] }))
   controller.abort(); await Promise.all(entries.map(e => e.promise))
-  assert.equal(l.traces.length, 500); assert.equal(l.omitted, 10); assert.equal(l.pending.size, 0); l.close()
+  assert.equal(l.diagnostics().messages.length, 500); assert.equal(l.diagnostics().omitted, 10); assert.equal(l.pending.size, 0); l.close()
+})
+test('diagnostics retain a late ACK after the original 500-message cap without turning it into a pass', async () => {
+  let now = 0
+  const l = new Ledger(config().accounts, { deadline: 8000, now: () => now })
+  for (let i = 0; i < 510; i++) {
+    const e = l.begin({ id: String(i), room: 'r0', sender: 'a', recipients: ['b'], kind: 'load' })
+    now += 1; l.ack(message(e), 'a'); l.delivery(message(e), 'b')
+  }
+  const late = l.begin({ id: 'late-after-cap', room: 'r0', sender: 'a', recipients: ['b'], kind: 'load' })
+  now += 1; l.delivery(message(late), 'b')
+  l.finish(late, 'deadline'); now += 9106
+  l.ack({ ...message(late), createdAt: '2026-10-09T15:19:02.000Z', content: 'must not export' }, 'a')
+  const trace = l.diagnostics().messages[0]
+  assert.equal(trace.clientMessageId, late.id); assert.equal(trace.ackMs, null)
+  assert.equal(trace.observedAckMs, 9107); assert.equal(trace.serverCreatedAt, '2026-10-09T15:19:02.000Z')
+  assert.equal(trace.error, 'deadline'); assert.equal(trace.timely, 1); assert.equal(trace.lateAck, 1)
+  assert.equal(l.good(late), false); assert.equal(l.summary([late]).ackTimeout, 1)
+  assert.equal(l.diagnostics().omitted, 11); assert.equal(l.diagnostics().messages.length, 500)
+  assert.ok(!JSON.stringify(l.diagnostics()).includes('must not export')); l.close()
+})
+test('diagnostics rank slow successful ACKs and observe late delivery without changing timely counters', () => {
+  let now = 0
+  const l = new Ledger(config().accounts, { deadline: 8000, now: () => now })
+  const fast = l.begin({ id: 'fast', room: 'r0', sender: 'a', recipients: ['b'] })
+  now = 5; l.ack(message(fast), 'a'); l.delivery(message(fast), 'b')
+  const slow = l.begin({ id: 'slow', room: 'r0', sender: 'a', recipients: ['b'] })
+  now = 1005; l.ack(message(slow), 'a'); l.delivery(message(slow), 'b')
+  assert.equal(l.diagnostics().messages[0].clientMessageId, 'slow')
+  const missing = l.begin({ id: 'missing', room: 'r0', sender: 'a', recipients: ['b'] })
+  now += 1; l.ack({ ...message(missing), createdAt: 'invalid timestamp' }, 'a')
+  l.finish(missing, 'deadline'); now += 8001; l.delivery(message(missing), 'b')
+  const trace = l.diagnostics().messages[0]
+  assert.equal(trace.clientMessageId, 'missing'); assert.equal(trace.serverCreatedAt, null)
+  assert.equal(trace.firstDeliveryMs, 8002); assert.equal(trace.timely, 0)
+  assert.equal(l.summary([missing]).deliveries.late, 1); l.close()
 })
 function fixture(options = {}) {
   const sockets = [], seen = new Set(), emitted = []
