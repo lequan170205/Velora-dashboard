@@ -10,6 +10,15 @@ import {
 } from '../../formatters'
 import type { InfraViewConfig, StatCardVm } from '../types'
 
+// One worker is one core. The capacity test saturated a worker near 95% core
+// use, so warn well before that to leave room for real WebRTC overhead.
+const MEDIA_WORKER_CPU_WARN = 0.6
+const MEDIA_WORKER_CPU_BAD = 0.8
+
+const TONE_RANK: Record<Tone, number> = { neutral: 0, good: 1, warn: 2, bad: 3 }
+const worstTone = (...tones: Tone[]): Tone =>
+  tones.reduce((worst, tone) => (TONE_RANK[tone] > TONE_RANK[worst] ? tone : worst), 'neutral' as Tone)
+
 export const callServiceConfig: InfraViewConfig = {
   id: 'call-service',
   errorTitle: 'Call-service metrics are temporarily unavailable.',
@@ -18,7 +27,7 @@ export const callServiceConfig: InfraViewConfig = {
     eyebrow: 'Call service · signaling',
     title: 'Call service performance',
     titleId: 'call-service-observability-title',
-    description: 'Runtime health for Velora call signaling: reachability, host CPU share, memory, event-loop delay, and connected call sockets.',
+    description: 'Runtime health for Velora calls: signaling reachability, host CPU share, memory, event-loop delay, connected call sockets, and the media worker that forwards audio and video.',
     rangeLabel: 'Call service history range',
     placement: 'top',
   },
@@ -31,25 +40,28 @@ export const callServiceConfig: InfraViewConfig = {
       ? 'neutral'
       : serviceUp === false
         ? 'bad'
-        : toneForThreshold(eventLoopP99, 0.1, 0.25)
+        : worstTone(
+            toneForThreshold(eventLoopP99, 0.1, 0.25),
+            toneForThreshold(call?.mediaWorkerCpuRatio ?? null, MEDIA_WORKER_CPU_WARN, MEDIA_WORKER_CPU_BAD),
+          )
 
     const title = serviceUp === null
       ? 'Call-service status is unavailable'
       : serviceUp === false
         ? 'Call service is offline'
         : tone === 'bad'
-          ? 'Call signaling is delayed'
+          ? 'Call service is under pressure'
           : tone === 'warn'
-            ? 'Call signaling is online, but worth watching'
-            : 'Call signaling is healthy'
+            ? 'Call service is online, but worth watching'
+            : 'Call service is healthy'
 
     const detail = serviceUp === true
-      ? 'CPU is the call-service process share of the whole host across all cores. Media-worker CPU remains part of the container breakdown on Server.'
+      ? 'CPU is the call-service process share of the whole host across all cores. Media worker CPU is separate: it is the share of one core, because a worker is single-threaded.'
       : 'Prometheus must be able to scrape call-service before runtime metrics can be trusted.'
 
     return { tone, label: 'Quick read', title, detail }
   },
-  cardsGridClassName: 'sm:grid-cols-2 xl:grid-cols-4',
+  cardsGridClassName: 'sm:grid-cols-2 xl:grid-cols-3',
   cards: ({ overview, hasData }) => {
     const call = overview?.call
     const eventLoopP99 = call?.eventLoopP99Seconds ?? null
@@ -90,6 +102,22 @@ export const callServiceConfig: InfraViewConfig = {
               ? 'Watch'
               : 'Delayed',
         tone: toneForThreshold(eventLoopP99, 0.1, 0.25),
+      },
+      {
+        label: 'Media worker CPU',
+        value: formatCpu(call?.mediaWorkerCpuRatio ?? Number.NaN),
+        detail: 'busiest worker · 1 core',
+        helper: 'Share of one CPU core used by the busiest mediasoup worker. A worker is single-threaded, so 100% means it cannot forward more media.',
+        badge: badgeForThreshold(call?.mediaWorkerCpuRatio ?? null, MEDIA_WORKER_CPU_WARN, MEDIA_WORKER_CPU_BAD),
+        tone: toneForThreshold(call?.mediaWorkerCpuRatio ?? null, MEDIA_WORKER_CPU_WARN, MEDIA_WORKER_CPU_BAD),
+      },
+      {
+        label: 'Calls on media workers',
+        value: formatCount(call?.mediaRooms ?? Number.NaN),
+        detail: 'active rooms',
+        helper: 'Calls currently holding a mediasoup room, including ringing calls that have prepared media.',
+        badge: call?.mediaRooms == null ? 'Waiting' : 'Live',
+        tone: call?.mediaRooms == null ? 'neutral' : 'good',
       },
     ]
     return cards
@@ -140,6 +168,28 @@ export const callServiceConfig: InfraViewConfig = {
       emptyTitle: 'No call socket samples yet',
       emptyDescription: 'Socket history appears after Prometheus begins scraping call-service.',
     },
+    {
+      metric: 'call_media_worker_cpu',
+      title: 'Media worker CPU',
+      question: 'Is the media worker close to saturating its core?',
+      description: 'Share of one CPU core used by the busiest mediasoup worker. Sustained values above about 80% leave no headroom for real-network overhead.',
+      formatter: formatCpu,
+      axisFormatter: formatCpu,
+      accentToken: 'rose',
+      emptyTitle: 'No media worker CPU history yet',
+      emptyDescription: 'This appears once a call-service build that exports mediasoup worker metrics is scraped.',
+    },
+    {
+      metric: 'call_media_rooms',
+      title: 'Calls on media workers',
+      question: 'How many calls is the media worker carrying?',
+      description: 'Calls currently holding a mediasoup room. Compare with media worker CPU to see the CPU cost per call during a stress test.',
+      formatter: formatCount,
+      axisFormatter: formatCount,
+      accentToken: 'indigo',
+      emptyTitle: 'No media room samples yet',
+      emptyDescription: 'Room counts appear after Prometheus scrapes the updated call-service.',
+    },
   ],
   currentValues: (overview) => {
     const call = overview?.call
@@ -148,6 +198,8 @@ export const callServiceConfig: InfraViewConfig = {
       call_memory: { value: call?.residentMemoryBytes },
       call_event_loop_p99: { value: call?.eventLoopP99Seconds },
       call_sockets: { value: call?.socketConnections },
+      call_media_worker_cpu: { value: call?.mediaWorkerCpuRatio },
+      call_media_rooms: { value: call?.mediaRooms },
     }
   },
 }

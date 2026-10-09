@@ -58,6 +58,10 @@ export type MonitoringOverview = {
     cpuUsageRatio: NullableMetric;
     eventLoopP99Seconds: NullableMetric;
     socketConnections: NullableMetric;
+    /** Fraction of ONE core used by the busiest mediasoup worker (1 = saturated). */
+    mediaWorkerCpuRatio?: NullableMetric;
+    /** Calls currently placed on mediasoup workers. */
+    mediaRooms?: NullableMetric;
   };
   notification: {
     up: boolean | null;
@@ -230,6 +234,8 @@ export type MonitoringMetric =
   | "call_memory"
   | "call_event_loop_p99"
   | "call_sockets"
+  | "call_media_worker_cpu"
+  | "call_media_rooms"
   | "notification_cpu"
   | "notification_memory"
   | "notification_event_loop_p99"
