@@ -8,6 +8,7 @@ import {
   toneForThreshold,
   type Tone,
 } from "../../formatters";
+import { getDependencyHealth } from "../dependencyHealth";
 import type { InfraViewConfig, StatCardGroupVm } from "../types";
 
 const statusValue = (value: boolean | null | undefined) =>
@@ -36,14 +37,16 @@ export const authServiceConfig: InfraViewConfig = {
     const redisUp = auth?.redisUp ?? null;
     const errorRate = auth?.errorRate ?? null;
     const replayRate = auth?.replayDetectionsPerSecond ?? null;
-    const tone: Tone =
-      up === false || databaseUp === false || redisUp === false
-        ? "bad"
-        : (replayRate ?? 0) > 0 || (errorRate ?? 0) >= 0.05
+    const dependencyHealth = getDependencyHealth([up, databaseUp, redisUp]);
+    const replayNeedsAttention = (replayRate ?? 0) > 0;
+    const errorNeedsAttention = (errorRate ?? 0) >= 0.05;
+    const tone: Tone = dependencyHealth === "degraded"
+      ? "bad"
+      : replayNeedsAttention || errorNeedsAttention
           ? "warn"
-          : up === true
-            ? "good"
-            : "neutral";
+          : dependencyHealth === "unknown"
+            ? "neutral"
+            : "good";
 
     return {
       tone,
@@ -55,11 +58,13 @@ export const authServiceConfig: InfraViewConfig = {
             ? "Auth database is unavailable"
             : redisUp === false
               ? "Auth Redis is unavailable"
-              : (replayRate ?? 0) > 0
+              : replayNeedsAttention
                 ? "Refresh-token replay needs attention"
-                : up === true
-                  ? "Authentication service is healthy"
-                  : "Waiting for Auth telemetry",
+                : errorNeedsAttention
+                  ? "Authentication errors need attention"
+                  : dependencyHealth === "unknown"
+                    ? "Auth dependency status is unknown"
+                  : "Authentication service is healthy",
       detail:
         "Traffic and latency use rolling one-minute Prometheus windows; refresh recovery is tracked separately from invalid or replayed tokens.",
     };

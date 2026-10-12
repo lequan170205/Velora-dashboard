@@ -1,4 +1,6 @@
-export type MonitoringConnectionState = 'live' | 'refreshing' | 'stale' | 'disconnected'
+import type { HealthVm } from './dashboard/types'
+
+export type MonitoringConnectionState = 'live' | 'refreshing' | 'degraded' | 'unknown' | 'stale' | 'disconnected'
 export type MonitoringHistoryFreshnessState = 'fresh' | 'stale' | 'unknown'
 
 export const MONITORING_REFRESH_INTERVAL_MS = 5_000
@@ -9,14 +11,23 @@ export const getMonitoringConnectionState = ({
   lastSuccessfulAt,
   refreshing,
   hasError,
+  monitoringUp,
+  hostUp,
 }: {
   now: number
   lastSuccessfulAt: number | null
   refreshing: boolean
   hasError: boolean
+  monitoringUp?: boolean | null
+  hostUp?: boolean | null
 }): MonitoringConnectionState => {
   if (lastSuccessfulAt === null) {
-    return hasError ? 'disconnected' : 'refreshing'
+    if (hasError) return 'disconnected'
+    if (monitoringUp === false || hostUp === false) return 'degraded'
+    if (monitoringUp !== undefined || hostUp !== undefined) {
+      return monitoringUp === true && hostUp === true ? 'refreshing' : 'unknown'
+    }
+    return 'refreshing'
   }
 
   const ageMs = now - lastSuccessfulAt
@@ -29,11 +40,35 @@ export const getMonitoringConnectionState = ({
     return 'stale'
   }
 
+  if (hasError) return 'stale'
+  if (monitoringUp === false || hostUp === false) return 'degraded'
+  if (monitoringUp !== true || hostUp !== true) return 'unknown'
+
   if (refreshing) {
     return 'refreshing'
   }
 
   return 'live'
+}
+
+export const getMonitoringOverviewHealth = ({
+  health, now, generatedAt, lastSuccessfulAt, hasError,
+}: {
+  health: HealthVm
+  now: number
+  generatedAt: string | undefined
+  lastSuccessfulAt: number
+  hasError: boolean
+}): HealthVm => {
+  const generatedTime = generatedAt ? Date.parse(generatedAt) : Number.NaN
+  if (hasError || now - lastSuccessfulAt > MONITORING_REFRESH_INTERVAL_MS * 3 ||
+      (Number.isFinite(generatedTime) && now - generatedTime > MONITORING_REFRESH_INTERVAL_MS * 3)) {
+    return { tone: 'warn', label: 'Stale', title: 'Health evidence is stale', detail: `Showing the last available snapshot. Previous summary: ${health.title}. Refresh to confirm current health.` }
+  }
+  if (!Number.isFinite(generatedTime)) {
+    return { tone: 'neutral', label: 'Unknown', title: 'Health freshness is unknown', detail: 'The overview has no usable generation timestamp.' }
+  }
+  return health
 }
 
 export const getMonitoringHistoryFreshnessState = ({

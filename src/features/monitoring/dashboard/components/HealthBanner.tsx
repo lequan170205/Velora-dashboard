@@ -28,7 +28,7 @@ export function HealthBanner({ tone, label, title, detail, generatedAt, refreshi
 
   return (
     <div className="flex items-center justify-between gap-3 px-1">
-      <div className="flex min-w-0 items-center gap-2">
+      <div role="status" aria-live="polite" aria-atomic="true" className="flex min-w-0 items-center gap-2">
         <span
           aria-hidden="true"
           className={cn('size-2 shrink-0 rounded-full', DOT_CLASS[tone])}

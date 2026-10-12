@@ -8,6 +8,7 @@ import {
   toneForThreshold,
   type Tone,
 } from "../../formatters";
+import { getDependencyHealth } from "../dependencyHealth";
 import type { InfraViewConfig, StatCardGroupVm, StatCardVm } from "../types";
 
 const DELIVERY_WINDOW = "rolling 1 min";
@@ -48,32 +49,35 @@ export const notificationServiceConfig: InfraViewConfig = {
     const transportFailureRate =
       notification?.apnsTransportFailuresPerSecond ?? null;
 
-    const tone: Tone =
-      serviceUp !== true
-        ? serviceUp === false
-          ? "bad"
-          : "neutral"
-        : databaseUp === false || (schedulerAge !== null && schedulerAge > 60)
-          ? "bad"
-          : (transportFailureRate ?? 0) > 0 ||
-              (schedulerAge !== null && schedulerAge > 15)
-            ? "warn"
-            : "good";
+    const dependencyHealth = getDependencyHealth([serviceUp, databaseUp]);
+    const schedulerStalled = schedulerAge !== null && schedulerAge > 60;
+    const deliveryNeedsAttention =
+      (transportFailureRate ?? 0) > 0 ||
+      (schedulerAge !== null && schedulerAge > 15);
+    const tone: Tone = dependencyHealth === "degraded"
+        ? "bad"
+        : schedulerStalled
+            ? "bad"
+            : deliveryNeedsAttention
+              ? "warn"
+              : dependencyHealth === "unknown"
+                ? "neutral"
+                : "good";
 
     const title =
       serviceUp === false
         ? "Notification service is offline"
-        : serviceUp === null
-          ? "Notification-service status is unavailable"
-          : databaseUp === false
+        : databaseUp === false
             ? "Notification database connection is unavailable"
-            : schedulerAge !== null && schedulerAge > 60
+            : schedulerStalled
               ? "Notification retry scheduler is stalled"
               : (transportFailureRate ?? 0) > 0
                 ? "APNs transport failures need attention"
-                : tone === "warn"
+                : schedulerAge !== null && schedulerAge > 15
                   ? "Notification delivery is online, but worth watching"
-                  : "Notification delivery is healthy";
+                  : dependencyHealth === "unknown"
+                    ? "Notification-service status is unavailable"
+                    : "Notification delivery is healthy";
 
     const detail =
       serviceUp === true

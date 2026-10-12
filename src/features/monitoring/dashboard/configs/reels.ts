@@ -5,7 +5,40 @@ import {
   formatSeconds,
   toneForThreshold,
 } from '../../formatters'
-import type { InfraViewConfig, StatCardGroupVm } from '../types'
+import type { ReelQueueOverview } from '../../api'
+import { getDependencyHealth } from '../dependencyHealth'
+import { getReelPipelineQueueHealth, getReelQueueHealth, getReelQueueLabel } from '../reelQueueHealth'
+import type { InfraViewConfig, StatCardGroupVm, StatCardVm } from '../types'
+
+const queueLaneCards = (
+  pipeline: 'Media' | 'Index',
+  queues: readonly ReelQueueOverview[] | undefined,
+  detail: string,
+): readonly StatCardVm[] => {
+  if (!queues?.length) {
+    return [{
+      label: `${pipeline} lanes`,
+      value: '—',
+      detail,
+      helper: `Per-queue ${pipeline.toLowerCase()} ready and consumer counts were not returned.`,
+      badge: 'Unknown',
+      tone: 'neutral',
+    }]
+  }
+
+  return queues.map((queue, index) => {
+    const health = getReelQueueHealth([queue])
+    const label = getReelQueueLabel(queue.queue, index)
+    return {
+      label: `${pipeline} ${label}`,
+      value: formatCount(queue.ready ?? Number.NaN),
+      detail: `${queue.queue || 'queue'}${queue.vhost ? ` · ${queue.vhost}` : ''} · ${formatCount(queue.consumers ?? Number.NaN)} consumers`,
+      helper: `Ready messages in the ${pipeline.toLowerCase()} ${label} lane and its attached consumers.`,
+      badge: health === 'degraded' ? 'Stalled' : health === 'healthy' ? 'Online' : 'Unknown',
+      tone: health === 'degraded' ? 'bad' : health === 'healthy' ? 'good' : 'neutral',
+    } satisfies StatCardVm
+  })
+}
 
 export const reelsConfig: InfraViewConfig = {
   id: 'reels',
@@ -21,30 +54,48 @@ export const reelsConfig: InfraViewConfig = {
   },
   health: (overview, hasData) => {
     const reels = overview?.reels
-    if (!hasData || reels?.snapshotUp == null) {
+    if (!hasData || !reels) {
       return { tone: 'neutral', label: 'Quick read', title: 'Waiting for Reel telemetry', detail: 'Monitoring has not received a usable Reel pipeline snapshot yet.' }
     }
-    if (!reels.snapshotUp || reels.rabbitmqUp === false) {
-      return { tone: 'bad', label: 'Quick read', title: 'Reel monitoring has a dependency outage', detail: 'The Content snapshot or RabbitMQ Reel metrics endpoint is unavailable.' }
-    }
+    const dependencyHealth = getDependencyHealth([reels.snapshotUp, reels.rabbitmqUp])
 
     const media = reels.media
     const index = reels.index
-    const mediaBacklogWithoutConsumers = (media?.queueReady ?? 0) > 0 && media?.consumers === 0
-    const indexBacklogWithoutConsumers = (index?.queueReady ?? 0) > 0 && index?.consumers === 0
-    if ((media?.dlqDepth ?? 0) > 0 || (index?.dlqDepth ?? 0) > 0 || mediaBacklogWithoutConsumers || indexBacklogWithoutConsumers) {
-      return { tone: 'bad', label: 'Quick read', title: 'Reel queues need immediate attention', detail: 'A dead-letter queue has work, or a primary queue has backlog without consumers.' }
-    }
-
-    if (
+    const mediaQueueHealth = getReelPipelineQueueHealth(media?.queues, 'media')
+    const indexQueueHealth = getReelPipelineQueueHealth(index?.queues, 'index')
+    const hasKnownDlq = (media?.dlqDepth ?? 0) > 0 || (index?.dlqDepth ?? 0) > 0
+    const hasKnownWarning =
       (reels.stalled ?? 0) > 0 ||
       (reels.recentFailed ?? 0) > 0 ||
       (media?.failureRate ?? 0) > 0.2 ||
       (index?.failureRate ?? 0) > 0.2 ||
       (media?.queueWaitP95Seconds ?? 0) > 120 ||
       (index?.queueWaitP95Seconds ?? 0) > 120
-    ) {
+    if (mediaQueueHealth === 'degraded' || indexQueueHealth === 'degraded') {
+      return { tone: 'bad', label: 'Quick read', title: 'Reel queues need immediate attention', detail: 'A dead-letter queue has work, or a primary queue has backlog without consumers.' }
+    }
+    if (hasKnownDlq) {
+      return { tone: 'bad', label: 'Quick read', title: 'Reel queues need immediate attention', detail: 'A dead-letter queue has work that needs investigation.' }
+    }
+
+    if (dependencyHealth === 'degraded') {
+      return { tone: 'bad', label: 'Quick read', title: 'Reel monitoring has a dependency outage', detail: 'The Content snapshot or RabbitMQ Reel metrics endpoint is unavailable.' }
+    }
+    if (hasKnownWarning) {
       return { tone: 'warn', label: 'Quick read', title: 'Reel pipeline needs attention', detail: 'Recent failures, stalled work, elevated worker failures, or queue wait are visible.' }
+    }
+    if (dependencyHealth === 'unknown' || mediaQueueHealth === 'unknown' || indexQueueHealth === 'unknown') {
+      return { tone: 'neutral', label: 'Quick read', title: 'Reel lane health is unknown', detail: 'Per-queue ready and consumer data is missing or incomplete, so one worker lane could be stalled.' }
+    }
+    if (
+      !Number.isFinite(media?.failureRate) ||
+      !Number.isFinite(media?.queueWaitP95Seconds) ||
+      !Number.isFinite(media?.dlqDepth) ||
+      !Number.isFinite(index?.failureRate) ||
+      !Number.isFinite(index?.queueWaitP95Seconds) ||
+      !Number.isFinite(index?.dlqDepth)
+    ) {
+      return { tone: 'neutral', label: 'Quick read', title: 'Reel worker health is unmeasured', detail: 'Content and primary queue checks are available, but worker rates, queue wait, or dead-letter evidence are idle or unmeasured.' }
     }
 
     return { tone: 'good', label: 'Quick read', title: 'Reel pipeline is healthy', detail: 'No stalled work, recent failures, queue outages, or dead-letter backlog are visible.' }
@@ -117,6 +168,16 @@ export const reelsConfig: InfraViewConfig = {
           { label: 'Index retry depth', value: formatCount(index?.retryQueueDepth ?? Number.NaN), detail, helper: 'Ready messages waiting in indexing retry queues.', badge: 'Retry', tone: toneForThreshold(index?.retryQueueDepth ?? null, 1, 10) },
           { label: 'Index DLQ', value: formatCount(index?.dlqDepth ?? Number.NaN), detail, helper: 'Ready messages in indexing dead-letter queues.', badge: 'DLQ', tone: toneForThreshold(index?.dlqDepth ?? null, 1, 1) },
           { label: 'Index publish / delivery', value: `${formatRate(index?.publishRate ?? Number.NaN)} / ${formatRate(index?.deliveryRate ?? Number.NaN)}`, detail, helper: 'RabbitMQ indexing queue publish and delivery rates.', badge: 'Flow', tone: 'neutral' },
+        ],
+      },
+      {
+        id: 'lanes',
+        heading: 'Worker lanes',
+        hint: 'Per-queue SHORT + LONG evidence',
+        gridClassName: 'sm:grid-cols-2 xl:grid-cols-4',
+        cards: [
+          ...queueLaneCards('Media', media?.queues, detail),
+          ...queueLaneCards('Index', index?.queues, detail),
         ],
       },
     ]

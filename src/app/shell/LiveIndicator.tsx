@@ -4,6 +4,8 @@ import type { MonitoringConnectionState } from '@/features/monitoring/freshness'
 const LABELS: Record<MonitoringConnectionState, string> = {
   live: 'Live',
   refreshing: 'Refreshing',
+  degraded: 'Degraded',
+  unknown: 'Unknown',
   stale: 'Stale',
   disconnected: 'Offline',
 }
@@ -11,6 +13,8 @@ const LABELS: Record<MonitoringConnectionState, string> = {
 const TONES: Record<MonitoringConnectionState, string> = {
   live: 'bg-ok-soft text-ok',
   refreshing: 'bg-blue-soft text-blue',
+  degraded: 'bg-warn-soft text-warn',
+  unknown: 'bg-raised text-ink-3',
   stale: 'bg-warn-soft text-warn',
   disconnected: 'bg-bad-soft text-bad',
 }
@@ -18,6 +22,8 @@ const TONES: Record<MonitoringConnectionState, string> = {
 const DOT_TONES: Record<MonitoringConnectionState, string> = {
   live: 'bg-ok',
   refreshing: 'bg-blue',
+  degraded: 'bg-warn',
+  unknown: 'bg-ink-3',
   stale: 'bg-warn',
   disconnected: 'bg-bad',
 }
@@ -27,6 +33,7 @@ export function LiveIndicator({ state }: { state: MonitoringConnectionState }) {
     <span
       role="status"
       aria-live="polite"
+      aria-atomic="true"
       className={cn(
         'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium',
         TONES[state],

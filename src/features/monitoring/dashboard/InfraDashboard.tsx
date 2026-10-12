@@ -3,7 +3,7 @@ import { useState } from 'react'
 
 import type { MonitoringMetric, MonitoringPoint } from '../api'
 import { fetchMonitoringTimeseries } from '../api'
-import { HISTORY_REFRESH_INTERVAL_MS, MONITORING_REFRESH_INTERVAL_MS } from '../freshness'
+import { getMonitoringOverviewHealth, HISTORY_REFRESH_INTERVAL_MS, MONITORING_REFRESH_INTERVAL_MS } from '../freshness'
 import { RANGE_OPTIONS, type RangeHours } from '../model'
 import { useOverviewQuery } from '../hooks/useOverviewQuery'
 import { useContainerResourcesQuery } from '../hooks/useContainerResourcesQuery'
@@ -144,7 +144,13 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
     void queryClient.invalidateQueries({ queryKey: ['monitoring', 'timeseries'] })
   }
 
-  const health = config.health(overview, hasData)
+  const health = hasData ? getMonitoringOverviewHealth({
+    health: config.health(overview, hasData),
+    now,
+    generatedAt: overview?.generatedAt,
+    lastSuccessfulAt: overviewQuery.dataUpdatedAt,
+    hasError: overviewQuery.isError,
+  }) : config.health(overview, hasData)
   const cards = config.cards?.({ overview, hasData })
   const cardGroups = config.cardGroups?.({ overview, hasData })
   const facts = config.facts?.(overview)

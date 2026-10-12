@@ -2,6 +2,13 @@ import { fetchApi } from "../../shared/api/client";
 
 type NullableMetric = number | null;
 
+export type ReelQueueOverview = {
+  queue: string;
+  vhost: string;
+  ready: NullableMetric;
+  consumers: NullableMetric;
+};
+
 export type MonitoringOverview = {
   generatedAt: string;
   source: "prometheus";
@@ -155,6 +162,7 @@ export type MonitoringOverview = {
       dlqDepth: NullableMetric;
       publishRate: NullableMetric;
       deliveryRate: NullableMetric;
+      queues?: ReelQueueOverview[];
     };
     index?: {
       throughputPerSecond: NullableMetric;
@@ -172,6 +180,7 @@ export type MonitoringOverview = {
       dlqDepth: NullableMetric;
       publishRate: NullableMetric;
       deliveryRate: NullableMetric;
+      queues?: ReelQueueOverview[];
     };
   };
 };

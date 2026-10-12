@@ -3,6 +3,7 @@ import {
   BellRing,
   CheckCircle2,
   CircleOff,
+  ExternalLink,
   RefreshCw,
   TriangleAlert,
 } from "lucide-react";
@@ -14,6 +15,9 @@ import type {
 } from "../../alertsApi";
 import {
   alertServiceForRouting,
+  langfuseInvestigationUrl,
+  logActionLabel,
+  logServiceForAlert,
   metricViewForAlert,
   type AlertMetricView,
 } from "../../alertRouting";
@@ -324,8 +328,9 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
               targetSha,
               deployedSha,
             } = deploymentAlertDetails(alert);
-            const logService = failedService || routingService;
+            const logService = failedService || logServiceForAlert(alert);
             const canOpenLogs = onOpenLogs && logService !== "deployment";
+            const isAiAlert = routingService === "ai-service";
 
             return (
               <article
@@ -497,8 +502,22 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                         size="sm"
                         onClick={() => onOpenLogs(logService)}
                       >
-                        View logs
+                        {logActionLabel(logService)}
                       </Button>
+                    )}
+                    {isAiAlert && langfuseInvestigationUrl && (
+                      <a
+                        href={langfuseInvestigationUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-control border border-line bg-raised px-3 text-[13px] font-medium text-ink transition-colors duration-150 hover:border-line-strong hover:bg-inset",
+                          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                        )}
+                      >
+                        <ExternalLink size={14} aria-hidden="true" />
+                        Open Langfuse
+                      </a>
                     )}
                   </div>
                 )}

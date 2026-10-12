@@ -8,6 +8,7 @@ import {
   toneForThreshold,
   type Tone,
 } from "../../formatters";
+import { getDependencyHealth } from "../dependencyHealth";
 import type { InfraViewConfig, StatCardGroupVm } from "../types";
 
 const statusValue = (value: boolean | null | undefined) =>
@@ -35,14 +36,16 @@ export const userServiceConfig: InfraViewConfig = {
     const databaseUp = user?.databaseUp ?? null;
     const errorRate = user?.errorRate ?? null;
     const storageFailureRate = user?.storageFailureRate ?? null;
-    const tone: Tone =
-      up === false || databaseUp === false
-        ? "bad"
-        : (errorRate ?? 0) >= 0.05 || (storageFailureRate ?? 0) > 0
+    const dependencyHealth = getDependencyHealth([up, databaseUp]);
+    const errorNeedsAttention = (errorRate ?? 0) >= 0.05;
+    const storageNeedsAttention = (storageFailureRate ?? 0) > 0;
+    const tone: Tone = dependencyHealth === "degraded"
+      ? "bad"
+      : errorNeedsAttention || storageNeedsAttention
           ? "warn"
-          : up === true
-            ? "good"
-            : "neutral";
+          : dependencyHealth === "unknown"
+            ? "neutral"
+            : "good";
     return {
       tone,
       label: "Quick read",
@@ -51,11 +54,13 @@ export const userServiceConfig: InfraViewConfig = {
           ? "User service is offline"
           : databaseUp === false
             ? "User database is unavailable"
-            : (storageFailureRate ?? 0) > 0
+            : storageNeedsAttention
               ? "Avatar storage checks need attention"
-              : up === true
-                ? "User service is healthy"
-                : "Waiting for User telemetry",
+              : errorNeedsAttention
+                ? "User errors need attention"
+                : dependencyHealth === "unknown"
+                  ? "User dependency status is unknown"
+              : "User service is healthy",
       detail:
         "Request, search, recommendation, and storage rates use rolling one-minute Prometheus windows.",
     };

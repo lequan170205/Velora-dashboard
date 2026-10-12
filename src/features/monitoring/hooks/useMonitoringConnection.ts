@@ -21,11 +21,9 @@ const useNow = (intervalMs: number): number => {
   return now
 }
 
-/* Connection state for the shell indicator. React Query keeps the last successful
-   status on error, so the live/refreshing/stale/disconnected formula sees the same
-   inputs as the previous heartbeat hook. */
+/* Retain the last status on polling errors, but mark its evidence stale. */
 export function useMonitoringConnection(): MonitoringConnectionState {
-  const { dataUpdatedAt, isFetching, isError } = useQuery({
+  const { data, dataUpdatedAt, isFetching, isError } = useQuery({
     queryKey: ['monitoring', 'status'],
     queryFn: ({ signal }) => fetchMonitoringStatus(signal),
     refetchInterval: MONITORING_REFRESH_INTERVAL_MS,
@@ -41,5 +39,7 @@ export function useMonitoringConnection(): MonitoringConnectionState {
     lastSuccessfulAt: dataUpdatedAt > 0 ? dataUpdatedAt : null,
     refreshing: isFetching,
     hasError: isError,
+    monitoringUp: data?.monitoringUp,
+    hostUp: data?.hostUp,
   })
 }

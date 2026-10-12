@@ -216,7 +216,7 @@ export function HostStrip({
   return (
     <section className="rounded-card border border-line bg-panel" aria-label="Host overview">
       <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
-        <div className="flex min-w-0 items-center gap-2">
+        <div role="status" aria-live="polite" aria-atomic="true" className="flex min-w-0 items-center gap-2">
           <span
             aria-hidden="true"
             className={cn('size-2 shrink-0 rounded-full', DOT_CLASS[health.tone])}
