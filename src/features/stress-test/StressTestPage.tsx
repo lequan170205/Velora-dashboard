@@ -12,6 +12,8 @@ import { createTestGroup, fixtureMembersByEmail, getConversations, getSocketToke
 import { csvReport, PROFILES, runChat, SOCKET_CONNECT_TIMEOUT_MS, validateStages, type Report, type Stage } from './runner'
 
 import { prepareRooms } from './fixtures'
+import { withStressLock } from './run-lock'
+import { getCallState } from './calls/api'
 
 const HISTORY_KEY = 'velora.stress.history.v1'
 const CONFIG_KEY = 'velora.stress.config.v1'
@@ -124,11 +126,17 @@ export function StressTestPage() {
       const origin = socketOrigin()
       // Token is held in this run closure only, never in React state, storage or reports.
       let token = ''
-      const result = await runChat({
+      const result = await withStressLock(async () => {
+        // An offline call companion does not disable the existing chat-only workflow.
+        let callBusy = false
+        try { callBusy = (await getCallState()).busy } catch { /* Companion is optional for chat. */ }
+        if (callBusy) throw new Error('A server call test is running. Stop it before starting chat load.')
+        return runChat({
         conversationId: runIds[0], conversationIds: runIds, profile, stages: structuredClone(stages), signal: abort.signal,
         ensureSession: async () => { token = await getSocketToken(abort.signal) },
         createSocket: () => io(origin, { path: '/socket.io', transports: ['websocket'], auth: { token }, reconnection: false, forceNew: true, autoConnect: false, timeout: SOCKET_CONNECT_TIMEOUT_MS }),
         onUpdate: (snapshot) => { if (mounted.current) setReport({ ...snapshot, serverSamples: [...serverSamples.current] }) },
+      })
       })
       token = ''
       result.serverSamples = [...serverSamples.current]
@@ -138,8 +146,8 @@ export function StressTestPage() {
       try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); localStorage.setItem(CONFIG_KEY, JSON.stringify({ conversationId, conversationIds: selectedIds, mode, profile, stages })) }
       catch { if (mounted.current) setError('Browser storage is unavailable. Export this result before leaving.') }
       if (mounted.current) setHistory(next)
-    } catch {
-      if (mounted.current) setError('Could not start. Check stage limits, session and the configured API origin.')
+    } catch (e) {
+      if (mounted.current) setError(e instanceof Error ? e.message : 'Could not start. Check stage limits, session and the configured API origin.')
     } finally {
       controller.current = null
       if (mounted.current) setActive(false)

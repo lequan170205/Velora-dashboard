@@ -9,3 +9,6 @@ dist/
 scripts/stress/private/
 scripts/stress/results/
 stress-private/
+
+# Generated native call-test companion (contains no fixture credentials)
+.call-stress-agent/

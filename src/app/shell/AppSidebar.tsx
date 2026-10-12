@@ -24,6 +24,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={item.to === "/stress-test"}
                 onClick={onNavigate}
                 className={({ isActive }) => navLinkClassName(isActive)}
               >

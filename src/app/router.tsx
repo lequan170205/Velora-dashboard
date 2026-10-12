@@ -31,6 +31,8 @@ import { AppShell } from "./shell/AppShell";
 
 const StressTestPage = lazy(() => import('../features/stress-test/StressTestPage').then((module) => ({ default: module.StressTestPage })));
 
+const CallStressPage = lazy(() => import('../features/stress-test/calls/CallStressPage').then(module => ({ default: module.CallStressPage })));
+
 function AuthGate() {
   const { status } = useAuth();
 
@@ -122,6 +124,7 @@ export const router = createHashRouter([
     children: [
       { index: true, element: <Navigate to="/server" replace /> },
       { path: "server", element: <ServerRoute /> },
+      { path: "stress-test/calls", element: <Suspense fallback={<SessionLoader />}><CallStressPage /></Suspense> },
       { path: "stress-test", element: <Suspense fallback={<SessionLoader />}><StressTestPage /></Suspense> },
       {
         path: "service",

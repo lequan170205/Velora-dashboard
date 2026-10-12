@@ -28,7 +28,10 @@ export type NavGroup = {
 export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Demo tools",
-    items: [{ to: "/stress-test", label: "Stress test", title: "Stress test", icon: FlaskConical }],
+    items: [
+      { to: "/stress-test", label: "Chat stress", title: "Chat stress test", icon: FlaskConical },
+      { to: "/stress-test/calls", label: "Call stress", title: "Call stress test", icon: Phone },
+    ],
   },
   {
     label: "Infrastructure",
