@@ -20,7 +20,7 @@ Open `https://dashboard.velora-app.me/#/stress-test/calls` with an admin session
 
 Every endpoint receives increasing inbound audio packets and bytes in every five-second sample. Each call produces a normal `call_left` receipt. Every fixture login is logged out, owned active sessions are checked, fixture call state is settled, and the deployment remains unchanged throughout the run. Failed or cancelled runs remain visible. Stop waits for cleanup rather than reporting a success.
 
-This is **host-local SFU voice testing**. Only test clients override the announced ICE candidate with the host's private LAN address and disable their TURN entries; server configuration is unchanged. It does not validate public UDP/TURN reachability, native push UI, video, real microphones, speech quality or a production user-capacity limit. Resource rates use a one-minute window and include generator overhead on the same host.
+This is **host-local SFU voice testing**. Only test clients override the announced ICE candidate with the host's private LAN address and disable their TURN entries; server configuration is unchanged. It does not validate public UDP/TURN reachability, native push UI, video, real microphones, speech quality or a production user-capacity limit. CPU rates use a one-minute window. The native generator shares the Mac's hardware and can contend for resources; node-exporter host metrics describe the Docker host/VM, not total macOS CPU.
 
 ## Runtime and results
 

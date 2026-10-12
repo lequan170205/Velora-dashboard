@@ -116,7 +116,7 @@ export function CallStressPage() {
       observed?.host.cpuUsageRatio == null
         ? null
         : formatPercent(observed.host.cpuUsageRatio),
-      "Across all host CPU cores",
+      "Monitored Docker host/VM, all cores",
     ],
   ];
   return (
@@ -175,7 +175,8 @@ export function CallStressPage() {
             <div>
               <h2 className="font-semibold">Run configuration</h2>
               <p className="mt-1 text-sm text-ink-2">
-                Dedicated fixture accounts and rooms. One server run at a time.
+                Dedicated test groups, two participants per call. One server run
+                at a time.
               </p>
             </div>
             <div>
