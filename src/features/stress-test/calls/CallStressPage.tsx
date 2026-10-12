@@ -145,7 +145,11 @@ export function CallStressPage() {
                   : "neutral"
           }
         >
-          {active?.status ?? display?.status ?? "Ready"}
+          {status.isError
+            ? "Runner unavailable"
+            : status.isPending
+              ? "Checking runner"
+              : (active?.status ?? display?.status ?? "Ready")}
         </Badge>
       </div>
       <div className="rounded-card border border-line bg-raised p-4 text-sm text-ink-2">

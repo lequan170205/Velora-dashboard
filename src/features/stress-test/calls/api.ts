@@ -50,6 +50,11 @@ function object(v: unknown): Record<string, unknown> {
     throw new Error("Invalid runner response");
   return v as Record<string, unknown>;
 }
+function finite(v: unknown): number {
+  if (typeof v !== "number" || !Number.isFinite(v))
+    throw new Error("Invalid runner measurement");
+  return v;
+}
 function number(v: unknown): number {
   if (typeof v !== "number" || !Number.isFinite(v) || v < 0)
     throw new Error("Invalid runner measurement");
@@ -108,7 +113,7 @@ export function parseRun(value: unknown): CallRun {
         passed: boolean(s.passed),
         packetsMin: nullable(s.packetsMin),
         packetsMax: nullable(s.packetsMax),
-        reportedLost: number(s.reportedLost),
+        reportedLost: finite(s.reportedLost),
         jitterMs: nullable(s.jitterMs),
         leaveReceipts: number(s.leaveReceipts),
         logoutRevoked: number(s.logoutRevoked),

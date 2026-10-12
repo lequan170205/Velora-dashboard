@@ -75,3 +75,11 @@ test("rejects malformed measurements and unbounded payloads", () => {
 test("stop cannot inject a route", async () => {
   await assert.rejects(stopCallRun("../../admin"));
 });
+
+test("keeps finite RTC reported loss counters without inventing a zero floor", () => {
+  assert.equal(
+    parseRun({ ...run, stages: [{ ...run.stages[0], reportedLost: -1 }] })
+      .stages[0].reportedLost,
+    -1,
+  );
+});
