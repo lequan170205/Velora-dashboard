@@ -30,6 +30,7 @@ This is **host-local SFU voice testing**. Only test clients override the announc
 - JSON/CSV exports contain measurements only. Last five runs stay in memory during companion lifetime. Full private reports are saved mode `0600` under its scoped `~/Downloads/velora-call-agent-*/runs/` folder. Export before ending the companion.
 - Transient database audits use one connection at a time and disconnect. Existing application connection pools, database schemas, deployment secrets and router settings are unchanged.
 - If cleanup is incomplete, do not run another test. Inspect the failed run and fixture state first. The next Start also enforces settled fixture and pipeline checks.
+- Audit failures identify the failed check (fixture state, push tokens, pipeline/resource metrics, deployment runtime, LAN address or session audit). Raw exceptions are withheld. Checks execute once; this does not add retries or database connections.
 
 ## Checks
 

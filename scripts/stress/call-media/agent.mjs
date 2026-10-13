@@ -8,6 +8,7 @@ import { choosePairs } from "./plan.mjs";
 import { privateIpv4 } from "./media-path.mjs";
 import { CallJobStore, JobConflict } from "./job-store.mjs";
 import { adminAuthorizer } from "./agent-auth.mjs";
+import { checked, failureMessages } from "./checks.mjs";
 import {
   fixtureTokens,
   callState,
@@ -40,18 +41,23 @@ async function main() {
   const authorize = adminAuthorizer(config.baseUrl),
     browserRoot = join(root, "browser-cache");
   async function ready() {
-    const state = await callState(config);
+    const state = await checked("Fixture state audit unavailable", () =>
+      callState(config),
+    );
     return (
       state.activeUserPointers === 0 &&
       !state.statuses.some((x) =>
         ["active", "accepting", "ringing", "initiated"].includes(x),
       ) &&
-      (await pipelineReady())
+      (await checked("Pipeline metrics unavailable", pipelineReady))
     );
   }
   async function settle() {
     const end = Date.now() + 180000;
-    while (!(await ready()) || (await resources()).rooms !== 0) {
+    while (
+      !(await ready()) ||
+      (await checked("Resource metrics unavailable", resources)).rooms !== 0
+    ) {
       if (Date.now() > end) throw new Error("Cleanup incomplete");
       await sleep(5000);
     }
@@ -65,18 +71,8 @@ async function main() {
         baseline,
         resourceBusy = false;
       const deadline = setTimeout(() => store.active?.abort.abort(), 900000);
-      const knownFailures = new Set([
-        "Fixture not ready",
-        "Pipeline not settled",
-        "Deployment changed",
-        "Browser preparation failed",
-        "Media failed",
-        "Cleanup incomplete",
-        "Stopped by operator",
-        "Metrics unavailable",
-      ]);
       try {
-        baseline = await runtime();
+        baseline = await checked("Runtime audit unavailable", runtime);
         const processes = await import("node:child_process").then(
           ({ execFileSync }) =>
             execFileSync("/bin/ps", ["-axo", "command="], { encoding: "utf8" }),
@@ -91,14 +87,25 @@ async function main() {
             )
         )
           throw new Error("Pipeline not settled");
-        if (!(await ready()) || (await resources()).rooms !== 0)
+        if (
+          !(await ready()) ||
+          (await checked("Resource metrics unavailable", resources)).rooms !== 0
+        )
           throw new Error("Pipeline not settled");
-        if ((await fixtureTokens(config)).active !== 0)
+        if (
+          (
+            await checked("Push token audit unavailable", () =>
+              fixtureTokens(config),
+            )
+          ).active !== 0
+        )
           throw new Error("Fixture not ready");
-        const address = await lanAddress();
+        const address = await checked("LAN address unavailable", lanAddress);
         if (!privateIpv4(address)) throw new Error("Fixture not ready");
         update({ phase: "prepare" });
-        const chrome = await prepareBrowser(browserRoot, signal);
+        const chrome = await checked("Browser preparation failed", () =>
+          prepareBrowser(browserRoot, signal),
+        );
         sampler = setInterval(async () => {
           if (resourceBusy) return;
           resourceBusy = true;
@@ -112,7 +119,11 @@ async function main() {
         }, 5000);
         for (const calls of job.preset === "demo" ? [1, 3, 5] : [1]) {
           if (signal.aborted) throw new Error("Stopped by operator");
-          if (JSON.stringify(await runtime()) !== JSON.stringify(baseline))
+          if (
+            JSON.stringify(
+              await checked("Runtime audit unavailable", runtime),
+            ) !== JSON.stringify(baseline)
+          )
             throw new Error("Deployment changed");
           if (!(await ready())) throw new Error("Pipeline not settled");
           update({ currentCalls: calls, phase: "setup", progress: null });
@@ -215,7 +226,9 @@ async function main() {
           };
           job.stages.push(receipt);
           update({ phase: "cleanup", progress: null });
-          const sessions = await ownedSessions(config, report);
+          const sessions = await checked("Session audit unavailable", () =>
+            ownedSessions(config, report),
+          );
           await settle();
           if (
             sessions.active ||
@@ -229,15 +242,21 @@ async function main() {
             throw new Error(
               signal.aborted ? "Stopped by operator" : "Media failed",
             );
-          if (JSON.stringify(await runtime()) !== JSON.stringify(baseline))
+          if (
+            JSON.stringify(
+              await checked("Runtime audit unavailable", runtime),
+            ) !== JSON.stringify(baseline)
+          )
             throw new Error("Deployment changed");
           receipt.passed = true;
         }
-        job.samples.push(await resources());
+        job.samples.push(
+          await checked("Resource metrics unavailable", resources),
+        );
       } catch (e) {
         job.failure = signal.aborted
           ? "Stopped by operator"
-          : knownFailures.has(e.message)
+          : failureMessages.has(e.message)
             ? e.message
             : "Test or cleanup did not complete";
         throw e;
