@@ -10,6 +10,7 @@ import { useOverviewQuery } from "../../monitoring/hooks/useOverviewQuery";
 import { formatBytes, formatPercent } from "../../monitoring/formatters";
 import {
   callCsv,
+  callStageResult,
   getCallState,
   startCallRun,
   stopCallRun,
@@ -305,6 +306,8 @@ export function CallStressPage() {
                       : [1]
                     ).map((calls) => {
                       const s = display?.stages.find((s) => s.calls === calls);
+                      const result =
+                        display && s ? callStageResult(display, s) : null;
                       return (
                         <tr
                           key={calls}
@@ -329,10 +332,8 @@ export function CallStressPage() {
                               : "—"}
                           </td>
                           <td>
-                            {s ? (
-                              <Badge tone={s.passed ? "good" : "bad"}>
-                                {s.passed ? "Passed" : "Failed / incomplete"}
-                              </Badge>
+                            {result ? (
+                              <Badge tone={result.tone}>{result.label}</Badge>
                             ) : active?.currentCalls === calls ? (
                               "Running"
                             ) : (

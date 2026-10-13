@@ -11,18 +11,24 @@ const source = (
   /import \{ fetchApi \}[^\n]+/,
   "const fetchApi = globalThis.__callFetch",
 );
-const { parseRun, parseState, callCsv, startCallRun, stopCallRun } =
-  await import(
-    "data:text/javascript;base64," +
-      Buffer.from(
-        ts.transpileModule(source, {
-          compilerOptions: {
-            module: ts.ModuleKind.ESNext,
-            target: ts.ScriptTarget.ES2022,
-          },
-        }).outputText,
-      ).toString("base64")
-  );
+const {
+  parseRun,
+  parseState,
+  callCsv,
+  callStageResult,
+  startCallRun,
+  stopCallRun,
+} = await import(
+  "data:text/javascript;base64," +
+    Buffer.from(
+      ts.transpileModule(source, {
+        compilerOptions: {
+          module: ts.ModuleKind.ESNext,
+          target: ts.ScriptTarget.ES2022,
+        },
+      }).outputText,
+    ).toString("base64")
+);
 const run = {
   id: "a622491c-a471-4e78-9a9c-90d4b3ef4e60",
   preset: "smoke",
@@ -81,5 +87,33 @@ test("keeps finite RTC reported loss counters without inventing a zero floor", (
     parseRun({ ...run, stages: [{ ...run.stages[0], reportedLost: -1 }] })
       .stages[0].reportedLost,
     -1,
+  );
+});
+
+test("a stage awaiting cleanup is pending, while terminal failures remain failures", () => {
+  const stage = { ...run.stages[0], passed: false };
+  assert.deepEqual(
+    callStageResult({ ...run, status: "running", phase: "cleanup" }, stage),
+    { label: "Verifying cleanup", tone: "info" },
+  );
+  assert.deepEqual(callStageResult({ ...run, status: "failed" }, stage), {
+    label: "Failed / incomplete",
+    tone: "bad",
+  });
+});
+
+test("Stop distinguishes unfinished stages from stages already verified", () => {
+  const stage = { ...run.stages[0], passed: false };
+  assert.deepEqual(callStageResult({ ...run, status: "stopping" }, stage), {
+    label: "Stopping",
+    tone: "warn",
+  });
+  assert.deepEqual(callStageResult({ ...run, status: "cancelled" }, stage), {
+    label: "Cancelled",
+    tone: "warn",
+  });
+  assert.deepEqual(
+    callStageResult({ ...run, status: "cancelled" }, run.stages[0]),
+    { label: "Passed", tone: "good" },
   );
 });

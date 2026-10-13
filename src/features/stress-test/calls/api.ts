@@ -42,6 +42,21 @@ export type CallState = {
   fixtureParticipants: number;
   fixtureRooms: number;
 };
+export function callStageResult(
+  run: CallRun,
+  stage: CallStage,
+): { label: string; tone: "good" | "warn" | "info" | "bad" } {
+  if (stage.passed) return { label: "Passed", tone: "good" };
+  if (run.status === "cancelled") return { label: "Cancelled", tone: "warn" };
+  if (run.status === "stopping") return { label: "Stopping", tone: "warn" };
+  if (
+    run.status === "running" &&
+    run.phase === "cleanup" &&
+    run.currentCalls === stage.calls
+  )
+    return { label: "Verifying cleanup", tone: "info" };
+  return { label: "Failed / incomplete", tone: "bad" };
+}
 const path = "/monitoring/stress/calls";
 const uuid =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
