@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { AuthManager, parseJwtSub, validateConfig, run, STRESS_USER_AGENT } from './stress/runner.mjs'
-import { Ledger, skippedSlots } from './stress/protocol.mjs'
+import { Ledger, skippedSlots, dueSlots, pacingWake, pacingTolerance, PACING_TICK_MS } from './stress/protocol.mjs'
 
 const token = (sub, exp = Math.floor(Date.now() / 1000) + 3600) => `e30.${Buffer.from(JSON.stringify({ sub, exp })).toString('base64url')}.x`
 function config(extra = {}) {
@@ -189,4 +189,71 @@ test('JWT collision fails before transport and revokes owned sessions', async ()
     logoutAll: async () => { cleaned = true; return { revoked: 0, failed: 0 } } },
     createSocket: () => { throw new Error('must not connect') } })
   assert.equal(report.passed, false); assert.equal(report.authenticated, 0); assert.equal(cleaned, true)
+})
+test('dueSlots keeps the no-catch-up semantics of skippedSlots at the interval/4 tolerance', () => {
+  assert.deepEqual(dueSlots(0, 0, 225, 100, 10, 25), { skip: 3, emit: 0 })
+  assert.deepEqual(dueSlots(0, 3, 225, 100, 10, 25), { skip: 0, emit: 0 })
+  assert.deepEqual(dueSlots(0, 0, 2, 100, 10, 25), { skip: 0, emit: 1 })
+  assert.deepEqual(dueSlots(0, 8, 1100, 100, 10, 25), { skip: 2, emit: 0 })
+  assert.deepEqual(dueSlots(0, 10, 5000, 100, 10, 25), { skip: 0, emit: 0 })
+  assert.deepEqual(dueSlots(0, 0, 500, Infinity, 0), { skip: 0, emit: 0 })
+})
+test('sub-tick intervals offer a batch of due slots per wake-up instead of one timer per slot', () => {
+  assert.equal(pacingTolerance(1), 4 * PACING_TICK_MS)
+  assert.equal(pacingTolerance(200), 50)
+  assert.equal(pacingWake(0, 7, 200), 1400)
+  assert.equal(pacingWake(0, 7, 1), 7 + PACING_TICK_MS)
+  assert.deepEqual(dueSlots(0, 0, 4.2, 1, 3000), { skip: 0, emit: 5 })
+  assert.deepEqual(dueSlots(0, 0, 0, 1, 3000), { skip: 0, emit: 1 })
+  // A stall beyond the tolerance skips the oldest slots; nothing is replayed afterwards.
+  assert.deepEqual(dueSlots(0, 0, 100, 1, 3000), { skip: 81, emit: 20 })
+  assert.deepEqual(dueSlots(0, 5, 2999.5, 1, 3000), { skip: 2975, emit: 20 })
+})
+test('simulated 1000 rps scheduler loses no slots with realistic timer jitter and still skips a real stall', () => {
+  function simulate(jitter, stall) {
+    const interval = 1, planned = 3000
+    let slot = 0, skipped = 0, emitted = 0, now = 0, maxBatch = 0, stalled = false
+    while (slot < planned) {
+      now = Math.max(now, pacingWake(0, slot, interval)) + jitter(slot)
+      if (stall && !stalled && now > 1000) { now += stall; stalled = true }
+      const due = dueSlots(0, slot, now, interval, planned)
+      skipped += due.skip; slot += due.skip; emitted += due.emit; slot += due.emit
+      maxBatch = Math.max(maxBatch, due.emit)
+    }
+    return { skipped, emitted, maxBatch }
+  }
+  const steady = simulate(slot => (slot * 7919) % 6 * 0.8)
+  assert.equal(steady.skipped, 0); assert.equal(steady.emitted, 3000); assert.ok(steady.maxBatch <= 25)
+  const stalled = simulate(() => 1, 60)
+  // 60 ms stall + one 5 ms batching wait + 1 ms jitter, minus the 20 ms tolerance, is about 46 skipped slots.
+  assert.ok(stalled.skipped >= 40 && stalled.skipped <= 50, String(stalled.skipped))
+  assert.equal(stalled.skipped + stalled.emitted, 3000)
+})
+test('ledger stage counters stay O(1) and flip to bad when a duplicate arrives after settling', () => {
+  const l = new Ledger(config().accounts, { deadline: 1000 })
+  const make = (id, stage) => l.begin({ id, room: 'r0', sender: 'a', recipients: ['b'], kind: 'load', stage })
+  const good = Array.from({ length: 3 }, (_, i) => make('g' + i, 'one'))
+  const other = make('o', 'two'), failed = make('f', 'one')
+  for (const e of [...good, other]) { l.ack(message(e), 'a'); l.delivery(message(e), 'b') }
+  l.failed(message(failed), 'a')
+  assert.deepEqual(l.stageCounts('one'), { settled: 4, bad: 1 })
+  assert.deepEqual(l.stageCounts('two'), { settled: 1, bad: 0 })
+  l.delivery(message(good[0]), 'b') // duplicate after the record settled
+  assert.deepEqual(l.stageCounts('one'), { settled: 4, bad: 2 })
+  l.delivery({ ...message(good[0]), conversationId: 'wrong' }, 'b') // already bad: counted once
+  assert.deepEqual(l.stageCounts('one'), { settled: 4, bad: 2 })
+  assert.deepEqual(l.stageCounts('never-seen'), { settled: 0, bad: 0 }); l.close()
+})
+test('integration fake: 400 rps ticks without per-slot timers and stops on a settled error ratio via counters', async () => {
+  const f = fixture({ ackDelay: 2, deliveryDelay: 5 })
+  const report = await run(config({ stages: [{ name: 'fast', users: 3, rps: 400, seconds: 1 }] }),
+    { ...f, warmMs: 0, replayQuietMs: 10, deadline: 300 })
+  const stage = report.stages[0]
+  assert.equal(stage.planned, 400); assert.equal(report.totals.failedMessages, 0)
+  assert.ok(stage.emitted >= 380, `emitted ${stage.emitted}, skipped ${stage.skipped}`)
+  assert.equal(stage.emitted + stage.skipped, 400)
+  const dropped = fixture({ dropLoad: true })
+  const failing = await run(config({ stages: [{ name: 'broken', users: 3, rps: 100, seconds: 1 }] }),
+    { ...dropped, warmMs: 0, replayQuietMs: 10, deadline: 30 })
+  assert.equal(failing.passed, false); assert.equal(failing.stopReason, 'settled error ratio exceeded 30%')
 })

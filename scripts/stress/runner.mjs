@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir, stat, chmod } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { io } from 'socket.io-client'
-import { Ledger, sleep, boundedMap, skippedSlots } from './protocol.mjs'
+import { Ledger, sleep, boundedMap, dueSlots, pacingWake } from './protocol.mjs'
 
 export const LIMITS = Object.freeze({ minAccounts: 2, maxAccounts: 200, rooms: 20, pending: 100, messages: 10000, seconds: 1200 })
 export const DEFAULT_STAGES = [{ name: '50 users', users: 50, rps: 5, seconds: 180 }]
@@ -197,31 +197,35 @@ export async function run(input, options = {}) {
       const planned = Math.floor(stage.rps * stage.seconds), tasks = new Set()
       let slot = 0, emitted = 0, skipped = 0
       const stageName = `${stageIndex + 1}: ${stage.name}`
+      const progressEvery = Math.max(1, Math.round(stage.rps * 30))
+      let progressMark = 0
       while (slot < planned && !signal.aborted && !report.stopReason) {
-        const due = start + slot * interval
-        await sleep(Math.max(0, due - performance.now()), signal)
-        const missed = skippedSlots(start, slot, performance.now(), interval, planned)
-        if (missed) { skipped += missed; slot += missed; continue }
-        slot++
-        if (tasks.size >= LIMITS.pending) { skipped++; continue }
-        const account = config.accounts[senderIndex++ % config.accounts.length], s = states.get(account.id)
-        const targetRoom = s.rooms[Math.floor((senderIndex - 1) / config.accounts.length) % s.rooms.length]
-        const task = (async () => {
-          try {
-            const token = await auth.token(account)
-            if (token !== s.token) {
-              s.refreshing = true; s.socket.disconnect()
-              await connect(s, token, signal); await sleep(300, signal); s.refreshing = false
-            }
-            if (!s.connected || signal.aborted || report.stopReason) { skipped++; return }
-            emitted++
-            await emit(s, targetRoom, 'load', stageName).promise
-          } catch { report.stopReason ??= 'authentication or transport failure' }
-        })()
-        tasks.add(task); task.finally(() => tasks.delete(task))
-        const completed = [...ledger.records.values()].filter(e => e.stage === stageName && e.done)
-        if (completed.length >= 10 && completed.filter(e => !ledger.good(e)).length / completed.length > .3) report.stopReason ??= 'settled error ratio exceeded 30%'
-        if (slot % Math.max(1, Math.round(stage.rps * 30)) === 0) progress('load')
+        await sleep(Math.max(0, pacingWake(start, slot, interval) - performance.now()), signal)
+        // Offer every due slot in one pass; slots later than the tolerance are skipped, never replayed.
+        const due = dueSlots(start, slot, performance.now(), interval, planned)
+        skipped += due.skip; slot += due.skip
+        for (let n = 0; n < due.emit; n++) {
+          slot++
+          if (tasks.size >= LIMITS.pending) { skipped++; continue }
+          const account = config.accounts[senderIndex++ % config.accounts.length], s = states.get(account.id)
+          const targetRoom = s.rooms[Math.floor((senderIndex - 1) / config.accounts.length) % s.rooms.length]
+          const task = (async () => {
+            try {
+              const token = await auth.token(account)
+              if (token !== s.token) {
+                s.refreshing = true; s.socket.disconnect()
+                await connect(s, token, signal); await sleep(300, signal); s.refreshing = false
+              }
+              if (!s.connected || signal.aborted || report.stopReason) { skipped++; return }
+              emitted++
+              await emit(s, targetRoom, 'load', stageName).promise
+            } catch { report.stopReason ??= 'authentication or transport failure' }
+          })()
+          tasks.add(task); task.finally(() => tasks.delete(task))
+        }
+        const counts = ledger.stageCounts(stageName)
+        if (counts.settled >= 10 && counts.bad / counts.settled > .3) report.stopReason ??= 'settled error ratio exceeded 30%'
+        if (Math.floor(slot / progressEvery) > progressMark) { progressMark = Math.floor(slot / progressEvery); progress('load') }
       }
       if (!report.stopReason && !signal.aborted) await sleep(Math.max(0, start + stage.seconds * 1000 - performance.now()), signal)
       await Promise.allSettled([...tasks])

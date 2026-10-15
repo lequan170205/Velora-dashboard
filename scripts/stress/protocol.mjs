@@ -29,12 +29,35 @@ export function skippedSlots(start, slot, now, interval, planned) {
   // Small timer jitter is acceptable; a materially late slot is not replayed.
   return late >= interval / 4 ? Math.min(Math.ceil(late / interval), planned - slot) : 0
 }
+// Timers cannot honour a per-slot deadline below a few milliseconds, so slots are
+// paced in ticks: every wake-up offers all slots that are due. A slot is only
+// skipped once it is more than the tolerance late, and skipped slots are never
+// replayed, so the offered load stays honest.
+export const PACING_TICK_MS = 5
+export const PACING_TOLERANCE_MS = 4 * PACING_TICK_MS
+export function pacingTolerance(interval) { return Math.max(interval / 4, PACING_TOLERANCE_MS) }
+// When to wake for `slot`. Sub-tick intervals wait one tick so a batch accumulates
+// instead of arming a timer per message.
+export function pacingWake(start, slot, interval) {
+  return start + slot * interval + (interval < PACING_TICK_MS ? PACING_TICK_MS : 0)
+}
+// Split the slots that are due at `now` into skipped (late beyond tolerance, never
+// replayed) and emitted (due, within tolerance). Both are counted from `slot`.
+export function dueSlots(start, slot, now, interval, planned, tolerance = pacingTolerance(interval)) {
+  const remaining = planned - slot
+  if (remaining <= 0 || !Number.isFinite(interval)) return { skip: 0, emit: 0 }
+  const due = Math.max(0, Math.min(Math.floor((now - start) / interval) + 1 - slot, remaining))
+  const skip = Math.max(0, Math.min(Math.floor((now - tolerance - start) / interval) + 1 - slot, due))
+  return { skip, emit: due - skip }
+}
 // Recipient bit masks keep bookkeeping bounded without storing raw event payloads.
 export class Ledger {
   constructor(accounts, { now = performance.now.bind(performance), deadline = 8000, signal } = {}) {
     this.now = now; this.deadline = deadline; this.records = new Map(); this.pending = new Set()
     this.bits = new Map(accounts.map((a, i) => [a.id, 1n << BigInt(i)]))
     this.replayWaiters = new Map()
+    // Settled/bad counts per stage, kept incrementally so the runner never scans records.
+    this.stages = new Map()
     this.abort = () => { for (const e of this.pending) this.finish(e, 'operator stop') }
     this.signal = signal; signal?.addEventListener('abort', this.abort, { once: true })
   }
@@ -55,7 +78,7 @@ export class Ledger {
     if (msg.conversationId !== e.room || msg.senderId !== e.sender ||
         (ack ? receiver !== e.sender : !(e.expected & (this.bits.get(receiver) ?? 0n))) ||
         typeof msg.id !== 'string' || !msg.id || (e.storedId && e.storedId !== msg.id)) {
-      e.unexpected++; return false
+      e.unexpected++; this.settle(e); return false
     }
     e.storedId ??= msg.id
     // This is the timestamp assigned inside the final transaction attempt,
@@ -83,7 +106,7 @@ export class Ledger {
     const e = this.records.get(msg?.clientMessageId)
     if (!e || !this.valid(e, msg, receiver)) return
     const bit = this.bits.get(receiver)
-    if (e.seen & bit) { e.duplicate++; return }
+    if (e.seen & bit) { e.duplicate++; this.settle(e); return }
     e.seen |= bit
     const elapsed = this.now() - e.started
     e.firstDeliveryMs ??= elapsed; e.lastDeliveryMs = elapsed
@@ -98,7 +121,23 @@ export class Ledger {
   finish(e, error = null) {
     if (e.done) return
     e.done = true; e.error = error; clearTimeout(e.timer); this.pending.delete(e)
+    this.stageCounts(e.stage).settled++
+    this.settle(e)
     e.resolve(e)
+  }
+  // Settled/bad counters for a stage (O(1)); `bad` follows good() even when a
+  // duplicate or unexpected event arrives after the record settled.
+  stageCounts(stage) {
+    let counts = this.stages.get(stage)
+    if (!counts) this.stages.set(stage, counts = { settled: 0, bad: 0 })
+    return counts
+  }
+  settle(e) {
+    if (!e.done) return
+    const bad = !this.good(e)
+    if (bad === Boolean(e.counted)) return
+    e.counted = bad
+    this.stageCounts(e.stage).bad += bad ? 1 : -1
   }
   count(mask) { let n = 0; while (mask) { mask &= mask - 1n; n++ } return n }
   good(e) { return !e.error && e.ackMs !== null && e.timely === e.expected && !e.unexpected && !e.duplicate }
