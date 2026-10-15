@@ -72,7 +72,12 @@ export function dueSlots(elapsedMs: number, rps: number, offered: number, planne
   const skip = Math.max(0, Math.min(waiting, tooLate - offered))
   return { skip, emit: waiting - skip }
 }
-export const pendingCap = (rps: number) => Math.max(100, rps)
+/**
+ * Messages allowed awaiting their ACK at once. Up to 100 messages/s the original cap of 100 applies;
+ * above that it is two seconds of traffic, so a slow ACK (a busy server) does not make the
+ * generator drop slots, while a stalled server is still bounded to a few thousand messages.
+ */
+export const pendingCap = (rps: number) => rps <= 100 ? 100 : rps * 2
 
 export const plannedMessages = (stages: Stage[]) => stages.reduce((n, s) => n + s.rps * s.seconds, 0)
 /** Whole slots a run may leave unsent and still pass: 0.1% of the plan, so tiny runs allow none. */

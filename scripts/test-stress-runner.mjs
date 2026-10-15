@@ -344,7 +344,8 @@ test('dueSlots offers every due slot and skips only slots later than the toleran
   assert.deepEqual(dueSlots(100, 1000, 0, 10000), { skip: 81, emit: 20 })    // a 100 ms stall skips the stale ones, no catch-up
   assert.deepEqual(dueSlots(2999.9, 1000, 0, 3000), { skip: 2980, emit: 20 }) // never beyond the planned total
   assert.deepEqual(dueSlots(50, 0, 0, 0), { skip: 0, emit: 0 })              // cooldown stage
-  assert.equal(pendingCap(50), 100); assert.equal(pendingCap(100), 100); assert.equal(pendingCap(700), 700)
+  assert.equal(pendingCap(0), 100); assert.equal(pendingCap(50), 100); assert.equal(pendingCap(100), 100)
+  assert.equal(pendingCap(101), 202); assert.equal(pendingCap(700), 1400); assert.equal(pendingCap(1000), 2000)
 })
 
 test('the Max preset fits the run limits and needs the 20 prepared rooms', () => {
@@ -482,4 +483,16 @@ test('a clean run records its skipped allowance and the CSV carries the skipped 
   const [header, row] = csv.split('\n')
   assert.ok(header.endsWith('retryDetail,runSkipped,runSkippedPercent,skippedAllowed'))
   assert.ok(row.endsWith('"4","0.013","30"'))
+})
+
+test('a slow ACK at 400 messages/s does not drop slots until the in-flight cap is really reached', async () => {
+  // ACK after 1 s: about 400 messages are pending at once, which the old cap (rps) would still allow,
+  // but a 1.5 s ACK would push past it. With two seconds of headroom nothing may be skipped for that reason.
+  const f = fixture({ delay: 1500 })
+  const report = await runChat(options(f, { ackTimeoutMs: 4000, stages: [{ name: 'Slow', sockets: 20, rps: 400, seconds: 2 }] }))
+  const stage = report.stages[0]
+  assert.equal(stage.attempted + stage.skipped, 800)
+  assert.ok(f.maximum() > 400, `peak in flight ${f.maximum()}`)           // beyond the previous cap of 400
+  assert.ok(f.maximum() <= pendingCap(400), `peak in flight ${f.maximum()}`) // never beyond the new cap of 800
+  assert.ok(stage.attempted >= 760, `attempted ${stage.attempted}, skipped ${stage.skipped}`)
 })
