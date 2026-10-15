@@ -205,7 +205,7 @@ export function StressTestPage() {
           </fieldset>}
         </div>
         <div><Label htmlFor="stress-profile">Preset</Label><NativeSelect id="stress-profile" value={profile} disabled={busy} onChange={(e) => changeProfile(e.target.value)}>
-          <option value="smoke">Smoke — verify first</option><option value="demo">Demo — ramp and recover</option><option value="distributed">Distributed — 20 rooms, up to 50/s</option><option value="diagnostic">Diagnostic — 20 rooms, 5 to 50/s</option><option value="max">Max — 20 rooms, ramp to 1000/s</option><option value="recovery">Recovery — light traffic</option>
+          <option value="smoke">Smoke — verify first</option><option value="demo">Demo — ramp and recover</option><option value="distributed">Distributed — 20 rooms, up to 50/s</option><option value="diagnostic">Diagnostic — 20 rooms, 5 to 50/s</option><option value="max">Max — 20 rooms, ramp to 1000/s</option><option value="sustain">Sustain — 20 rooms, 1000/s for 30s</option><option value="recovery">Recovery — light traffic</option>
         </NativeSelect></div>
         <div className="rounded-control border border-line bg-raised p-3 text-sm"><span className="font-mono font-semibold">{planned.toLocaleString()}</span> planned messages · <span className="font-mono">{duration}s</span><p className="mt-1 text-xs text-ink-3">Plus auth checks, setup writes and response draining.</p></div>
         {stagesError && <p role="alert" className="text-sm text-bad">{stagesError}</p>}

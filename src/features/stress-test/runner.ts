@@ -6,8 +6,10 @@ export const DIAGNOSTIC_TRACE_LIMIT = 500
 
 export const MAX_STAGE_SOCKETS = 100
 export const MAX_STAGE_RPS = 1000
+// Per-run safety cap: a sustained 1000 messages/s run of up to a minute.
+export const MAX_RUN_MESSAGES = 60_000
 // Profiles that spread load over exactly 20 prepared rooms.
-export const ROOM_PROFILES = ['distributed', 'diagnostic', 'max']
+export const ROOM_PROFILES = ['distributed', 'diagnostic', 'max', 'sustain']
 // A slot more than this late is skipped (never replayed); anything newer is still sent.
 export const PACING_TOLERANCE_MS = 20
 
@@ -34,7 +36,13 @@ export const PROFILES: Record<string, Stage[]> = {
     { name: 'Recovery', sockets: 20, rps: 5, seconds: 30 },
   ],
   recovery: [{ name: 'Recovery', sockets: 1, rps: 1, seconds: 15 }],
-  // 9,975 messages: stays inside the 10,000-message run limit.
+  // One sustained stage, no ramp: 30,050 messages.
+  sustain: [
+    { name: '1000/s', sockets: 100, rps: 1000, seconds: 30 },
+    { name: 'Cooldown', sockets: 0, rps: 0, seconds: 10 },
+    { name: 'Recovery', sockets: 20, rps: 5, seconds: 10 },
+  ],
+  // 9,975 messages.
   max: [
     { name: '100/s', sockets: 20, rps: 100, seconds: 10 },
     { name: '300/s', sockets: 50, rps: 300, seconds: 6 },
@@ -110,7 +118,7 @@ export function validateStages(stages: Stage[]) {
   for (const s of stages) {
     if (![s.sockets, s.rps, s.seconds].every(Number.isInteger) || s.sockets < 0 || s.sockets > MAX_STAGE_SOCKETS || s.rps < 0 || s.rps > MAX_STAGE_RPS || s.seconds < 1 || s.seconds > 600 || (s.sockets === 0) !== (s.rps === 0)) throw new Error(`Stage limits: ${MAX_STAGE_SOCKETS} sockets, ${MAX_STAGE_RPS} messages/s, 1–600 seconds.`)
   }
-  if (stages.reduce((n, s) => n + s.seconds * s.rps, 0) > 10000 || stages.reduce((n, s) => n + s.seconds, 0) > 1200) throw new Error('Run limit: 10,000 messages and 20 minutes.')
+  if (stages.reduce((n, s) => n + s.seconds * s.rps, 0) > MAX_RUN_MESSAGES || stages.reduce((n, s) => n + s.seconds, 0) > 1200) throw new Error(`Run limit: ${MAX_RUN_MESSAGES.toLocaleString('en-US')} messages and 20 minutes.`)
 }
 export function csvReport(report: Report) {
   const columns = ['name', 'sockets', 'rps', 'seconds', 'emittedRps', 'syncedRps', 'attempted', 'synced', 'failed', 'timeout', 'disconnected', 'skipped', 'p50', 'p95', 'p99'] as const

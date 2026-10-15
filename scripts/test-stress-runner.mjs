@@ -9,7 +9,7 @@ async function load(relative) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
   return import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 }
-const { runChat, percentile, validateStages, csvReport, DIAGNOSTIC_TRACE_LIMIT, dueSlots, pendingCap, PROFILES, ROOM_PROFILES } = await load('../src/features/stress-test/runner.ts')
+const { runChat, percentile, validateStages, csvReport, DIAGNOSTIC_TRACE_LIMIT, dueSlots, pendingCap, PROFILES, ROOM_PROFILES, MAX_RUN_MESSAGES } = await load('../src/features/stress-test/runner.ts')
 function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false, setupOutcome, connectOutcome, connectDelay = 1, loadMetadata = {} } = {}) {
   const sockets = [], messages = new Map()
   let maximum = 0, current = 0, sent = 0
@@ -64,7 +64,9 @@ test('validates bounded stages, distinguishes cooldown, and computes percentiles
   assert.throws(() => validateStages([{ name: 'x', sockets: 1, rps: 1001, seconds: 1 }]))
   assert.doesNotThrow(() => validateStages([{ name: 'x', sockets: 100, rps: 1000, seconds: 10 }]))
   assert.throws(() => validateStages([{ name: 'x', sockets: 0, rps: 1, seconds: 1 }]))
-  assert.throws(() => validateStages([{ name: 'x', sockets: 1, rps: 100, seconds: 600 }]))
+  assert.throws(() => validateStages([{ name: 'x', sockets: 1, rps: 100, seconds: 601 }]))
+  assert.doesNotThrow(() => validateStages([{ name: 'x', sockets: 100, rps: 1000, seconds: 60 }]))
+  assert.throws(() => validateStages([{ name: 'x', sockets: 100, rps: 1000, seconds: 61 }]), /60,000/)
   assert.equal(percentile([], .95), null)
   assert.equal(percentile(Array.from({ length: 100 }, (_, i) => i + 1), .95), 95)
 })
@@ -359,4 +361,12 @@ test('400 messages/s are all offered; the previous one-send-per-tick loop capped
   assert.equal(stage.attempted + stage.skipped, 400)
   assert.ok(stage.attempted >= 380, `attempted ${stage.attempted}, skipped ${stage.skipped}`)
   assert.equal(stage.synced, stage.attempted)
+})
+
+test('the Sustain preset holds 1000/s for 30s in one stage and stays under the run cap', () => {
+  validateStages(PROFILES.sustain)
+  const total = PROFILES.sustain.reduce((n, s) => n + s.rps * s.seconds, 0)
+  assert.equal(total, 30050); assert.ok(total <= MAX_RUN_MESSAGES)
+  assert.equal(PROFILES.sustain.filter((s) => s.rps === 1000).length, 1)
+  assert.ok(ROOM_PROFILES.includes('sustain'))
 })
