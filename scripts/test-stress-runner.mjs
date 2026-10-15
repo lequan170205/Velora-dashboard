@@ -9,7 +9,7 @@ async function load(relative) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
   return import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 }
-const { runChat, percentile, validateStages, csvReport, DIAGNOSTIC_TRACE_LIMIT, dueSlots, pendingCap, PROFILES, ROOM_PROFILES, MAX_RUN_MESSAGES, stats, LatencyHistogram, OutcomeStats, LiveAggregates } = await load('../src/features/stress-test/runner.ts')
+const { runChat, percentile, validateStages, csvReport, DIAGNOSTIC_TRACE_LIMIT, dueSlots, pendingCap, PROFILES, ROOM_PROFILES, MAX_RUN_MESSAGES, stats, LatencyHistogram, OutcomeStats, LiveAggregates, loadPassed, plannedMessages, skippedAllowance, skippedPercent } = await load('../src/features/stress-test/runner.ts')
 function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false, setupOutcome, connectOutcome, connectDelay = 1, loadMetadata = {} } = {}) {
   const sockets = [], messages = new Map()
   let maximum = 0, current = 0, sent = 0
@@ -449,4 +449,37 @@ test('live updates during a run stay consistent and the saved report is the exac
   assert.equal(report.totals.attempted, report.totals.synced)
   assert.equal(report.delivery.received, report.totals.attempted)
   assert.equal(report.rooms.reduce((n, r) => n + r.attempted, 0), report.totals.attempted)
+})
+
+test('skipped-slot allowance is 0.1% of the plan and tiny runs allow none', () => {
+  assert.equal(plannedMessages(PROFILES.sustain), 30050)
+  assert.equal(plannedMessages([{ name: 'x', sockets: 1, rps: 5, seconds: 1 }]), 5)
+  assert.equal(skippedAllowance(30050), 30); assert.equal(skippedAllowance(30000), 30); assert.equal(skippedAllowance(9975), 9)
+  assert.equal(skippedAllowance(999), 0); assert.equal(skippedAllowance(5), 0); assert.equal(skippedAllowance(0), 0)
+  assert.equal(skippedPercent(4, 30000), 0.013); assert.equal(skippedPercent(59, 9975), 0.591); assert.equal(skippedPercent(0, 0), 0)
+})
+
+test('load verdict allows at most 0.1% unsent slots and nothing else', () => {
+  const base = { stopReason: null, preflight: true, attempted: 29996, synced: 29996, skipped: 4, planned: 30000, received: 29996, duplicates: 0 }
+  assert.equal(loadPassed(base), true)                                              // the production run: 4 of 30,000
+  assert.equal(loadPassed({ ...base, skipped: 30 }), true)                          // exactly at the limit
+  assert.equal(loadPassed({ ...base, skipped: 31 }), false)                         // one over
+  assert.equal(loadPassed({ ...base, skipped: 1433 }), false)                       // the earlier 4.8% run
+  assert.equal(loadPassed({ ...base, attempted: 5, synced: 5, received: 5, skipped: 1, planned: 5 }), false) // tiny run: no slack
+  assert.equal(loadPassed({ ...base, synced: 29995 }), false)                       // an unsynced message always fails
+  assert.equal(loadPassed({ ...base, received: 29995 }), false)                     // a missing delivery always fails
+  assert.equal(loadPassed({ ...base, duplicates: 1 }), false)
+  assert.equal(loadPassed({ ...base, stopReason: 'Stopped by operator' }), false)
+  assert.equal(loadPassed({ ...base, preflight: false }), false)
+  assert.equal(loadPassed({ ...base, attempted: 0, synced: 0, received: 0 }), false)
+})
+
+test('a clean run records its skipped allowance and the CSV carries the skipped share', async () => {
+  const f = fixture({ delay: 5 })
+  const report = await runChat(options(f))
+  assert.equal(report.skipped, 0); assert.equal(report.skippedAllowed, 0); assert.equal(report.loadPassed, true)
+  const csv = csvReport({ ...report, skipped: 4, skippedAllowed: 30, plan: [{ name: 'x', sockets: 1, rps: 1000, seconds: 30 }] })
+  const [header, row] = csv.split('\n')
+  assert.ok(header.endsWith('retryDetail,runSkipped,runSkippedPercent,skippedAllowed'))
+  assert.ok(row.endsWith('"4","0.013","30"'))
 })

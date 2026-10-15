@@ -9,7 +9,7 @@ import { Badge } from '../../shared/components/ui/badge'
 import { useOverviewQuery } from '../monitoring/hooks/useOverviewQuery'
 import { formatBytes, formatPercent } from '../monitoring/formatters'
 import { createTestGroup, fixtureMembersByEmail, getConversations, getSocketToken, socketOrigin, type ConversationOption } from './api'
-import { csvReport, PROFILES, ROOM_PROFILES, MAX_STAGE_SOCKETS, MAX_STAGE_RPS, runChat, SOCKET_CONNECT_TIMEOUT_MS, validateStages, type Report, type Stage } from './runner'
+import { csvReport, PROFILES, ROOM_PROFILES, MAX_STAGE_SOCKETS, MAX_STAGE_RPS, plannedMessages, skippedAllowance, skippedPercent, runChat, SOCKET_CONNECT_TIMEOUT_MS, validateStages, type Report, type Stage } from './runner'
 
 import { prepareRooms } from './fixtures'
 import { withStressLock } from './run-lock'
@@ -27,7 +27,9 @@ function download(name: string, text: string, type: string) {
 }
 const ms = (value: number | null | undefined) => value == null ? '—' : `${Math.round(value)} ms`
 const roomLabel = (room: ConversationOption) => room.name?.replace(/^Velora stress [a-f0-9]{24} (\d{2})$/, 'Velora stress $1') || `${room.isGroup ? 'Group' : 'Direct'} ${room.id.slice(-8)}`
-const resultLabel = (report: Report) => report.passed ? 'Passed' : report.loadPassed ? 'Load passed / retry failed' : 'Incomplete / failed'
+const resultLabel = (report: Report) => report.passed
+  ? report.skipped > 0 ? `Passed · ${report.skipped} skipped (${skippedPercent(report.skipped, plannedMessages(report.plan))}%)` : 'Passed'
+  : report.loadPassed ? 'Load passed / retry failed' : 'Incomplete / failed'
 function initialConfig() {
   const saved = readStorage<{ conversationId?: string; conversationIds?: string[]; mode?: string; profile?: string; stages?: Stage[] }>(CONFIG_KEY, {})
   const profile = saved.profile && Object.hasOwn(PROFILES, saved.profile) ? saved.profile : 'smoke'
@@ -171,7 +173,8 @@ export function StressTestPage() {
     ['Sender sockets', `${report?.senderSockets ?? 0}`, 'Plus one receiver socket'],
     ['Emitted/s', report?.samples.at(-1)?.emittedRps?.toFixed(1) ?? '—', 'Actual generator rate, recent sample'],
     ['Synced/s', report?.samples.at(-1)?.syncedRps?.toFixed(1) ?? '—', 'Sender confirmations, recent sample'],
-    ['Errors / skipped', `${(totals?.failed ?? 0) + (totals?.timeout ?? 0) + (totals?.disconnected ?? 0)} / ${report?.skipped ?? 0}`, 'Includes timeout and disconnect'],
+    ['Errors / skipped', `${(totals?.failed ?? 0) + (totals?.timeout ?? 0) + (totals?.disconnected ?? 0)} / ${report?.skipped ?? 0}`,
+      report ? `${report.skipped} of ${plannedMessages(report.plan).toLocaleString('en-US')} planned slots unsent (${skippedPercent(report.skipped, plannedMessages(report.plan))}%). Passed allows up to ${report.skippedAllowed ?? skippedAllowance(plannedMessages(report.plan))}.` : 'Errors include timeout and disconnect; skipped slots were never sent'],
   ]
   return <section className="space-y-5" aria-labelledby="stress-title">
     <div className="flex flex-wrap items-start justify-between gap-4">

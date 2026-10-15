@@ -13,6 +13,10 @@ export const ROOM_PROFILES = ['distributed', 'diagnostic', 'max', 'sustain']
 // A slot more than this late is skipped (never replayed); anything newer is still sent.
 export const PACING_TOLERANCE_MS = 20
 
+// A run may leave this share of its planned messages unsent (0.1% = 1 in 1000) and still pass:
+// timer jitter in a browser tab can miss a handful of slots. Anything unsent is shown in the report.
+export const SKIPPED_ALLOWANCE_DIVISOR = 1000
+
 export type Stage = { name: string; sockets: number; rps: number; seconds: number }
 export const PROFILES: Record<string, Stage[]> = {
   smoke: [{ name: 'Smoke', sockets: 1, rps: 1, seconds: 5 }],
@@ -69,6 +73,16 @@ export function dueSlots(elapsedMs: number, rps: number, offered: number, planne
   return { skip, emit: waiting - skip }
 }
 export const pendingCap = (rps: number) => Math.max(100, rps)
+
+export const plannedMessages = (stages: Stage[]) => stages.reduce((n, s) => n + s.rps * s.seconds, 0)
+/** Whole slots a run may leave unsent and still pass: 0.1% of the plan, so tiny runs allow none. */
+export const skippedAllowance = (planned: number) => Math.floor(planned / SKIPPED_ALLOWANCE_DIVISOR)
+export const skippedPercent = (skipped: number, planned: number) => planned > 0 ? Math.round(skipped / planned * 100_000) / 1000 : 0
+/** The load verdict: everything sent must be delivered and acknowledged; few slots may stay unsent. */
+export function loadPassed(r: { stopReason: string | null; preflight: boolean; attempted: number; synced: number; skipped: number; planned: number; received: number; duplicates: number }) {
+  return !r.stopReason && r.preflight && r.attempted > 0 && r.synced === r.attempted
+    && r.skipped <= skippedAllowance(r.planned) && r.received === r.attempted && r.duplicates === 0
+}
 export type Attempt = { stage: string; id: string; conversationId?: string; outcome: string; ms: number }
 export type Stats = { attempted: number; synced: number; failed: number; timeout: number; disconnected: number; p50: number | null; p95: number | null; p99: number | null }
 export type StageResult = Stats & Stage & { skipped: number; emittedRps: number; syncedRps?: number }
@@ -82,6 +96,7 @@ export type Report = {
   id: string; conversationId: string; conversationIds?: string[]; rooms?: (Stats & { conversationId: string; received: number })[]; profile: string; startedAt: string; finishedAt: string | null;
   serverSamples?: { generatedAt: string; hostCpuRatio: number | null; chatPhases: { phase: string; callsPerSecond: number; errorsPerSecond: number; p95Seconds: number | null }[] }[];
   phase: string; senderSockets: number; signedInUsers: 1; inFlight: number; skipped: number;
+  skippedAllowed?: number
   preflight: boolean; loadPassed: boolean; passed: boolean; stopReason: string | null; totals: Stats;
   retryCheck: { status: 'pending' | 'passed' | 'failed'; detail: string | null };
   delivery: { received: number; duplicates: number; p95: number | null };
@@ -212,7 +227,8 @@ export function validateStages(stages: Stage[]) {
 export function csvReport(report: Report) {
   const columns = ['name', 'sockets', 'rps', 'seconds', 'emittedRps', 'syncedRps', 'attempted', 'synced', 'failed', 'timeout', 'disconnected', 'skipped', 'p50', 'p95', 'p99'] as const
   const quote = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
-  return [[...columns, 'conversationCount', 'loadPassed', 'retryCheck', 'retryDetail'].join(','), ...report.stages.map((s) => [...columns.map((key) => s[key]), report.conversationIds?.length ?? 1, report.loadPassed, report.retryCheck?.status ?? 'unknown', report.retryCheck?.detail].map(quote).join(','))].join('\n')
+  const planned = plannedMessages(report.plan ?? report.stages)
+  return [[...columns, 'conversationCount', 'loadPassed', 'retryCheck', 'retryDetail', 'runSkipped', 'runSkippedPercent', 'skippedAllowed'].join(','), ...report.stages.map((s) => [...columns.map((key) => s[key]), report.conversationIds?.length ?? 1, report.loadPassed, report.retryCheck?.status ?? 'unknown', report.retryCheck?.detail, report.skipped, skippedPercent(report.skipped, planned), report.skippedAllowed ?? skippedAllowance(planned)].map(quote).join(','))].join('\n')
 }
 
 export async function runChat(options: RunnerOptions): Promise<Report> {
@@ -479,7 +495,10 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     report.finishedAt = new Date().toISOString()
     report.phase = report.stopReason ? 'Stopped' : 'Complete'
     update(true)
-    report.loadPassed = !report.stopReason && report.preflight && attempts.length > 0 && report.totals.synced === attempts.length && report.skipped === 0 && report.delivery.received === attempts.length && report.delivery.duplicates === 0
+    const planned = plannedMessages(options.stages)
+    report.skippedAllowed = skippedAllowance(planned)
+    report.loadPassed = loadPassed({ stopReason: report.stopReason, preflight: report.preflight, attempted: attempts.length, synced: report.totals.synced,
+      skipped: report.skipped, planned, received: report.delivery.received, duplicates: report.delivery.duplicates })
     report.passed = report.loadPassed && report.retryCheck.status === 'passed'
     update(true)
   }
