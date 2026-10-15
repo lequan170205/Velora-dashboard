@@ -9,7 +9,7 @@ import { Badge } from '../../shared/components/ui/badge'
 import { useOverviewQuery } from '../monitoring/hooks/useOverviewQuery'
 import { formatBytes, formatPercent } from '../monitoring/formatters'
 import { createTestGroup, fixtureMembersByEmail, getConversations, getSocketToken, socketOrigin, type ConversationOption } from './api'
-import { csvReport, PROFILES, runChat, SOCKET_CONNECT_TIMEOUT_MS, validateStages, type Report, type Stage } from './runner'
+import { csvReport, PROFILES, ROOM_PROFILES, MAX_STAGE_SOCKETS, MAX_STAGE_RPS, runChat, SOCKET_CONNECT_TIMEOUT_MS, validateStages, type Report, type Stage } from './runner'
 
 import { prepareRooms } from './fixtures'
 import { withStressLock } from './run-lock'
@@ -159,7 +159,7 @@ export function StressTestPage() {
   const planned = stages.reduce((sum, stage) => sum + stage.rps * stage.seconds, 0)
   const duration = stages.reduce((sum, stage) => sum + stage.seconds, 0)
   let stagesError: string | null = null
-  try { validateStages(stages); if (['distributed', 'diagnostic'].includes(profile) && runIds.length !== 20) throw new Error('Select 20 rooms for the distributed preset.') } catch (error) { stagesError = error instanceof Error ? error.message : 'Check stage settings.' }
+  try { validateStages(stages); if (ROOM_PROFILES.includes(profile) && runIds.length !== 20) throw new Error('Select 20 rooms for the distributed preset.') } catch (error) { stagesError = error instanceof Error ? error.message : 'Check stage settings.' }
   const totals = report?.totals
   const status = preparing ? preparation ?? 'Preparing rooms' : active ? report?.phase ?? 'Starting' : report ? resultLabel(report) : 'Ready'
   const resources = monitoring.data
@@ -199,13 +199,13 @@ export function StressTestPage() {
           <p className="text-xs leading-relaxed text-ink-3">Uses the chosen test email or source members. Choose test accounts only; this creates real groups without changing the source.</p>
           {preparation && <p role="status" className="text-sm text-ink-2">{preparation}</p>}
           <Label htmlFor="stress-workload">Room distribution</Label>
-          <NativeSelect id="stress-workload" value={mode} disabled={busy} onChange={(e) => { setMode(e.target.value); setConfirmed(false); setReport(null); if (['distributed', 'diagnostic'].includes(profile)) changeProfile('smoke') }}><option value="single">Single conversation</option><option value="multiple">Multiple conversations</option></NativeSelect>
+          <NativeSelect id="stress-workload" value={mode} disabled={busy} onChange={(e) => { setMode(e.target.value); setConfirmed(false); setReport(null); if (ROOM_PROFILES.includes(profile)) changeProfile('smoke') }}><option value="single">Single conversation</option><option value="multiple">Multiple conversations</option></NativeSelect>
           {mode === 'multiple' && <fieldset className="space-y-2"><legend className="text-sm font-medium">Selected rooms ({selectedIds.length}/20)</legend>
             <div className="max-h-56 overflow-y-auto rounded-control border border-line p-2">{conversations.filter((c) => selectedIds.includes(c.id) || c.name?.startsWith('Velora stress ')).map((c) => <label key={c.id} className="flex min-h-9 cursor-pointer items-start gap-2 py-1 text-sm text-ink-2"><input type="checkbox" className="mt-1 size-4 shrink-0 accent-brand" checked={selectedIds.includes(c.id)} disabled={busy || (!selectedIds.includes(c.id) && selectedIds.length >= 20)} onChange={(e) => { setSelectedIds((ids) => e.target.checked ? [...ids, c.id] : ids.filter((id) => id !== c.id)); setConfirmed(false); setReport(null) }} /><span className="break-all">{roomLabel(c)}</span></label>)}</div>
           </fieldset>}
         </div>
         <div><Label htmlFor="stress-profile">Preset</Label><NativeSelect id="stress-profile" value={profile} disabled={busy} onChange={(e) => changeProfile(e.target.value)}>
-          <option value="smoke">Smoke — verify first</option><option value="demo">Demo — ramp and recover</option><option value="distributed">Distributed — 20 rooms, up to 50/s</option><option value="diagnostic">Diagnostic — 20 rooms, 5 to 50/s</option><option value="recovery">Recovery — light traffic</option>
+          <option value="smoke">Smoke — verify first</option><option value="demo">Demo — ramp and recover</option><option value="distributed">Distributed — 20 rooms, up to 50/s</option><option value="diagnostic">Diagnostic — 20 rooms, 5 to 50/s</option><option value="max">Max — 20 rooms, ramp to 1000/s</option><option value="recovery">Recovery — light traffic</option>
         </NativeSelect></div>
         <div className="rounded-control border border-line bg-raised p-3 text-sm"><span className="font-mono font-semibold">{planned.toLocaleString()}</span> planned messages · <span className="font-mono">{duration}s</span><p className="mt-1 text-xs text-ink-3">Plus auth checks, setup writes and response draining.</p></div>
         {stagesError && <p role="alert" className="text-sm text-bad">{stagesError}</p>}
@@ -221,7 +221,7 @@ export function StressTestPage() {
           <div className="overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead><tr className="border-b border-line text-ink-3"><th className="pb-3 font-medium">Stage</th><th className="pb-3 font-medium">Sockets</th><th className="pb-3 font-medium">Messages/s</th><th className="pb-3 font-medium">Seconds</th><th className="pb-3 font-medium">Actual sent/s</th><th className="pb-3 font-medium">Result</th></tr></thead>
             <tbody>{stages.map((stage, index) => { const result = report?.stages[index]; return <tr key={stage.name} className="border-b border-line last:border-0">
               <th className="py-3 pr-3 font-medium">{index + 1}. {stage.name}</th>
-              {(['sockets', 'rps', 'seconds'] as const).map((key) => <td key={key} className="py-3 pr-3"><Input aria-label={`${stage.name} ${key}`} type="number" min={key === 'seconds' ? 1 : 0} max={key === 'seconds' ? 600 : 100} step={1} disabled={busy} className="w-20" value={stage[key]} onChange={(e) => { setConfirmed(false); setReport(null); setStages((old) => old.map((s, i) => i === index ? { ...s, [key]: Number(e.target.value) } : s)) }} /></td>)}
+              {(['sockets', 'rps', 'seconds'] as const).map((key) => <td key={key} className="py-3 pr-3"><Input aria-label={`${stage.name} ${key}`} type="number" min={key === 'seconds' ? 1 : 0} max={key === 'seconds' ? 600 : key === 'rps' ? MAX_STAGE_RPS : MAX_STAGE_SOCKETS} step={1} disabled={busy} className="w-20" value={stage[key]} onChange={(e) => { setConfirmed(false); setReport(null); setStages((old) => old.map((s, i) => i === index ? { ...s, [key]: Number(e.target.value) } : s)) }} /></td>)}
               <td className="py-3 pr-3 font-mono text-xs">{result?.emittedRps.toFixed(1) ?? '—'}</td><td className="py-3 text-xs text-ink-2">{result ? `${result.synced}/${result.attempted} synced · ${ms(result.p95)}` : active && report?.phase === stage.name ? 'Running' : '—'}</td>
             </tr> })}</tbody></table></div>
           {report && <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><p role="status" className="text-sm text-ink-2">{report.stopReason || `${report.phase} · ${report.senderSockets} sender sockets · ${report.inFlight} pending`}</p>

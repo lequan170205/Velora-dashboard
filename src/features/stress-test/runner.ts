@@ -4,6 +4,13 @@ export const SOCKET_CONNECT_TIMEOUT_MS = 30_000
 export const MESSAGE_ACK_TIMEOUT_MS = 8_000
 export const DIAGNOSTIC_TRACE_LIMIT = 500
 
+export const MAX_STAGE_SOCKETS = 100
+export const MAX_STAGE_RPS = 1000
+// Profiles that spread load over exactly 20 prepared rooms.
+export const ROOM_PROFILES = ['distributed', 'diagnostic', 'max']
+// A slot more than this late is skipped (never replayed); anything newer is still sent.
+export const PACING_TOLERANCE_MS = 20
+
 export type Stage = { name: string; sockets: number; rps: number; seconds: number }
 export const PROFILES: Record<string, Stage[]> = {
   smoke: [{ name: 'Smoke', sockets: 1, rps: 1, seconds: 5 }],
@@ -27,7 +34,33 @@ export const PROFILES: Record<string, Stage[]> = {
     { name: 'Recovery', sockets: 20, rps: 5, seconds: 30 },
   ],
   recovery: [{ name: 'Recovery', sockets: 1, rps: 1, seconds: 15 }],
+  // 9,975 messages: stays inside the 10,000-message run limit.
+  max: [
+    { name: '100/s', sockets: 20, rps: 100, seconds: 10 },
+    { name: '300/s', sockets: 50, rps: 300, seconds: 6 },
+    { name: '500/s', sockets: 100, rps: 500, seconds: 4 },
+    { name: '700/s', sockets: 100, rps: 700, seconds: 3 },
+    { name: '1000/s', sockets: 100, rps: 1000, seconds: 3 },
+    { name: 'Cooldown', sockets: 0, rps: 0, seconds: 15 },
+    { name: 'Recovery', sockets: 20, rps: 5, seconds: 15 },
+  ],
 }
+
+/**
+ * Slots that are due at `elapsedMs`, split into those still worth sending and
+ * those already too late. Slot i is due at i * 1000 / rps. Several slots can be
+ * due at once because browser timers cannot fire every millisecond.
+ */
+export function dueSlots(elapsedMs: number, rps: number, offered: number, planned: number, toleranceMs = Math.max(PACING_TOLERANCE_MS, 250 / Math.max(1, rps))) {
+  if (rps <= 0) return { skip: 0, emit: 0 }
+  const due = Math.min(planned, Math.floor(elapsedMs * rps / 1000) + 1)
+  const waiting = due - offered
+  if (waiting <= 0) return { skip: 0, emit: 0 }
+  const tooLate = Math.min(planned, Math.floor(Math.max(0, elapsedMs - toleranceMs) * rps / 1000) + (elapsedMs - toleranceMs >= 0 ? 1 : 0))
+  const skip = Math.max(0, Math.min(waiting, tooLate - offered))
+  return { skip, emit: waiting - skip }
+}
+export const pendingCap = (rps: number) => Math.max(100, rps)
 export type Attempt = { stage: string; id: string; conversationId?: string; outcome: string; ms: number }
 export type Stats = { attempted: number; synced: number; failed: number; timeout: number; disconnected: number; p50: number | null; p95: number | null; p99: number | null }
 export type StageResult = Stats & Stage & { skipped: number; emittedRps: number; syncedRps?: number }
@@ -75,7 +108,7 @@ export function stats(attempts: Attempt[]): Stats {
 export function validateStages(stages: Stage[]) {
   if (!stages.length || stages.length > 10) throw new Error('Choose 1–10 stages.')
   for (const s of stages) {
-    if (![s.sockets, s.rps, s.seconds].every(Number.isInteger) || s.sockets < 0 || s.sockets > 100 || s.rps < 0 || s.rps > 100 || s.seconds < 1 || s.seconds > 600 || (s.sockets === 0) !== (s.rps === 0)) throw new Error('Stage limits: 100 sockets, 100 messages/s, 1–600 seconds.')
+    if (![s.sockets, s.rps, s.seconds].every(Number.isInteger) || s.sockets < 0 || s.sockets > MAX_STAGE_SOCKETS || s.rps < 0 || s.rps > MAX_STAGE_RPS || s.seconds < 1 || s.seconds > 600 || (s.sockets === 0) !== (s.rps === 0)) throw new Error(`Stage limits: ${MAX_STAGE_SOCKETS} sockets, ${MAX_STAGE_RPS} messages/s, 1–600 seconds.`)
   }
   if (stages.reduce((n, s) => n + s.seconds * s.rps, 0) > 10000 || stages.reduce((n, s) => n + s.seconds, 0) > 1200) throw new Error('Run limit: 10,000 messages and 20 minutes.')
 }
@@ -90,7 +123,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
   const { signal, conversationId } = options
   const conversationIds = [...new Set(options.conversationIds ?? [conversationId])]
   if (!conversationIds.length || conversationIds.length > 20 || conversationIds.some((id) => typeof id !== 'string' || !id.trim())) throw new Error('Choose 1–20 test conversations.')
-  if (['distributed', 'diagnostic'].includes(options.profile) && conversationIds.length !== 20) throw new Error('The distributed preset requires 20 test conversations.')
+  if (ROOM_PROFILES.includes(options.profile) && conversationIds.length !== 20) throw new Error('The distributed preset requires 20 test conversations.')
   const allowedRooms = new Set(conversationIds)
   const connectTimeoutMs = options.connectTimeoutMs ?? SOCKET_CONNECT_TIMEOUT_MS
   const ackTimeoutMs = options.ackTimeoutMs ?? MESSAGE_ACK_TIMEOUT_MS
@@ -294,26 +327,27 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
       let offered = 0, skipped = 0, completed = 0, errors = 0
       while (performance.now() - started < stage.seconds * 1000 && !signal.aborted && !report.stopReason) {
         const elapsed = performance.now() - started
-        const due = stage.rps ? Math.min(planned, Math.floor(elapsed * stage.rps / 1000) + 1) : 0
-        if (due > offered) {
-          skipped += Math.max(0, due - offered - 1); offered = due
+        // Offer every due slot in one pass (several can be due per timer tick at
+        // high rates); slots later than the tolerance are skipped, never replayed.
+        const due = dueSlots(elapsed, stage.rps, offered, planned)
+        skipped += due.skip; offered += due.skip
+        for (let n = 0; n < due.emit; n++) {
+          offered++
           // Established sockets are already authenticated. A periodic HTTP session
           // check can run alongside them; failure still disconnects all sockets.
-          if (tasks.size >= 100) skipped++
-          else {
-            const socket = senders[(offered - 1) % senders.length]
-            const id = `${report.id}-${stageIndex}-${offered}`
-            const targetRoom = conversationIds[(offered - 1) % conversationIds.length]
-            const task = send(socket, id, targetRoom, stage.name).then((result) => {
-              attempts.push({ id, conversationId: targetRoom, stage: stage.name, outcome: result.outcome, ms: result.ms })
-              completed++; if (result.outcome !== 'synced') errors++
-            }).finally(() => tasks.delete(task))
-            tasks.add(task)
-          }
+          if (tasks.size >= pendingCap(stage.rps)) { skipped++; continue }
+          const socket = senders[(offered - 1) % senders.length]
+          const id = `${report.id}-${stageIndex}-${offered}`
+          const targetRoom = conversationIds[(offered - 1) % conversationIds.length]
+          const task = send(socket, id, targetRoom, stage.name).then((result) => {
+            attempts.push({ id, conversationId: targetRoom, stage: stage.name, outcome: result.outcome, ms: result.ms })
+            completed++; if (result.outcome !== 'synced') errors++
+          }).finally(() => tasks.delete(task))
+          tasks.add(task)
         }
         if (completed >= 20 && errors / completed >= .3) report.stopReason = 'Error ratio exceeded 30%'
         if (!observer.connected || senders.some((s) => !s.connected)) report.stopReason ??= 'A load socket disconnected'
-        await delay(10)
+        await delay(stage.rps > 100 ? 5 : 10)
       }
       const sendingSeconds = (performance.now() - started) / 1000
       await Promise.all([...tasks])

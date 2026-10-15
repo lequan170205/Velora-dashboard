@@ -9,7 +9,7 @@ async function load(relative) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
   return import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 }
-const { runChat, percentile, validateStages, csvReport, DIAGNOSTIC_TRACE_LIMIT } = await load('../src/features/stress-test/runner.ts')
+const { runChat, percentile, validateStages, csvReport, DIAGNOSTIC_TRACE_LIMIT, dueSlots, pendingCap, PROFILES, ROOM_PROFILES } = await load('../src/features/stress-test/runner.ts')
 function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false, setupOutcome, connectOutcome, connectDelay = 1, loadMetadata = {} } = {}) {
   const sockets = [], messages = new Map()
   let maximum = 0, current = 0, sent = 0
@@ -61,7 +61,8 @@ function options(f, overrides = {}) {
 
 test('validates bounded stages, distinguishes cooldown, and computes percentiles', () => {
   assert.throws(() => validateStages([{ name: 'x', sockets: 101, rps: 1, seconds: 1 }]))
-  assert.throws(() => validateStages([{ name: 'x', sockets: 1, rps: 101, seconds: 1 }]))
+  assert.throws(() => validateStages([{ name: 'x', sockets: 1, rps: 1001, seconds: 1 }]))
+  assert.doesNotThrow(() => validateStages([{ name: 'x', sockets: 100, rps: 1000, seconds: 10 }]))
   assert.throws(() => validateStages([{ name: 'x', sockets: 0, rps: 1, seconds: 1 }]))
   assert.throws(() => validateStages([{ name: 'x', sockets: 1, rps: 100, seconds: 600 }]))
   assert.equal(percentile([], .95), null)
@@ -332,4 +333,30 @@ test('diagnostic storage is bounded without dropping load accounting', async () 
   assert.ok(report.diagnostics.omitted > 0)
   assert.equal(report.totals.attempted + report.skipped, 600)
   assert.equal(report.totals.synced, report.totals.attempted)
+})
+
+test('dueSlots offers every due slot and skips only slots later than the tolerance', () => {
+  assert.deepEqual(dueSlots(0, 1000, 0, 10000), { skip: 0, emit: 1 })
+  assert.deepEqual(dueSlots(10, 1000, 4, 10000), { skip: 0, emit: 7 })       // slots 4..10 are all fresh
+  assert.deepEqual(dueSlots(5, 1000, 6, 10000), { skip: 0, emit: 0 })        // nothing new yet
+  assert.deepEqual(dueSlots(100, 1000, 0, 10000), { skip: 81, emit: 20 })    // a 100 ms stall skips the stale ones, no catch-up
+  assert.deepEqual(dueSlots(2999.9, 1000, 0, 3000), { skip: 2980, emit: 20 }) // never beyond the planned total
+  assert.deepEqual(dueSlots(50, 0, 0, 0), { skip: 0, emit: 0 })              // cooldown stage
+  assert.equal(pendingCap(50), 100); assert.equal(pendingCap(100), 100); assert.equal(pendingCap(700), 700)
+})
+
+test('the Max preset fits the run limits and needs the 20 prepared rooms', () => {
+  validateStages(PROFILES.max)
+  assert.equal(PROFILES.max.reduce((n, s) => n + s.rps * s.seconds, 0), 9975)
+  assert.ok(Math.max(...PROFILES.max.map((s) => s.rps)) === 1000)
+  assert.ok(ROOM_PROFILES.includes('max'))
+})
+
+test('400 messages/s are all offered; the previous one-send-per-tick loop capped near 100/s', async () => {
+  const f = fixture({ delay: 5 })
+  const report = await runChat(options(f, { stages: [{ name: 'Fast', sockets: 20, rps: 400, seconds: 1 }] }))
+  const stage = report.stages[0]
+  assert.equal(stage.attempted + stage.skipped, 400)
+  assert.ok(stage.attempted >= 380, `attempted ${stage.attempted}, skipped ${stage.skipped}`)
+  assert.equal(stage.synced, stage.attempted)
 })
