@@ -113,6 +113,95 @@ export function stats(attempts: Attempt[]): Stats {
     disconnected: attempts.filter((a) => a.outcome === 'disconnected').length,
     p50: percentile(good, .5), p95: percentile(good, .95), p99: percentile(good, .99) }
 }
+/** Latency counts per whole millisecond: percentiles without keeping or sorting every sample. */
+export class LatencyHistogram {
+  private counts = new Map<number, number>()
+  size = 0
+  add(ms: number) {
+    const key = Math.round(ms)
+    this.counts.set(key, (this.counts.get(key) ?? 0) + 1)
+    this.size++
+  }
+  // Same rank rule as percentile(): rounding is monotonic, so ranking the rounded values
+  // gives exactly the rounded value of the sorted sample at that rank.
+  percentile(fraction: number) {
+    if (!this.size) return null
+    const rank = Math.max(0, Math.ceil(this.size * fraction) - 1)
+    let seen = 0
+    for (const key of [...this.counts.keys()].sort((a, b) => a - b)) {
+      seen += this.counts.get(key)!
+      if (seen > rank) return key
+    }
+    return null
+  }
+}
+/** Running equivalent of stats(): O(1) per attempt, cheap to snapshot while a run is going. */
+export class OutcomeStats {
+  attempted = 0; synced = 0; failed = 0; timeout = 0; disconnected = 0
+  latency = new LatencyHistogram()
+  add(outcome: string, ms: number) {
+    this.attempted++
+    if (outcome === 'synced') { this.synced++; this.latency.add(ms) }
+    else if (outcome === 'failed') this.failed++
+    else if (outcome === 'timeout') this.timeout++
+    else if (outcome === 'disconnected') this.disconnected++
+  }
+  snapshot(): Stats {
+    return { attempted: this.attempted, synced: this.synced, failed: this.failed, timeout: this.timeout,
+      disconnected: this.disconnected, p50: this.latency.percentile(.5), p95: this.latency.percentile(.95), p99: this.latency.percentile(.99) }
+  }
+}
+/**
+ * Everything the live view shows (totals, per-room results, delivery counts), kept
+ * incrementally so the once-a-second update never rescans every message. A delivery
+ * can be seen before its sender ACK, so early deliveries wait for their attempt.
+ */
+export class LiveAggregates {
+  readonly total = new OutcomeStats()
+  private rooms = new Map<string, OutcomeStats>()
+  private roomReceived = new Map<string, number>()
+  private attemptRoom = new Map<string, string>()
+  private early = new Map<string, { count: number; ms: number }>()
+  private counted = new Set<string>()
+  private deliveryLatency = new LatencyHistogram()
+  received = 0
+  duplicates = 0
+  constructor(conversationIds: string[]) {
+    for (const id of conversationIds) this.rooms.set(id, new OutcomeStats())
+  }
+  addAttempt(attempt: Attempt) {
+    this.total.add(attempt.outcome, attempt.ms)
+    const room = attempt.conversationId
+    if (room === undefined) return
+    this.rooms.get(room)?.add(attempt.outcome, attempt.ms)
+    this.attemptRoom.set(attempt.id, room)
+    const early = this.early.get(attempt.id)
+    if (early) { this.early.delete(attempt.id); this.count(attempt.id, room, early.count, early.ms) }
+  }
+  /** `ms` is the delivery latency of this event; only the first one is kept. */
+  addDelivery(id: string, ms: number) {
+    const room = this.attemptRoom.get(id)
+    if (room === undefined) {
+      const early = this.early.get(id)
+      if (early) early.count++
+      else this.early.set(id, { count: 1, ms })
+      return
+    }
+    if (this.counted.has(id)) this.duplicates++
+    else this.count(id, room, 1, ms)
+  }
+  private count(id: string, room: string, events: number, ms: number) {
+    this.counted.add(id)
+    this.received++
+    this.roomReceived.set(room, (this.roomReceived.get(room) ?? 0) + 1)
+    this.deliveryLatency.add(ms)
+    this.duplicates += events - 1
+  }
+  roomStats(id: string) {
+    return { conversationId: id, ...(this.rooms.get(id) ?? new OutcomeStats()).snapshot(), received: this.roomReceived.get(id) ?? 0 }
+  }
+  delivery() { return { received: this.received, duplicates: this.duplicates, p95: this.deliveryLatency.percentile(.95) } }
+}
 export function validateStages(stages: Stage[]) {
   if (!stages.length || stages.length > 10) throw new Error('Choose 1–10 stages.')
   for (const s of stages) {
@@ -139,6 +228,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
   const senders: SocketLike[] = []
   const pending = new Map<string, { socket: SocketLike; conversationId: string; finish: (outcome: string, messageId?: string) => void }>()
   const attempts: Attempt[] = []
+  const live = new LiveAggregates(conversationIds)
   const tasks = new Set<Promise<void>>()
   const sentAt = new Map<string, number>()
   const messageRooms = new Map<string, string>()
@@ -158,18 +248,27 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
   let sessionCheck: Promise<void> | null = null
   let sessionTimer: ReturnType<typeof setInterval> | undefined
   let updateTimer: ReturnType<typeof setInterval> | undefined
-  const update = () => {
-    report.totals = stats(attempts)
-    report.rooms = conversationIds.map((id) => {
-      const roomAttempts = attempts.filter((a) => a.conversationId === id)
-      return { conversationId: id, ...stats(roomAttempts), received: roomAttempts.filter((a) => deliveries.has(a.id)).length }
-    })
+  // The live view uses the running aggregates. `exact` rescans every message once and
+  // is used at the end of a run so the saved report never depends on the running totals.
+  const update = (exact = false) => {
+    if (exact) {
+      report.totals = stats(attempts)
+      report.rooms = conversationIds.map((id) => {
+        const roomAttempts = attempts.filter((a) => a.conversationId === id)
+        return { conversationId: id, ...stats(roomAttempts), received: roomAttempts.filter((a) => deliveries.has(a.id)).length }
+      })
+    } else {
+      report.totals = live.total.snapshot()
+      report.rooms = conversationIds.map((id) => live.roomStats(id))
+    }
     report.inFlight = pending.size
     report.senderSockets = senders.length
-    const received = attempts.filter((a) => deliveries.has(a.id))
-    report.delivery = { received: received.length,
-      duplicates: received.reduce((sum, a) => sum + Math.max(0, deliveries.get(a.id)!.count - 1), 0),
-      p95: percentile(received.map((a) => deliveries.get(a.id)!.ms), .95) }
+    if (exact) {
+      const received = attempts.filter((a) => deliveries.has(a.id))
+      report.delivery = { received: received.length,
+        duplicates: received.reduce((sum, a) => sum + Math.max(0, deliveries.get(a.id)!.count - 1), 0),
+        p95: percentile(received.map((a) => deliveries.get(a.id)!.ms), .95) }
+    } else report.delivery = live.delivery()
     options.onUpdate(structuredClone(report))
   }
   const abort = () => {
@@ -271,6 +370,7 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
       if (!id || !id.startsWith(report.id) || !sentAt.has(id) || message.conversationId !== messageRooms.get(id)) return
       const previous = deliveries.get(id)
       deliveries.set(id, { count: (previous?.count ?? 0) + 1, ms: previous?.ms ?? performance.now() - sentAt.get(id)! })
+      live.addDelivery(id, performance.now() - sentAt.get(id)!)
       const diagnostic = traces.get(id)
       if (diagnostic && !diagnostic.trace.observerReceivedAt) {
         diagnostic.trace.observerReceivedAt = new Date().toISOString()
@@ -303,9 +403,9 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     sessionTimer = setInterval(() => { void ensureSession().catch(() => {}) }, options.sessionIntervalMs ?? 60000)
     let previousSample = { at: performance.now(), sent: 0, synced: 0 }
     updateTimer = setInterval(() => {
-      const at = performance.now(), sent = attempts.length + tasks.size, synced = stats(attempts).synced
+      const at = performance.now(), sent = attempts.length + tasks.size, synced = live.total.synced
       const seconds = Math.max(.001, (at - previousSample.at) / 1000)
-      report.samples.push({ time: new Date().toISOString(), sent, synced, p95: stats(attempts).p95, emittedRps: (sent - previousSample.sent) / seconds, syncedRps: (synced - previousSample.synced) / seconds })
+      report.samples.push({ time: new Date().toISOString(), sent, synced, p95: live.total.latency.percentile(.95), emittedRps: (sent - previousSample.sent) / seconds, syncedRps: (synced - previousSample.synced) / seconds })
       previousSample = { at, sent, synced }
       update()
     }, 1000)
@@ -348,7 +448,8 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
           const id = `${report.id}-${stageIndex}-${offered}`
           const targetRoom = conversationIds[(offered - 1) % conversationIds.length]
           const task = send(socket, id, targetRoom, stage.name).then((result) => {
-            attempts.push({ id, conversationId: targetRoom, stage: stage.name, outcome: result.outcome, ms: result.ms })
+            const attempt = { id, conversationId: targetRoom, stage: stage.name, outcome: result.outcome, ms: result.ms }
+            attempts.push(attempt); live.addAttempt(attempt)
             completed++; if (result.outcome !== 'synced') errors++
           }).finally(() => tasks.delete(task))
           tasks.add(task)
@@ -377,10 +478,10 @@ export async function runChat(options: RunnerOptions): Promise<Report> {
     signal.removeEventListener('abort', abort)
     report.finishedAt = new Date().toISOString()
     report.phase = report.stopReason ? 'Stopped' : 'Complete'
-    update()
+    update(true)
     report.loadPassed = !report.stopReason && report.preflight && attempts.length > 0 && report.totals.synced === attempts.length && report.skipped === 0 && report.delivery.received === attempts.length && report.delivery.duplicates === 0
     report.passed = report.loadPassed && report.retryCheck.status === 'passed'
-    update()
+    update(true)
   }
   return report
 }

@@ -9,7 +9,7 @@ async function load(relative) {
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
   return import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 }
-const { runChat, percentile, validateStages, csvReport, DIAGNOSTIC_TRACE_LIMIT, dueSlots, pendingCap, PROFILES, ROOM_PROFILES, MAX_RUN_MESSAGES } = await load('../src/features/stress-test/runner.ts')
+const { runChat, percentile, validateStages, csvReport, DIAGNOSTIC_TRACE_LIMIT, dueSlots, pendingCap, PROFILES, ROOM_PROFILES, MAX_RUN_MESSAGES, stats, LatencyHistogram, OutcomeStats, LiveAggregates } = await load('../src/features/stress-test/runner.ts')
 function fixture({ reject = false, delay = 5, duplicateReplay = false, missingUniqueIndex = false, rejectReplay = false, dropDelivery = false, setupOutcome, connectOutcome, connectDelay = 1, loadMetadata = {} } = {}) {
   const sockets = [], messages = new Map()
   let maximum = 0, current = 0, sent = 0
@@ -369,4 +369,84 @@ test('the Sustain preset holds 1000/s for 30s in one stage and stays under the r
   assert.equal(total, 30050); assert.ok(total <= MAX_RUN_MESSAGES)
   assert.equal(PROFILES.sustain.filter((s) => s.rps === 1000).length, 1)
   assert.ok(ROOM_PROFILES.includes('sustain'))
+})
+
+// Small deterministic generator so failures are reproducible.
+function rng(seed) { let x = seed; return () => (x = (x * 1664525 + 1013904223) % 4294967296) / 4294967296 }
+
+test('LatencyHistogram percentiles equal the sort-based percentile() for any sample', () => {
+  const rand = rng(7)
+  for (const n of [1, 2, 3, 10, 101, 1000, 5000]) {
+    const values = Array.from({ length: n }, () => rand() < .3 ? Math.round(rand() * 50) : rand() * 8000)
+    const hist = new LatencyHistogram(); values.forEach((v) => hist.add(v))
+    for (const f of [.5, .95, .99]) assert.equal(hist.percentile(f), percentile(values, f), `n=${n} f=${f}`)
+  }
+  assert.equal(new LatencyHistogram().percentile(.95), null)
+})
+
+test('OutcomeStats snapshot equals stats() over mixed outcomes, including unknown ones', () => {
+  const rand = rng(11), outcomes = ['synced', 'synced', 'synced', 'failed', 'timeout', 'disconnected', 'weird']
+  const attempts = Array.from({ length: 3000 }, (_, i) => ({ id: 'a' + i, conversationId: 'r', stage: 's', outcome: outcomes[Math.floor(rand() * outcomes.length)], ms: rand() * 9000 }))
+  const live = new OutcomeStats(); attempts.forEach((a) => live.add(a.outcome, a.ms))
+  assert.deepEqual(live.snapshot(), stats(attempts))
+  assert.deepEqual(new OutcomeStats().snapshot(), stats([]))
+})
+
+test('LiveAggregates matches a full rescan with deliveries before, after and repeated around the ACK', () => {
+  const rand = rng(23), rooms = ['r1', 'r2', 'r3']
+  const attempts = [], deliveries = new Map(), events = []
+  for (let i = 0; i < 1500; i++) {
+    const id = 'm' + i, room = rooms[i % 3]
+    const attempt = { id, conversationId: room, stage: 's', outcome: rand() < .9 ? 'synced' : 'timeout', ms: rand() * 3000 }
+    attempts.push(attempt); events.push({ at: rand() * 1500, kind: 'attempt', attempt })
+    const copies = rand() < .2 ? 0 : rand() < .85 ? 1 : 2 + Math.floor(rand() * 2)
+    for (let c = 0; c < copies; c++) events.push({ at: rand() * 1500, kind: 'delivery', id, ms: 5 + rand() * 4000 })
+  }
+  for (let i = 0; i < 40; i++) events.push({ at: rand() * 1500, kind: 'delivery', id: 'probe' + i, ms: 9 }) // never an attempt
+  events.sort((a, b) => a.at - b.at)
+  const live = new LiveAggregates(rooms)
+  for (const e of events) {
+    if (e.kind === 'attempt') live.addAttempt(e.attempt)
+    else {
+      const previous = deliveries.get(e.id)
+      if (!e.id.startsWith('probe')) deliveries.set(e.id, { count: (previous?.count ?? 0) + 1, ms: previous?.ms ?? e.ms })
+      live.addDelivery(e.id, e.ms)
+    }
+  }
+  const received = attempts.filter((a) => deliveries.has(a.id))
+  assert.deepEqual(live.delivery(), {
+    received: received.length,
+    duplicates: received.reduce((n, a) => n + deliveries.get(a.id).count - 1, 0),
+    p95: percentile(received.map((a) => deliveries.get(a.id).ms), .95),
+  })
+  assert.deepEqual(live.total.snapshot(), stats(attempts))
+  for (const room of rooms) {
+    const own = attempts.filter((a) => a.conversationId === room)
+    assert.deepEqual(live.roomStats(room), { conversationId: room, ...stats(own), received: own.filter((a) => deliveries.has(a.id)).length })
+  }
+})
+
+test('the live snapshot cost does not grow with the number of messages already sent', () => {
+  const rooms = Array.from({ length: 20 }, (_, i) => 'room' + i), rand = rng(5)
+  const live = new LiveAggregates(rooms)
+  for (let i = 0; i < 100000; i++) {
+    const id = 'x' + i, room = rooms[i % 20], ms = 100 + rand() * 900
+    live.addAttempt({ id, conversationId: room, stage: 's', outcome: 'synced', ms }); live.addDelivery(id, ms + 20)
+  }
+  const started = performance.now()
+  live.total.snapshot(); rooms.forEach((r) => live.roomStats(r)); live.delivery()
+  const elapsed = performance.now() - started
+  assert.ok(elapsed < 50, `snapshot of 100,000 messages took ${elapsed.toFixed(1)} ms`)
+})
+
+test('live updates during a run stay consistent and the saved report is the exact rescan', async () => {
+  const f = fixture({ delay: 5 })
+  const updates = []
+  const report = await runChat(options(f, { stages: [{ name: 'Fast', sockets: 10, rps: 200, seconds: 2 }], onUpdate: (r) => updates.push({ attempted: r.totals.attempted, synced: r.totals.synced, received: r.delivery.received }) }))
+  assert.ok(updates.length > 2)
+  assert.ok(updates.every((u, i) => i === 0 || u.attempted >= updates[i - 1].attempted))
+  assert.ok(updates.every((u) => u.synced <= u.attempted && u.received <= u.attempted))
+  assert.equal(report.totals.attempted, report.totals.synced)
+  assert.equal(report.delivery.received, report.totals.attempted)
+  assert.equal(report.rooms.reduce((n, r) => n + r.attempted, 0), report.totals.attempted)
 })
