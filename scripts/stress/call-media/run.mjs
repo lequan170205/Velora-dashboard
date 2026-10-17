@@ -9,7 +9,7 @@ import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import WebSocket from "ws";
 import { AuthManager, validateConfig } from "../runner.mjs";
-import { choosePairs, safeFailure } from "./plan.mjs";
+import { choosePairs, MAX_CONCURRENT_CALLS, safeFailure } from "./plan.mjs";
 import { privateIpv4 } from "./media-path.mjs";
 const dependencyRequire = createRequire(import.meta.url);
 const dir = dirname(fileURLToPath(import.meta.url));
@@ -52,15 +52,26 @@ const demo = args.includes("--demo"),
   calls = args.includes("--calls") ? Number(value("--calls")) : 1;
 if (args.includes("--calls") && demo)
   throw new Error("choose separate stage or legacy demo");
-if (!Number.isInteger(calls) || calls < 1 || calls > 5)
-  throw new Error("calls must be 1..5");
+if (!Number.isInteger(calls) || calls < 1 || calls > MAX_CONCURRENT_CALLS)
+  throw new Error(`calls must be 1..${MAX_CONCURRENT_CALLS}`);
+// Hold time per stage; the default keeps the established 20/30 s windows.
+const holdSeconds = args.includes("--seconds")
+  ? Number(value("--seconds"))
+  : undefined;
+if (
+  holdSeconds !== undefined &&
+  (!Number.isInteger(holdSeconds) || holdSeconds < 10 || holdSeconds > 900)
+)
+  throw new Error("seconds must be 10..900");
+if (holdSeconds !== undefined && demo)
+  throw new Error("choose separate stage or legacy demo");
 const stages = demo
   ? [
       { calls: 1, seconds: 30 },
       { calls: 3, seconds: 30 },
       { calls: 5, seconds: 30 },
     ]
-  : [{ calls, seconds: calls === 1 ? 20 : 30 }];
+  : [{ calls, seconds: holdSeconds ?? (calls === 1 ? 20 : 30) }];
 const pairs = choosePairs(config, demo ? 5 : calls),
   selected = new Set(pairs.flatMap((p) => [p.caller, p.callee]));
 if (args.includes("--plan")) {

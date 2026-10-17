@@ -1,6 +1,8 @@
+// The dashboard presets stay at 5 calls; the CLI may hold up to 20 (see run.mjs --calls/--seconds).
+export const MAX_CONCURRENT_CALLS = 20;
 export function choosePairs(config, count) {
-  if (!Number.isInteger(count) || count < 1 || count > 5)
-    throw new Error("1..5 concurrent calls allowed in this pilot");
+  if (!Number.isInteger(count) || count < 1 || count > MAX_CONCURRENT_CALLS)
+    throw new Error(`1..${MAX_CONCURRENT_CALLS} concurrent calls allowed`);
   const used = new Set(),
     pairs = [];
   for (const room of config.rooms) {

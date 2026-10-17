@@ -16,7 +16,8 @@ test("pairs never share users even across overlapping rooms", () => {
   );
   assert.equal(new Set(p.flatMap((x) => [x.caller, x.callee])).size, 4);
   assert.throws(() => choosePairs(config, 3));
-  assert.throws(() => choosePairs(config, 6));
+  assert.throws(() => choosePairs(config, 21), /1\.\.20 concurrent/);
+  assert.throws(() => choosePairs(config, 0));
 });
 test("unknown errors never expose credentials or server messages", () => {
   assert.equal(
@@ -27,4 +28,13 @@ test("unknown errors never expose credentials or server messages", () => {
     safeFailure(new Error("accept refused with private details")),
     "accept refused",
   );
+});
+test("twenty disjoint pairs can be chosen from twenty rooms", () => {
+  const rooms = Array.from({ length: 20 }, (_, i) => ({
+    id: `r${i}`,
+    participantIds: [`a${i}`, `b${i}`, `c${i}`],
+  }));
+  const pairs = choosePairs({ rooms }, 20);
+  assert.equal(pairs.length, 20);
+  assert.equal(new Set(pairs.flatMap((x) => [x.caller, x.callee])).size, 40);
 });
