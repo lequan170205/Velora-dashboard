@@ -1,8 +1,11 @@
 // The dashboard presets stay at 5 calls; the CLI may hold up to 20 (see run.mjs --calls/--seconds).
 export const MAX_CONCURRENT_CALLS = 20;
-export function choosePairs(config, count) {
+// `offset` skips leading pairs so another tool can use them at the same time.
+export function choosePairs(config, count, offset = 0) {
   if (!Number.isInteger(count) || count < 1 || count > MAX_CONCURRENT_CALLS)
     throw new Error(`1..${MAX_CONCURRENT_CALLS} concurrent calls allowed`);
+  if (!Number.isInteger(offset) || offset < 0)
+    throw new Error("pair offset must be a non-negative integer");
   const used = new Set(),
     pairs = [];
   for (const room of config.rooms) {
@@ -17,7 +20,7 @@ export function choosePairs(config, count) {
       callee,
       participantIds: room.participantIds,
     });
-    if (pairs.length === count) return pairs;
+    if (pairs.length === offset + count) return pairs.slice(offset);
   }
   throw new Error("Not enough disjoint fixture pairs");
 }

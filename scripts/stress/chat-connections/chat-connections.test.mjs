@@ -17,8 +17,8 @@ const fakeAuth = () => { const stats = { logout: 0 }; return { stats, token: asy
 
 // In-memory stand-in for the chat gateway: accepts the websocket first, answers presence and message events afterwards.
 class FakeChat {
-  constructor({ latency = 2, maxConnections = Infinity, refuseFirst = 0, silentPresence = false } = {}) {
-    Object.assign(this, { latency, maxConnections, refuseFirst, silentPresence })
+  constructor({ latency = 2, maxConnections = Infinity, refuseFirst = 0, silentPresence = false, ackDelay = 0 } = {}) {
+    Object.assign(this, { latency, maxConnections, refuseFirst, silentPresence, ackDelay })
     this.live = new Set(); this.connects = 0; this.attemptsByUser = new Map(); this.messages = []
   }
   factory = (_url, options) => {
@@ -40,7 +40,8 @@ class FakeChat {
       if (event === 'send_message') {
         server.messages.push(payload)
         later(() => {
-          emitLocal(socket, 'message_synced', { clientMessageId: payload.clientMessageId })
+          if (server.ackDelay) setTimeout(() => emitLocal(socket, 'message_synced', { clientMessageId: payload.clientMessageId }), server.ackDelay)
+          else emitLocal(socket, 'message_synced', { clientMessageId: payload.clientMessageId })
           const room = config.rooms.find(r => r.id === payload.conversationId)
           for (const other of server.live) if (other.userId !== socket.userId && room.participantIds.includes(other.userId)) emitLocal(other, 'new_message', { clientMessageId: payload.clientMessageId })
         })
@@ -83,6 +84,14 @@ test('ramp and hold connect every socket and deliver probes to every other-membe
   assert.equal(report.passed, true, JSON.stringify(report))
   assert.equal(server.live.size, 0)
   assert.equal(report.socketsPerAccount, 5)
+})
+
+test('a probe completes even when the ack arrives after every delivery', async () => {
+  const server = new FakeChat({ ackDelay: 30 })
+  const report = await run(server, { sockets: 8, rampPerSecond: 200, holdSeconds: 2, probesPerSecond: 2 })
+  assert.equal(report.hold.probes.sent, 4); assert.equal(report.hold.probes.failed, 0, JSON.stringify(report.hold.probes))
+  assert.ok(report.hold.probes.ackMs.p50 >= 29)
+  assert.equal(report.passed, true)
 })
 
 test('refused connections are counted by cause and fail the verdict', async () => {

@@ -20,7 +20,8 @@ export function validateCallPlan(input) {
 
 // Greedy disjoint pairs: a user can be in one call at a time, so concurrent calls
 // need distinct accounts even when fixture rooms overlap.
-export function selectPairs(config, count) {
+// `offset` skips that many leading pairs so several tools can share one manifest without sharing users.
+export function selectPairs(config, count, offset = 0) {
   const used = new Set(), pairs = []
   for (const room of config.rooms) {
     const free = room.participantIds.filter(id => !used.has(id))
@@ -28,9 +29,10 @@ export function selectPairs(config, count) {
     const [caller, callee] = free
     used.add(caller); used.add(callee)
     pairs.push({ roomId: room.id, caller, callee })
-    if (pairs.length === count) return pairs
   }
-  throw new Error(`only ${pairs.length} disjoint fixture pairs available, ${count} requested`)
+  if (!Number.isInteger(offset) || offset < 0) throw new Error('pair offset must be a non-negative integer')
+  if (pairs.length < offset + count) throw new Error(`only ${Math.max(0, pairs.length - offset)} disjoint fixture pairs available, ${count} requested`)
+  return pairs.slice(offset, offset + count)
 }
 
 // Maps an error to a fixed label so reports never carry server messages or tokens.

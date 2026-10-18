@@ -16,7 +16,9 @@
     "test:call": "node --test scripts/test-call-stress-*.mjs scripts/stress/call-media/*.test.mjs scripts/stress/call-signaling/*.test.mjs",
     "stress:call:signaling": "node scripts/stress/call-signaling/cli.mjs",
     "stress:chat:connections": "node scripts/stress/chat-connections/cli.mjs",
-    "test:chat-connections": "node --test scripts/stress/chat-connections/*.test.mjs"
+    "test:chat-connections": "node --test scripts/stress/chat-connections/*.test.mjs",
+    "stress:mixed": "node scripts/stress/mixed/cli.mjs",
+    "test:mixed": "node --test scripts/stress/mixed/*.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

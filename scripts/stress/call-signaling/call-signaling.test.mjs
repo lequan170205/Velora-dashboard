@@ -68,6 +68,14 @@ test('pairs never share users across overlapping rooms', () => {
   assert.throws(() => selectPairs(config, 3), /only 2 disjoint/)
 })
 
+test('an offset leaves the leading pairs to another tool', () => {
+  const config = { rooms: [{ id: 'a', participantIds: ['u', 'v'] }, { id: 'b', participantIds: ['w', 'x'] }, { id: 'c', participantIds: ['y', 'z'] }] }
+  assert.deepEqual(selectPairs(config, 2, 1).map(p => p.roomId), ['b', 'c'])
+  assert.deepEqual([...selectPairs(config, 1, 0), ...selectPairs(config, 2, 1)].map(p => p.roomId), ['a', 'b', 'c'])
+  assert.throws(() => selectPairs(config, 3, 1), /only 2 disjoint/)
+  assert.throws(() => selectPairs(config, 1, -1), /non-negative/)
+})
+
 test('failure labels never expose server text', () => {
   assert.equal(safeFailure(new Error('Bearer secret-token leaked')), 'unexpected failure (details withheld)')
   assert.equal(safeFailure(new Error('accept timeout')), 'accept timeout')

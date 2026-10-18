@@ -38,3 +38,12 @@ test("twenty disjoint pairs can be chosen from twenty rooms", () => {
   assert.equal(pairs.length, 20);
   assert.equal(new Set(pairs.flatMap((x) => [x.caller, x.callee])).size, 40);
 });
+test("an offset skips leading pairs so two tools never share users", () => {
+  const config = {
+    rooms: ["a", "b", "c", "d"].map((id) => ({ id, participantIds: [`${id}1`, `${id}2`] })),
+  };
+  assert.deepEqual(choosePairs(config, 2, 2).map((x) => x.roomId), ["c", "d"]);
+  assert.deepEqual(choosePairs(config, 2, 0).map((x) => x.roomId), ["a", "b"]);
+  assert.throws(() => choosePairs(config, 3, 2));
+  assert.throws(() => choosePairs(config, 1, -1), /non-negative/);
+});

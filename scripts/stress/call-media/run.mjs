@@ -72,7 +72,10 @@ const stages = demo
       { calls: 5, seconds: 30 },
     ]
   : [{ calls, seconds: holdSeconds ?? (calls === 1 ? 20 : 30) }];
-const pairs = choosePairs(config, demo ? 5 : calls),
+const pairOffset = args.includes("--pair-offset")
+  ? Number(value("--pair-offset"))
+  : 0;
+const pairs = choosePairs(config, demo ? 5 : calls, pairOffset),
   selected = new Set(pairs.flatMap((p) => [p.caller, p.callee]));
 if (args.includes("--plan")) {
   console.log(

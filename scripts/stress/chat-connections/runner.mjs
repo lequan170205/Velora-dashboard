@@ -108,14 +108,18 @@ export async function runConnectionCapacity(config, rawPlan, {
     let settle
     const promise = new Promise(resolve => { settle = resolve })
     const timer = setTimeout(() => { probes.delete(id); settle(record) }, probeDeadlineMs)
+    // The ack and the deliveries can arrive in either order; the probe completes when both are in.
+    const maybeComplete = () => {
+      if (record.delivered >= record.expected && record.ackMs !== null) { clearTimeout(timer); probes.delete(id); record.complete = true; settle(record) }
+    }
     probes.set(id, {
-      onAck: () => { record.ackMs ??= now() - sentAt },
+      onAck: () => { record.ackMs ??= now() - sentAt; maybeComplete() },
       onDelivery: entry => {
         if (entry.account.id === sender.account.id || seen.has(entry.index)) return
         seen.add(entry.index)
         const t = now() - sentAt
         record.delivered++; record.firstMs ??= t; record.lastMs = t
-        if (record.delivered >= record.expected && record.ackMs !== null) { clearTimeout(timer); probes.delete(id); record.complete = true; settle(record) }
+        maybeComplete()
       },
     })
     sender.socket.emit('send_message', { conversationId: sender.room.id, clientMessageId: id, type: 'text', signalType: 0, content: `[Velora connection probe] ${id}` })

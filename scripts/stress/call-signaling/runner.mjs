@@ -42,10 +42,10 @@ export async function connectCallSocket(baseUrl, token, { timeoutMs = 20000, fac
 
 export async function runCallSignaling(config, rawPlan, {
   signal, onProgress = () => {}, now = performance.now.bind(performance), sleep = defaultSleep,
-  connect = connectCallSocket, auth = new AuthManager(config, { signal }), cycleTimeoutMs = 15000,
+  connect = connectCallSocket, auth = new AuthManager(config, { signal }), cycleTimeoutMs = 15000, pairOffset = 0,
 } = {}) {
   const plan = validateCallPlan(rawPlan)
-  const pairs = selectPairs(config, plan.pairs)
+  const pairs = selectPairs(config, plan.pairs, pairOffset)
   const accounts = new Map(config.accounts.map(a => [a.id, a]))
   const startedAt = new Date().toISOString()
   const runId = randomUUID()
