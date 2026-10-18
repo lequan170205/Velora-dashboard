@@ -63,6 +63,14 @@ const good = () => ({
   media: { passed: true, stages: [{ pairs: [{ audio: [{ packets: 12000, lost: 0 }, { packets: 12000, lost: 4 }] }] }] },
 })
 
+test('media can use the local origin like the other tools when asked', () => {
+  const s = resolveScenario(), t = buildTimeline(s)
+  const local = Object.fromEntries(buildCommands(s, t, { ...paths, mediaLocal: true }).map(c => [c.name, c.argv]))
+  assert.equal(arg(local.media, '--manifest'), '/o/local.json'); assert.ok(local.media.includes('--local-origin'))
+  const pub = Object.fromEntries(buildCommands(s, t, paths).map(c => [c.name, c.argv]))
+  assert.equal(arg(pub.media, '--manifest'), '/m/public.json'); assert.ok(!pub.media.includes('--local-origin'))
+})
+
 test('a healthy run passes every criterion', () => {
   const v = evaluate(good(), resolveScenario())
   assert.equal(v.passed, true, JSON.stringify(v.criteria.filter(c => !c.pass)))

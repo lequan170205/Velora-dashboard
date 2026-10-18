@@ -83,6 +83,11 @@ async function connect(id, baseUrl) {
     forceNew: true,
     reconnection: false,
   });
+  // Remember why a socket closed so a failed run can say "ping timeout" or "transport close".
+  s.on("disconnect", (reason) => {
+    s.disconnectReason = reason;
+    s.disconnectedAt = Date.now();
+  });
   const ready = wait(s, "call_socket_ready", () => true, 20000, "socket ready");
   s.on("connect_error", () => ready.cancel());
   s.connect();
@@ -428,6 +433,7 @@ try {
       }
       // Ignore setup ramp; simultaneous media measurement begins only now.
       await delay(2000);
+      const holdStartedAt = Date.now();
       const previous = await Promise.all(
         live.flatMap((x) => x.media.map(sample)),
       );
@@ -437,8 +443,18 @@ try {
       for (let seconds = 0; seconds < stage.seconds; seconds += 5) {
         await delay(Math.min(5, stage.seconds - seconds) * 1000);
         assertRunning();
-        if (live.some((x) => x.sockets.some((s) => !s.connected)))
-          throw new Error("socket disconnected");
+        const dropped = live.flatMap((x) => x.sockets.filter((s) => !s.connected));
+        if (dropped.length) {
+          const error = new Error("socket disconnected");
+          // Client-side reasons only (socket.io close reasons); no ids or tokens.
+          error.disconnects = dropped.map((s) => ({
+            reason: String(s.disconnectReason ?? "unknown").slice(0, 40),
+            atSecond: s.disconnectedAt
+              ? Math.round((s.disconnectedAt - holdStartedAt) / 1000)
+              : null,
+          }));
+          throw error;
+        }
         const current = await Promise.all(
           live.flatMap((x) => x.media.map(sample)),
         );
@@ -481,6 +497,7 @@ try {
     } catch (e) {
       result.failure = safeFailure(e);
       if (e.callFailure) result.failedPair = e.callFailure;
+      if (e.disconnects) result.disconnects = e.disconnects;
     } finally {
       for (const x of live) {
         await cleanupPair(x);

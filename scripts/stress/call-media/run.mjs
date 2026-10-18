@@ -46,7 +46,12 @@ const mediaAddressOverride = args.includes("--lan-media-address")
   : undefined;
 if (args.includes("--lan-media-address") && !privateIpv4(mediaAddressOverride))
   throw new Error("host-local media requires a private IPv4");
-if (config.baseUrl !== "https://velora-app.me")
+// Diagnostic exception: with --local-origin a host-local run may use the gateway on 127.0.0.1.
+const localOrigin =
+  args.includes("--local-origin") &&
+  config.baseUrl === "http://127.0.0.1" &&
+  Boolean(mediaAddressOverride);
+if (config.baseUrl !== "https://velora-app.me" && !localOrigin)
   throw new Error("Pilot is limited to the established public origin");
 const demo = args.includes("--demo"),
   calls = args.includes("--calls") ? Number(value("--calls")) : 1;
@@ -333,6 +338,12 @@ try {
   report ??= {
     passed: false,
     failure: safeFailure(e),
+    // Error class, HTTP status and network error code only; never the message.
+    failureDetail: {
+      name: String(e?.name ?? "").slice(0, 40),
+      status: Number.isInteger(e?.status) ? e.status : null,
+      code: String(e?.cause?.code ?? e?.code ?? "").slice(0, 40),
+    },
     lastProgress,
     browserExit,
     lastBrowserCommand,

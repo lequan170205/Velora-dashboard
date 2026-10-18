@@ -82,8 +82,9 @@ export function buildCommands(s, timeline, paths) {
     argv: [paths.bins.churn, '--config', paths.localConfig, '--run', '--pairs', s.churn.pairs, '--cps', s.churn.cps, '--seconds', timeline.churn.seconds,
       '--hold-ms', s.churn.holdMs, '--pair-offset', s.mediaCalls, '--output', out('churn')] })
   if (timeline.media) commands.push({ name: 'media', startS: timeline.media.startS, output: out('media'),
-    argv: [paths.bins.media, '--manifest', paths.config, '--run', '--calls', s.mediaCalls, '--seconds', timeline.media.seconds, '--pair-offset', 0,
-      '--lan-media-address', paths.lanAddress, '--chrome', paths.chrome, '--browser-bundle', paths.bins.browserBundle, '--output', out('media')] })
+    // mediaLocal: reach the gateway on the local origin like the other tools instead of through the public edge.
+    argv: [paths.bins.media, '--manifest', paths.mediaLocal ? paths.localConfig : paths.config, '--run', '--calls', s.mediaCalls, '--seconds', timeline.media.seconds, '--pair-offset', 0,
+      '--lan-media-address', paths.lanAddress, '--chrome', paths.chrome, '--browser-bundle', paths.bins.browserBundle, '--output', out('media'), ...(paths.mediaLocal ? ['--local-origin'] : [])] })
   return commands.map(c => ({ ...c, argv: c.argv.map(String) }))
 }
 

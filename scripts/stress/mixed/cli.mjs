@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // usage: node scripts/stress/mixed/cli.mjs --config /abs/private-manifest.json --bins-dir /abs/bins --plan|--run
 //   [--profile campus10k|smoke] [--base-url http://127.0.0.1] [--chrome PATH --lan-address IP] [--output /abs/report.json]
-//   overrides: --sockets --ramp --window --chat-rps --media-calls --churn-pairs --churn-cps --churn-hold-ms --no-docker
+//   overrides: --sockets --ramp --window --chat-rps --media-calls --churn-pairs --churn-cps --churn-hold-ms --no-docker --media-local
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -11,7 +11,7 @@ import { buildCommands, buildTimeline, chatStage, resolveScenario } from './scen
 import { runMixed } from './orchestrator.mjs'
 
 const VALUE = new Set(['config', 'bins-dir', 'profile', 'base-url', 'chrome', 'lan-address', 'output', 'sockets', 'ramp', 'window', 'chat-rps', 'media-calls', 'churn-pairs', 'churn-cps', 'churn-hold-ms'])
-const FLAG = new Set(['plan', 'run', 'no-docker'])
+const FLAG = new Set(['plan', 'run', 'no-docker', 'media-local'])
 export function parseArgs(argv) {
   const out = {}
   for (let i = 0; i < argv.length; i++) {
@@ -48,7 +48,7 @@ async function main() {
   const outDir = await mkdtemp(join(tmpdir(), 'velora-mixed-')); await chmod(outDir, 0o700)
   const localConfig = join(outDir, 'local.json'), chatConfig = join(outDir, 'chat.json')
   const local = { ...config, baseUrl: options['base-url'] ?? config.baseUrl }
-  const paths = { bins, config: resolve(options.config), localConfig, chatConfig, outDir, chrome: options.chrome, lanAddress: options['lan-address'] }
+  const paths = { bins, config: resolve(options.config), localConfig, chatConfig, outDir, chrome: options.chrome, lanAddress: options['lan-address'], mediaLocal: Boolean(options['media-local']) }
   try {
     if (options.plan) {
       const timeline = buildTimeline(scenario)
