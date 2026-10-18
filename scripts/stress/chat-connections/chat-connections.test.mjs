@@ -33,7 +33,7 @@ class FakeChat {
       emitLocal(socket, 'connect')
     })
     socket.disconnect = () => { if (!socket.connected) return socket; socket.connected = false; server.live.delete(socket); emitLocal(socket, 'disconnect'); return socket }
-    socket.drop = () => socket.disconnect()
+    socket.drop = (reason = 'transport close') => { if (!socket.connected) return; socket.connected = false; server.live.delete(socket); EventEmitter.prototype.emit.call(socket, 'disconnect', reason) }
     socket.emit = (event, payload) => {
       if (!socket.connected) return true
       if (event === 'check_presence' && !server.silentPresence) later(() => socket.connected && emitLocal(socket, 'presence_update', { userId: payload.userId, isOnline: true }))
@@ -155,9 +155,10 @@ test('sockets that cannot reconnect after all retries are reported as lost', asy
 test('a socket dropped by the server during the hold is reported', async () => {
   const server = new FakeChat()
   const running = run(server, { sockets: 8, rampPerSecond: 200, holdSeconds: 2, probesPerSecond: 0 })
-  await wait(700); ;[...server.live][0].drop()
+  await wait(700); ;[...server.live][0].drop('ping timeout')
   const report = await running
   assert.equal(report.hold.unexpectedDisconnects, 1); assert.equal(report.hold.minConnected, 7)
+  assert.deepEqual(report.hold.disconnectReasons, { 'ping timeout': 1 })
   assert.equal(report.passed, false)
 })
 

@@ -32,16 +32,21 @@ export async function runConnectionCapacity(config, rawPlan, {
     ramp: null, hold: null, storms: [], cleanup: null,
   }
   let phase = 'ramp'
-  const counters = { unexpected: 0, byPhase: { ramp: 0, hold: 0, storm: 0 } }
+  const counters = { unexpected: 0, byPhase: { ramp: 0, hold: 0, storm: 0 }, reasons: {} }
   const probes = new Map()
   const connectedCount = () => entries.reduce((n, e) => n + (e.connected ? 1 : 0), 0)
   const downsample = series => (series.length <= SERIES_LIMIT ? series : series.filter((_, i) => i % Math.ceil(series.length / SERIES_LIMIT) === 0))
 
   const wire = entry => {
     const { socket } = entry
-    socket.on('disconnect', () => {
+    socket.on('disconnect', reason => {
       entry.connected = false
-      if (!entry.expectDrop) { counters.unexpected++; counters.byPhase[phase]++ }
+      if (!entry.expectDrop) {
+        counters.unexpected++; counters.byPhase[phase]++
+        // socket.io close reason ('ping timeout', 'transport close', 'io server disconnect', ...)
+        const key = String(reason ?? 'unknown').slice(0, 40)
+        counters.reasons[key] = (counters.reasons[key] ?? 0) + 1
+      }
     })
     socket.on('message_synced', msg => probes.get(msg?.clientMessageId)?.onAck(msg))
     socket.on('new_message', msg => probes.get(msg?.clientMessageId)?.onDelivery(entry))
@@ -183,7 +188,7 @@ export async function runConnectionCapacity(config, rawPlan, {
         if (second % 5 === 0) onProgress({ phase: 'hold', second, connected })
       }
       await Promise.allSettled([...pending])
-      report.hold = { seconds: plan.holdSeconds, minConnected, unexpectedDisconnects: counters.byPhase.hold, series: downsample(samples), probes: summarizeProbes(results) }
+      report.hold = { seconds: plan.holdSeconds, minConnected, unexpectedDisconnects: counters.byPhase.hold, disconnectReasons: { ...counters.reasons }, series: downsample(samples), probes: summarizeProbes(results) }
       if (signal?.aborted) report.stopReason = 'operator stop'
     }
 
