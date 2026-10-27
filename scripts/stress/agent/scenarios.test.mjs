@@ -81,6 +81,12 @@ test('estimates grow with the plan', () => {
   assert.ok(estimateSeconds('calls', { calls: 2, seconds: 30, media: true }) > estimateSeconds('calls', { calls: 2, seconds: 30, media: false }))
 })
 
+test('estimates follow the mixed tool timeline (ramp + 10 s settle + window + 60 s margin)', () => {
+  // 200 sockets ramp at 10/s -> 20 s; measured light mixed run took 110 s
+  assert.equal(estimateSeconds('mixed', { sockets: 200, chat: 5, churn: 3, calls: 0, seconds: 30 }), 120)
+  assert.equal(estimateSeconds('sockets', { sockets: 200, hold: 30, storm: false }), 65)
+})
+
 test('chat verdict reports failed, missing and skipped messages as reasons', () => {
   const good = { passed: true, stopReason: null, stages: [{ planned: 300, skipped: 0, achievedRps: 10 }],
     totals: { emitted: 300, failedMessages: 0, ack: { p95: 40 }, delivery: { p95: 70 }, deliveries: { missing: 0 } } }

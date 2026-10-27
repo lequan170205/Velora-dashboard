@@ -99,11 +99,14 @@ export function validateParams(id, input, capabilities = {}) {
 // Rough run length for the progress bar, including setup and cleanup.
 export function estimateSeconds(id, p) {
   if (id === 'chat') return p.seconds + 20
-  if (id === 'sockets') return Math.ceil(p.sockets / 50) + p.hold + (p.storm ? 30 : 0) + 15
+  if (id === 'sockets') return Math.ceil(p.sockets / rampFor(p.sockets, 200)) + p.hold + (p.storm ? 30 : 0) + 15
   if (id === 'calls') return p.seconds + (p.media ? 60 : 15)
-  return Math.ceil(p.sockets / 25) + 10 + p.seconds + (p.calls ? 60 : 15)
+  // the mixed tool's own timeline: ramp, 10 s settle, the window, then 60 s of margin
+  return Math.ceil(p.sockets / rampFor(p.sockets, 100)) + 10 + p.seconds + 60
 }
 
+// Sockets opened per second: about 5% of the target per second, within what each tool allows.
+const rampFor = (sockets, max) => Math.min(max, Math.max(10, Math.round(sockets / 20)))
 const churnCps = churn => (churn > 0 ? Math.min(1, Math.max(0.1, Math.floor(churn / (MIXED_CHURN_HOLD_MS / 1000 + 0.2) * 100) / 100)) : 0)
 
 // What the agent has to launch. `config` is the manifest the tool reads (stages are filled for chat);
@@ -113,7 +116,7 @@ export function buildCommand(id, p, paths) {
   if (id === 'chat') return { tool: 'chat', configKind: 'chat', stages: [{ name: `chat ${p.rps}/s`, users: paths.accounts, rps: p.rps, seconds: p.seconds }],
     argv: [paths.bins.chat, '--config', paths.chatConfigFile, '--run', '--output', paths.output] }
   if (id === 'sockets') return { tool: 'connections', configKind: 'plain',
-    argv: [paths.bins.connections, '--config', paths.configFile, '--run', '--sockets', a(p.sockets), '--ramp', a(Math.min(200, Math.max(10, Math.round(p.sockets / 20)))),
+    argv: [paths.bins.connections, '--config', paths.configFile, '--run', '--sockets', a(p.sockets), '--ramp', a(rampFor(p.sockets, 200)),
       '--hold', a(p.hold), '--probes', '1', '--storms', p.storm ? '1' : '0', '--output', paths.output] }
   if (id === 'calls' && p.media) return { tool: 'media', configKind: 'plain',
     argv: [paths.bins.media, '--manifest', paths.configFile, '--run', '--calls', a(p.calls), '--seconds', a(p.seconds), '--pair-offset', '0',
@@ -123,7 +126,7 @@ export function buildCommand(id, p, paths) {
       '--seconds', a(p.seconds), '--hold-ms', a(SIGNALING_HOLD_S * 1000), '--output', paths.output] }
   // The mixed tool needs the mixed.mjs bundle plus the other bundled tools in one directory.
   const argv = [paths.bins.mixed, '--config', paths.configFile, '--bins-dir', paths.binsDir, '--run', '--profile', 'campus10k', '--base-url', paths.baseUrl,
-    '--sockets', a(p.sockets), '--ramp', a(Math.min(100, Math.max(10, Math.round(p.sockets / 20)))), '--window', a(p.seconds), '--chat-rps', a(p.chat),
+    '--sockets', a(p.sockets), '--ramp', a(rampFor(p.sockets, 100)), '--window', a(p.seconds), '--chat-rps', a(p.chat),
     '--media-calls', a(p.calls), '--churn-pairs', a(p.churn), '--churn-cps', a(churnCps(p.churn)), '--churn-hold-ms', a(MIXED_CHURN_HOLD_MS), '--output', paths.output]
   if (p.calls > 0) argv.push('--chrome', paths.chrome, '--lan-address', paths.lanAddress, '--media-local')
   return { tool: 'mixed', configKind: 'plain', argv }
@@ -131,7 +134,7 @@ export function buildCommand(id, p, paths) {
 
 // Check the mixed settings the same way the tool will, so a bad value fails before anything starts.
 export function checkMixed(p) {
-  resolveScenario('campus10k', { sockets: p.sockets, rampPerSecond: Math.min(100, Math.max(10, Math.round(p.sockets / 20))), windowSeconds: p.seconds, chatRps: p.chat,
+  resolveScenario('campus10k', { sockets: p.sockets, rampPerSecond: rampFor(p.sockets, 100), windowSeconds: p.seconds, chatRps: p.chat,
     mediaCalls: p.calls, churnPairs: p.churn, churnCps: churnCps(p.churn), churnHoldMs: MIXED_CHURN_HOLD_MS })
 }
 
