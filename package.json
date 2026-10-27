@@ -6,19 +6,16 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "vite",
-    "test": "node --test scripts/test-*.mjs",
+    "test": "node --test scripts/test-*.mjs scripts/stress/*/*.test.mjs",
     "stress:plan": "node scripts/stress/cli.mjs --plan",
     "stress:run": "node scripts/stress/cli.mjs --run",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "stress:call:build": "node scripts/build-call-stress-agent.mjs",
-    "stress:call:launch": "node scripts/launch-call-stress-agent.mjs",
-    "test:call": "node --test scripts/test-call-stress-*.mjs scripts/stress/call-media/*.test.mjs scripts/stress/call-signaling/*.test.mjs",
+    "stress:agent:build": "node scripts/build-stress-agent.mjs",
+    "stress:agent": "node scripts/stress/agent/agent.mjs",
     "stress:call:signaling": "node scripts/stress/call-signaling/cli.mjs",
     "stress:chat:connections": "node scripts/stress/chat-connections/cli.mjs",
-    "test:chat-connections": "node --test scripts/stress/chat-connections/*.test.mjs",
-    "stress:mixed": "node scripts/stress/mixed/cli.mjs",
-    "test:mixed": "node --test scripts/stress/mixed/*.test.mjs"
+    "stress:mixed": "node scripts/stress/mixed/cli.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

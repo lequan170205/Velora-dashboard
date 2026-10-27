@@ -10,5 +10,6 @@ scripts/stress/private/
 scripts/stress/results/
 stress-private/
 
-# Generated native call-test companion (contains no fixture credentials)
+# Generated stress agent bundle (contains no fixture credentials)
+.stress-agent/
 .call-stress-agent/
