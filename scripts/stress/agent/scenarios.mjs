@@ -213,7 +213,8 @@ export function summarize(id, p, report, { stopped = false } = {}) {
   // mixed: the orchestrator already judged every criterion
   const criteria = Array.isArray(r.criteria) ? r.criteria : []
   for (const c of criteria.filter(x => !x.pass)) failures.push(`${c.workload}: ${c.name} = ${c.value ?? 'thiếu'} (giới hạn ${c.op} ${c.limit})`)
-  for (const [name, child] of Object.entries(r.children ?? {})) if (child.exitCode !== 0 && !failures.some(f => f.startsWith(name))) failures.push(`${name} không chạy xong`)
+  // A child's exit code is not judged here: the criteria already require its report, and the tools' own strict exit rules
+  // (for example chat exiting 1 for 4 skipped slots in 9,900) are looser in the mixed verdict, which allows 0.1% skipped.
   const peaks = Object.values(r.resources ?? {}).map(x => x.cpuPeak).filter(Number.isFinite)
   const find = (workload, name) => criteria.find(c => c.workload === workload && c.name === name)?.value
   return out(r.passed, [

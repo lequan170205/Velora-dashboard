@@ -134,6 +134,14 @@ test('mixed verdict lists the criteria that failed', () => {
   assert.equal(r.metrics[0].value, '1 / 2'); assert.equal(r.metrics.at(-1).value, '80%')
 })
 
+test('mixed trusts its criteria, not a child exit code that is stricter than they are', () => {
+  const report = { passed: true, criteria: [{ workload: 'chat', name: 'skipped ratio', value: 0.0004, limit: 0.001, op: '<=', pass: true }],
+    children: { chat: { exitCode: 1 }, connections: { exitCode: 0 } }, resources: {} }
+  const r = summarize('mixed', { sockets: 2000, chat: 33, churn: 10, calls: 0, seconds: 300 }, report)
+  assert.equal(r.passed, true); assert.deepEqual(r.failures, [])
+  assert.equal(summarize('mixed', {}, { passed: false, criteria: [{ workload: 'chat', name: 'chat report present', value: null, limit: 'present', op: '===', pass: false }], children: {} }).passed, false)
+})
+
 test('a missing report fails, and a stop is reported as a stop', () => {
   assert.match(summarize('chat', { rps: 1, seconds: 5 }, null).reason, /báo cáo/)
   assert.equal(summarize('chat', { rps: 1, seconds: 5 }, null, { stopped: true }).reason, 'Đã dừng theo yêu cầu')
