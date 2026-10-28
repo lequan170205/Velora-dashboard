@@ -133,7 +133,7 @@ Group calls (more than two people) are not covered yet: the call tools use pairs
 
 ## Command-line tools
 
-Each scenario is a CLI that can also be run by hand (see the README next to each tool): `scripts/stress/cli.mjs` (chat), `chat-connections/`, `call-signaling/`, `call-media/`, `mixed/`. They read the private manifest, never print passwords or tokens, and write JSON reports. Tests: `pnpm test`.
+Each scenario is a CLI that can also be run by hand (see the README next to each tool): `scripts/stress/cli.mjs` (chat), `chat-connections/`, `call-signaling/`, `call-media/`, `mixed/`. They read the private manifest, never print passwords or tokens, and write JSON reports. Tests: `pnpm test` (dashboard + agent) and `pnpm test:stress` (the CLI tools; its reconnect-storm test is timing-sensitive and fails now and then).
 
 ## CI
 
