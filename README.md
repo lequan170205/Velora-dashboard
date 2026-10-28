@@ -129,7 +129,7 @@ The agent listens on `127.0.0.1:18944`, runs one test at a time, accepts only re
 
 The scenarios, their fields and the verdict rules are defined once in `scripts/stress/agent/scenarios.mjs`; the page renders whatever the agent describes.
 
-Group calls (more than two people) are not covered yet: the call tools use pairs.
+Group calls (more than two people) are not covered yet: the call tools use pairs. To present a run, see [docs/STRESS-DEMO.md](docs/STRESS-DEMO.md): **Present** opens a full-screen view with live server charts and a one-click demo.
 
 ## Command-line tools
 

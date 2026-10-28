@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Play, Square } from 'lucide-react'
+import { Download, MonitorPlay, Play, Square } from 'lucide-react'
 import { Badge, type BadgeTone } from '../../shared/components/ui/badge'
 import { Button } from '../../shared/components/ui/button'
 import { Card, CardContent } from '../../shared/components/ui/card'
@@ -8,16 +8,14 @@ import { Input } from '../../shared/components/ui/input'
 import { Label } from '../../shared/components/ui/label'
 import { cn } from '../../shared/lib/cn'
 import { checkValues, getState, presetValues, startRun, stopRun, type Run, type Scenario, type Values } from './api'
+import { LiveCharts, PhaseBar, VERDICT, clock } from './LiveView'
+import { demoValues, type Sample } from './live'
+import { Presenter } from './Presenter'
+import { useLiveSeries } from './useLiveSeries'
 
 const QUERY_KEY = ['stress-state']
-const VERDICT: Record<Run['status'], { label: string; tone: BadgeTone }> = {
-  running: { label: 'Running', tone: 'info' }, stopping: { label: 'Stopping', tone: 'warn' },
-  passed: { label: 'PASSED', tone: 'good' }, failed: { label: 'FAILED', tone: 'bad' }, cancelled: { label: 'Stopped', tone: 'warn' },
-}
-const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
-
-function download(run: Run) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(run, null, 2)], { type: 'application/json' }))
+function download(run: Run, series: Sample[]) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify({ ...run, serverSamples: series }, null, 2)], { type: 'application/json' }))
   const a = document.createElement('a')
   a.href = url; a.download = `velora-stress-${run.scenario}-${run.startedAt.replace(/[:.]/g, '-')}.json`; a.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
@@ -33,7 +31,7 @@ function useNow(active: boolean) {
   return now
 }
 
-function Result({ run, scenario, now }: { run: Run; scenario: Scenario | undefined; now: number }) {
+function Result({ run, scenario, now, series }: { run: Run; scenario: Scenario | undefined; now: number; series: Sample[] }) {
   const verdict = VERDICT[run.status]
   const live = run.status === 'running' || run.status === 'stopping'
   const elapsed = Math.max(0, ((run.finishedAt ? Date.parse(run.finishedAt) : now) - Date.parse(run.startedAt)) / 1000)
@@ -43,10 +41,9 @@ function Result({ run, scenario, now }: { run: Run; scenario: Scenario | undefin
         <Badge tone={verdict.tone} className="px-3 py-1 text-sm">{verdict.label}</Badge>
         <span className="text-sm text-ink-2">{scenario?.title ?? run.scenario} · {live ? `${run.phase} · ${clock(elapsed)} / ~${clock(run.estimatedSeconds)}` : `${clock(elapsed)}`}</span>
       </div>
-      {!live && <Button variant="ghost" size="sm" onClick={() => download(run)}><Download size={14} aria-hidden="true" />Download JSON</Button>}
+      {!live && <Button variant="ghost" size="sm" onClick={() => download(run, series)}><Download size={14} aria-hidden="true" />Download JSON</Button>}
     </div>
-    {live && <div className="h-1.5 overflow-hidden rounded-full bg-inset" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(99, Math.round(elapsed / run.estimatedSeconds * 100))}>
-      <div className="h-full bg-brand transition-all" style={{ width: `${Math.min(99, elapsed / run.estimatedSeconds * 100)}%` }} /></div>}
+    {live && <PhaseBar run={run} elapsed={elapsed} />}
     {run.reason && !run.failures.includes(run.reason) && <p role="alert" className="rounded-card border border-line bg-raised p-3 text-sm text-ink-2">{run.reason}</p>}
     {!live && run.failures.length > 0 && <ul className="space-y-1 text-sm text-bad">{run.failures.map((f) => <li key={f}>• {f}</li>)}</ul>}
     {run.metrics.length > 0 && <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">{run.metrics.map((m) => <div key={m.label}>
@@ -66,6 +63,8 @@ export function StressTestPage() {
   const scenario = data?.scenarios.find((s) => s.id === selected) ?? data?.scenarios[0]
   const busy = pending || Boolean(data?.busy)
   const now = useNow(Boolean(data?.active))
+  const live = useLiveSeries(data?.active ?? null)
+  const [present, setPresent] = useState(false)
   if (!data || !scenario) return <section className="space-y-5" aria-labelledby="stress-title">
     <Header badge={state.isLoading ? { label: 'Connecting to the agent…', tone: 'neutral' } : { label: 'Agent offline', tone: 'bad' }} />
     {!state.isLoading && <Card><CardContent className="space-y-3 text-sm text-ink-2">
@@ -78,12 +77,22 @@ export function StressTestPage() {
   const values = edited[scenario.id] ?? presetValues(scenario, scenario.presets[1] ?? scenario.presets[0])
   const problem = checkValues(scenario, values)
   const shown = data.active ?? data.recent.find((r) => r.scenario === scenario.id) ?? null
+  const mixed = data.scenarios.find((s) => s.id === 'mixed')
+  const mediaAvailable = (mixed?.fields.find((f) => f.key === 'calls')?.max ?? 0) > 0
+  const latest = data.active ?? data.recent[0] ?? null
+  const seriesFor = (run: Run | null) => (run && live.runId === run.id ? live.series : [])
   const set = (next: Values) => setEdited((current) => ({ ...current, [scenario.id]: next }))
 
   async function start() {
     if (submitting.current || !scenario || problem) return
     submitting.current = true; setPending(true); setError(null)
     try { await startRun(scenario.id, values, crypto.randomUUID()) } catch (e) { setError(e instanceof Error ? e.message : 'Could not start the run') }
+    finally { submitting.current = false; setPending(false); void client.invalidateQueries({ queryKey: QUERY_KEY }) }
+  }
+  async function demo() {
+    if (submitting.current || !mixed) return
+    submitting.current = true; setPending(true); setError(null)
+    try { await startRun('mixed', demoValues(mediaAvailable), crypto.randomUUID()) } catch (e) { setError(e instanceof Error ? e.message : 'Could not start the demo') }
     finally { submitting.current = false; setPending(false); void client.invalidateQueries({ queryKey: QUERY_KEY }) }
   }
   async function stop() {
@@ -95,7 +104,7 @@ export function StressTestPage() {
 
   const badge = data.active ? VERDICT[data.active.status] : { label: 'Ready', tone: 'good' as BadgeTone }
   return <section className="space-y-5" aria-labelledby="stress-title">
-    <Header badge={badge} />
+    <Header badge={badge} onPresent={() => setPresent(true)} />
     <div role="tablist" aria-label="Scenario" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {data.scenarios.map((s) => <button key={s.id} role="tab" type="button" aria-selected={s.id === scenario.id}
         onClick={() => { setSelected(s.id); setError(null) }}
@@ -124,14 +133,20 @@ export function StressTestPage() {
         <span className="text-xs text-ink-3">Runs real load on the live system with test accounts. Closing this tab does not stop a run.</span>
       </div>
     </CardContent></Card>
-    {shown && <Result run={shown} scenario={data.scenarios.find((s) => s.id === shown.scenario)} now={now} />}
+    {shown && <Result run={shown} scenario={data.scenarios.find((s) => s.id === shown.scenario)} now={now} series={seriesFor(shown)} />}
+    {shown && seriesFor(shown).length > 0 && <LiveCharts run={shown} series={seriesFor(shown)} />}
+    {present && <Presenter run={latest} scenario={latest ? data.scenarios.find((s) => s.id === latest.scenario) : undefined} series={seriesFor(latest)} now={now}
+      canDemo={Boolean(mixed)} busy={busy} onDemo={() => void demo()} onStop={() => void stop()} onClose={() => setPresent(false)} />}
   </section>
 }
 
-function Header({ badge }: { badge: { label: string; tone: BadgeTone } }) {
+function Header({ badge, onPresent }: { badge: { label: string; tone: BadgeTone }; onPresent?: () => void }) {
   return <div className="flex flex-wrap items-start justify-between gap-4">
     <div><p className="text-xs font-medium uppercase tracking-wider text-ink-3">Demo tools</p>
       <h1 id="stress-title" className="mt-1 text-2xl font-semibold">Stress test</h1></div>
-    <Badge tone={badge.tone}>{badge.label}</Badge>
+    <div className="flex items-center gap-2">
+      {onPresent && <Button variant="secondary" size="sm" onClick={onPresent}><MonitorPlay size={14} aria-hidden="true" />Present</Button>}
+      <Badge tone={badge.tone}>{badge.label}</Badge>
+    </div>
   </div>
 }
