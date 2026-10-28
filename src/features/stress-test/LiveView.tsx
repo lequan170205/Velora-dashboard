@@ -42,14 +42,14 @@ function panelsFor(run: Run): Panel[] {
     panels.push({ id: 'p95', title: 'Send latency p95', unit: ' ms', token: 'amber', lines: [{ key: 'p95Ms', label: 'p95', token: 'amber' }] })
   }
   if (scenario === 'calls' || scenario === 'mixed') panels.push({ id: 'calls', title: 'Calls on the server', unit: '', token: 'blue', lines: [
-    { key: 'callSockets', label: 'Call sockets', token: 'blue' }, { key: 'mediaRooms', label: 'SFU rooms (real audio)', token: 'rose' }] })
-  panels.push({ id: 'cpu', title: 'CPU (host %, busiest containers in cores)', unit: '', token: 'rose', lines: [{ key: 'hostCpu', label: 'Host CPU %', token: 'rose' }] })
+    { key: 'callSockets', label: 'Call sockets', token: 'blue' }, { key: 'mediaRooms', label: 'SFU rooms (active calls)', token: 'rose' }] })
+  panels.push({ id: 'cpu', title: 'CPU: busiest containers (% of one core)', unit: '', token: 'rose', lines: [] })
   return panels
 }
 
 type Row = Record<string, number | null>
 function rowsFor(series: Sample[], cpuNames: string[]): Row[] {
-  return series.map((s) => ({ ...(s as unknown as Row), ...Object.fromEntries(cpuNames.map((name) => [`cpu:${name}`, s.cpu[name] ?? null])) }))
+  return series.map((s) => ({ ...(s as unknown as Row), ...Object.fromEntries(cpuNames.map((name) => [`cpu:${name}`, s.cpu[name] == null ? null : Math.round(s.cpu[name] * 100)])) }))
 }
 
 const last = (series: Sample[], key: keyof Sample) => {
@@ -60,13 +60,14 @@ const last = (series: Sample[], key: keyof Sample) => {
 function Chart({ panel, rows, cpuNames, height, large }: { panel: Panel; rows: Row[]; cpuNames: string[]; height: number; large: boolean }) {
   const theme = useChartTheme()
   const lines = [...panel.lines.map((l) => ({ dataKey: l.key as string, label: l.label, color: theme.series[l.token] })),
-    ...(panel.id === 'cpu' ? cpuNames.map((name, i) => ({ dataKey: `cpu:${name}`, label: `${name} (cores)`, color: theme.series[(['teal', 'blue', 'amber'] as ChartSeriesToken[])[i]] })) : [])]
+    ...(panel.id === 'cpu' ? cpuNames.map((name, i) => ({ dataKey: `cpu:${name}`, label: name, color: theme.series[(['teal', 'blue', 'amber'] as ChartSeriesToken[])[i]] })) : [])]
   const current = panel.id === 'cpu' ? last(rows as unknown as Sample[], 'hostCpu') : last(rows as unknown as Sample[], panel.lines[0].key)
   const hasData = rows.some((r) => lines.some((l) => typeof r[l.dataKey] === 'number'))
   return <Card><CardContent className={large ? 'p-5' : 'p-4'}>
     <div className="flex flex-wrap items-baseline justify-between gap-2">
       <h3 className={cn('font-medium text-ink-2', large ? 'text-base' : 'text-sm')}>{panel.title}</h3>
       <p className={cn('font-mono font-semibold', large ? 'text-3xl' : 'text-xl')}>{current == null ? '—' : `${current.toLocaleString('en-US')}${panel.id === 'cpu' ? '%' : panel.unit}`}
+        {panel.id === 'cpu' && <span className="ml-2 text-sm font-normal text-ink-3">host total</span>}
         {panel.target != null && <span className="ml-2 text-sm font-normal text-ink-3">/ target {panel.target.toLocaleString('en-US')}{panel.unit}</span>}</p>
     </div>
     <div style={{ height }} className="mt-3">{hasData ? <ResponsiveContainer width="100%" height="100%">
