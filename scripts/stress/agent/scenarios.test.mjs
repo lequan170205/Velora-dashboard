@@ -35,14 +35,14 @@ test('without Chrome, real audio is unavailable', () => {
 test('parameters are bounded and unknown ones rejected', () => {
   const ok = { rps: 10, seconds: 30 }
   assert.deepEqual(validateParams('chat', ok), ok)
-  assert.throws(() => validateParams('chat', { ...ok, extra: 1 }), /không hợp lệ/)
-  assert.throws(() => validateParams('chat', { rps: 0, seconds: 30 }), /Tin mỗi giây/)
-  assert.throws(() => validateParams('chat', { rps: 1.5, seconds: 30 }), /Tin mỗi giây/)
-  assert.throws(() => validateParams('chat', { rps: 300, seconds: 300 }), /10\.000/)
-  assert.throws(() => validateParams('sockets', { sockets: 99999, hold: 10, storm: false }), /Số socket/)
-  assert.throws(() => validateParams('mixed', { sockets: 200, chat: 5, churn: 15, calls: 10, seconds: 30 }, { media: true }), /tối đa 20/)
-  assert.throws(() => validateParams('nope', {}), /không tồn tại/)
-  assert.throws(() => validateParams('chat', '[]'), /Tin mỗi giây/)
+  assert.throws(() => validateParams('chat', { ...ok, extra: 1 }), /Unknown setting/)
+  assert.throws(() => validateParams('chat', { rps: 0, seconds: 30 }), /Messages per second/)
+  assert.throws(() => validateParams('chat', { rps: 1.5, seconds: 30 }), /Messages per second/)
+  assert.throws(() => validateParams('chat', { rps: 300, seconds: 300 }), /10,000/)
+  assert.throws(() => validateParams('sockets', { sockets: 99999, hold: 10, storm: false }), /Sockets/)
+  assert.throws(() => validateParams('mixed', { sockets: 200, chat: 5, churn: 15, calls: 10, seconds: 30 }, { media: true }), /at most 20/)
+  assert.throws(() => validateParams('nope', {}), /Unknown scenario/)
+  assert.throws(() => validateParams('chat', '[]'), /Messages per second/)
 })
 
 test('chat runs every fixture account over a generated stage and never puts secrets in argv', () => {
@@ -92,7 +92,7 @@ test('chat verdict reports failed, missing and skipped messages as reasons', () 
     totals: { emitted: 300, failedMessages: 0, ack: { p95: 40 }, delivery: { p95: 70 }, deliveries: { missing: 0 } } }
   const ok = summarize('chat', { rps: 10, seconds: 30 }, good)
   assert.equal(ok.passed, true); assert.equal(ok.reason, null)
-  assert.deepEqual(ok.metrics.map(m => m.label), ['Tin đã gửi', 'Tin lỗi', 'Xác nhận p95', 'Giao tin p95', 'Thiếu lượt giao', 'Tốc độ thực'])
+  assert.deepEqual(ok.metrics.map(m => m.label), ['Messages sent', 'Failed messages', 'Ack p95', 'Delivery p95', 'Missing deliveries', 'Actual rate'])
   assert.equal(ok.metrics[0].value, '300 / 300')
   const bad = summarize('chat', { rps: 10, seconds: 30 }, { ...good, passed: false, stages: [{ planned: 300, skipped: 4, achievedRps: 9 }],
     totals: { ...good.totals, failedMessages: 2, deliveries: { missing: 3 } } })
@@ -101,7 +101,7 @@ test('chat verdict reports failed, missing and skipped messages as reasons', () 
 
 test('a passing tool with an early-stop reason is still a failure', () => {
   const r = summarize('chat', { rps: 5, seconds: 5 }, { passed: true, stopReason: 'operator stop', stages: [], totals: {} })
-  assert.equal(r.passed, false); assert.match(r.failures[0], /Dừng sớm/)
+  assert.equal(r.passed, false); assert.match(r.failures[0], /Stopped early/)
 })
 
 test('socket verdict covers ramp, hold and storm', () => {
@@ -121,7 +121,7 @@ test('signaling and media call verdicts', () => {
   const media = { passed: true, stages: [{ pairs: [{ audio: [{ packets: 900, lost: 0, jitterSeconds: 0.004 }, { packets: 880, lost: 2, jitterSeconds: 0.006 }] }] }] }
   const mediaOk = summarize('calls', { calls: 1, seconds: 20, media: true }, media)
   assert.equal(mediaOk.passed, true); assert.equal(mediaOk.metrics[1].value, '880')
-  assert.equal(summarize('calls', { calls: 1, seconds: 20, media: true }, { passed: false, failure: 'media stalled', stages: [] }).failures[0], 'Cuộc gọi lỗi: media stalled')
+  assert.equal(summarize('calls', { calls: 1, seconds: 20, media: true }, { passed: false, failure: 'media stalled', stages: [] }).failures[0], 'Call failed: media stalled')
 })
 
 test('mixed verdict lists the criteria that failed', () => {
@@ -143,7 +143,7 @@ test('mixed trusts its criteria, not a child exit code that is stricter than the
 })
 
 test('a missing report fails, and a stop is reported as a stop', () => {
-  assert.match(summarize('chat', { rps: 1, seconds: 5 }, null).reason, /báo cáo/)
-  assert.equal(summarize('chat', { rps: 1, seconds: 5 }, null, { stopped: true }).reason, 'Đã dừng theo yêu cầu')
+  assert.match(summarize('chat', { rps: 1, seconds: 5 }, null).reason, /did not produce a report/)
+  assert.equal(summarize('chat', { rps: 1, seconds: 5 }, null, { stopped: true }).reason, 'Stopped by the operator')
   assert.equal(summarize('chat', { rps: 1, seconds: 5 }, { passed: true, totals: {}, stages: [] }, { stopped: true }).passed, false)
 })

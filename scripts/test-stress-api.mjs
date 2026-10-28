@@ -10,15 +10,15 @@ const { parseState, parseRun, getState, startRun, stopRun, presetValues, checkVa
 afterEach(() => { delete globalThis.stressFetch })
 
 const id = '11111111-1111-4111-8111-111111111111'
-const run = (patch = {}) => ({ id, scenario: 'chat', params: { rps: 5, seconds: 10 }, status: 'passed', phase: 'Đã xong', startedAt: '2026-10-28T10:00:00.000Z',
-  finishedAt: '2026-10-28T10:00:30.000Z', estimatedSeconds: 30, reason: null, metrics: [{ label: 'Tin lỗi', value: '0' }], failures: [], ...patch })
+const run = (patch = {}) => ({ id, scenario: 'chat', params: { rps: 5, seconds: 10 }, status: 'passed', phase: 'Finished', startedAt: '2026-10-28T10:00:00.000Z',
+  finishedAt: '2026-10-28T10:00:30.000Z', estimatedSeconds: 30, reason: null, metrics: [{ label: 'Failed messages', value: '0' }], failures: [], ...patch })
 const state = (patch = {}) => ({ available: true, busy: false, capabilities: { media: false }, scenarios: describeScenarios({ media: false }), active: null, recent: [run()], ...patch })
 const ok = (payload) => ({ ok: true, json: async () => payload })
 
 test('the agent state the dashboard shows is exactly what the agent defines', () => {
   const parsed = parseState(state())
   assert.deepEqual(parsed.scenarios.map((s) => s.id), ['chat', 'sockets', 'calls', 'mixed'])
-  assert.equal(parsed.recent[0].metrics[0].label, 'Tin lỗi')
+  assert.equal(parsed.recent[0].metrics[0].label, 'Failed messages')
 })
 
 test('malformed agent responses are rejected', () => {
@@ -39,9 +39,9 @@ test('presets are clamped to what the agent allows', () => {
 test('the form is checked before anything is sent', () => {
   const [chat, , , mixed] = parseState(state({ capabilities: { media: true }, scenarios: describeScenarios({ media: true }) })).scenarios
   assert.equal(checkValues(chat, { rps: 10, seconds: 30 }), null)
-  assert.match(checkValues(chat, { rps: NaN, seconds: 30 }), /Tin mỗi giây/)
-  assert.match(checkValues(chat, { rps: 300, seconds: 300 }), /10\.000/)
-  assert.match(checkValues(mixed, { sockets: 200, chat: 5, churn: 20, calls: 5, seconds: 30 }), /tối đa 20/)
+  assert.match(checkValues(chat, { rps: NaN, seconds: 30 }), /Messages per second/)
+  assert.match(checkValues(chat, { rps: 300, seconds: 300 }), /10,000/)
+  assert.match(checkValues(mixed, { sockets: 200, chat: 5, churn: 20, calls: 5, seconds: 30 }), /at most 20/)
 })
 
 test('requests go through the gateway proxy and failures map to readable errors', async () => {
@@ -52,8 +52,8 @@ test('requests go through the gateway proxy and failures map to readable errors'
   const sent = JSON.parse((await (async () => { let body; globalThis.stressFetch = async (_p, init) => { body = init.body; return ok(run()) }; await startRun('chat', { rps: 5, seconds: 10 }, id); return { body } })()).body)
   assert.deepEqual(Object.keys(sent).sort(), ['params', 'requestId', 'scenario'])
   globalThis.stressFetch = async () => ({ ok: false, status: 409 })
-  await assert.rejects(getState(), /Đang có một lần chạy khác/)
+  await assert.rejects(getState(), /Another run is active/)
   globalThis.stressFetch = async () => ({ ok: false, status: 503 })
-  await assert.rejects(getState(), /chưa chạy/)
-  await assert.rejects(stopRun('x'), /không hợp lệ/)
+  await assert.rejects(getState(), /not running/)
+  await assert.rejects(stopRun('x'), /Invalid run id/)
 })

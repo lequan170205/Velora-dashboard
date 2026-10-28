@@ -15,7 +15,7 @@ export type StressState = { busy: boolean; scenarios: Scenario[]; active: Run | 
 const PATH = '/monitoring/stress/runs'
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const STATUSES: RunStatus[] = ['running', 'stopping', 'passed', 'failed', 'cancelled']
-const invalid = () => new Error('Agent trả về dữ liệu không hợp lệ')
+const invalid = () => new Error('The agent returned an invalid response')
 
 const object = (v: unknown): Record<string, unknown> => {
   if (!v || typeof v !== 'object' || Array.isArray(v)) throw invalid()
@@ -82,10 +82,10 @@ async function request(url: string, options?: RequestInit): Promise<unknown> {
   const response = await fetchApi(url, { ...options, cache: 'no-store', signal: AbortSignal.timeout(10_000) })
   if (!response.ok) {
     throw new Error(
-      response.status === 400 ? 'Agent từ chối thông số này. Kiểm tra lại giá trị.'
-        : response.status === 409 ? 'Đang có một lần chạy khác. Đợi nó xong hoặc dừng nó.'
-          : response.status === 403 ? 'Cần tài khoản admin và mở từ trang dashboard.'
-            : 'Agent stress chưa chạy trên server. Khởi động agent rồi tải lại.',
+      response.status === 400 ? 'The agent rejected these settings. Check the values.'
+        : response.status === 409 ? 'Another run is active. Wait for it to finish or stop it.'
+          : response.status === 403 ? 'An admin session on the dashboard origin is required.'
+            : 'The stress agent is not running on the server. Start it and reload.',
     )
   }
   return response.json()
@@ -95,7 +95,7 @@ export const getState = async () => parseState(await request(PATH))
 export const startRun = async (scenario: string, params: Values, requestId: string) =>
   parseRun(await request(PATH, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ scenario, params, requestId }) }))
 export const stopRun = async (id: string) => {
-  if (!UUID.test(id)) throw new Error('Mã lần chạy không hợp lệ')
+  if (!UUID.test(id)) throw new Error('Invalid run id')
   return parseRun(await request(`${PATH}/${id}/stop`, { method: 'POST' }))
 }
 
@@ -115,13 +115,13 @@ export function checkValues(scenario: Scenario, vals: Values): string | null {
   for (const f of scenario.fields) {
     if (f.type !== 'number') continue
     const v = vals[f.key]
-    if (typeof v !== 'number' || !Number.isInteger(v) || v < (f.min ?? 0) || v > (f.max ?? Infinity)) return `${f.label}: nhập số nguyên từ ${f.min} đến ${f.max}`
+    if (typeof v !== 'number' || !Number.isInteger(v) || v < (f.min ?? 0) || v > (f.max ?? Infinity)) return `${f.label}: enter a whole number from ${f.min} to ${f.max}`
   }
   const n = (key: string) => (typeof vals[key] === 'number' ? (vals[key] as number) : 0)
-  if (scenario.id === 'chat' && n('rps') * n('seconds') > 10000) return 'Tối đa 10.000 tin mỗi lần chạy'
+  if (scenario.id === 'chat' && n('rps') * n('seconds') > 10000) return 'At most 10,000 messages per run'
   if (scenario.id === 'mixed') {
-    if (n('chat') * n('seconds') > 10000) return 'Tối đa 10.000 tin mỗi lần chạy'
-    if (n('calls') + n('churn') > 20) return 'Cuộc gọi dài + cặp gọi ngắn tối đa 20'
+    if (n('chat') * n('seconds') > 10000) return 'At most 10,000 messages per run'
+    if (n('calls') + n('churn') > 20) return 'Long calls + short-call pairs: at most 20'
   }
   return null
 }

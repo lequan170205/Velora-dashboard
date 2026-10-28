@@ -8,7 +8,7 @@ import { JobRejected } from './jobs.mjs'
 
 const GRACE_MS = 90_000
 const tail = (current, chunk) => (current + chunk).slice(-4000)
-const PHASES = { ramp: 'Mở kết nối', hold: 'Giữ kết nối', storm: 'Ngắt và nối lại', load: 'Đang gửi tin', login: 'Đăng nhập', finished: 'Dọn dẹp' }
+const PHASES = { ramp: 'Opening connections', hold: 'Holding connections', storm: 'Dropping and reconnecting', load: 'Sending load', login: 'Signing in', finished: 'Cleaning up' }
 
 /**
  * `config` is the validated private manifest. `options` carries binsDir, baseUrl, chrome and lanAddress.
@@ -20,7 +20,7 @@ export async function executeJob(job, signal, update, { config, options, spawnIm
     try { checkMixed(p) } catch (error) { throw new JobRejected(error.message) }
   }
   const media = (job.scenario === 'calls' && p.media) || (job.scenario === 'mixed' && p.calls > 0)
-  if (media && (!options.chrome || !options.lanAddress)) throw new JobRejected('Agent chưa được cấu hình Chrome cho âm thanh thật')
+  if (media && (!options.chrome || !options.lanAddress)) throw new JobRejected('The agent has no Chrome configured for real audio')
   const dir = await mkdtemp(join(tmpdir(), 'velora-stress-'))
   await chmod(dir, 0o700)
   try {
@@ -35,7 +35,7 @@ export async function executeJob(job, signal, update, { config, options, spawnIm
     await writeFile(paths.configFile, JSON.stringify(local), { mode: 0o600 })
     if (command.configKind === 'chat') await writeFile(paths.chatConfigFile, JSON.stringify({ ...local, stages: command.stages }), { mode: 0o600 })
 
-    update({ phase: 'Đang chạy' })
+    update({ phase: 'Running' })
     const child = spawnImpl(options.node ?? process.execPath, command.argv, { stdio: ['ignore', 'pipe', 'pipe'] })
     let stderr = '', buffer = ''
     const onLine = line => {
@@ -58,7 +58,7 @@ export async function executeJob(job, signal, update, { config, options, spawnIm
       child.kill('SIGINT')
       killTimer = setTimeout(() => child.kill('SIGKILL'), GRACE_MS)
     }
-    const deadline = setTimeout(() => { job.reason = 'Quá thời gian dự kiến nên đã dừng'; stop() }, (estimateSeconds(job.scenario, p) * deadlineFactor + 120) * 1000)
+    const deadline = setTimeout(() => { job.reason = 'Stopped: ran far longer than expected'; stop() }, (estimateSeconds(job.scenario, p) * deadlineFactor + 120) * 1000)
     signal.addEventListener('abort', stop, { once: true })
     if (signal.aborted) stop()
     const code = await new Promise(resolve => {
@@ -67,12 +67,12 @@ export async function executeJob(job, signal, update, { config, options, spawnIm
     })
     clearTimeout(deadline); clearTimeout(killTimer)
     signal.removeEventListener('abort', stop)
-    update({ phase: 'Đang tổng hợp kết quả' })
+    update({ phase: 'Collecting results' })
 
     let report = null
     try { report = JSON.parse(await readFile(paths.output, 'utf8')) } catch { /* the tool did not finish a report */ }
     const result = summarize(job.scenario, p, report, { stopped: signal.aborted })
-    if (!report && !signal.aborted) result.reason = code === -1 ? 'Không khởi động được công cụ test' : `Công cụ test dừng đột ngột (mã ${code})`
+    if (!report && !signal.aborted) result.reason = code === -1 ? 'Could not start the test tool' : `The test tool exited unexpectedly (code ${code})`
     // Not enumerable: the raw report is saved to disk but never sent to the dashboard.
     Object.defineProperty(job, 'rawReport', { value: report, enumerable: false, configurable: true })
     return result

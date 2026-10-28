@@ -11,8 +11,8 @@ import { checkValues, getState, presetValues, startRun, stopRun, type Run, type 
 
 const QUERY_KEY = ['stress-state']
 const VERDICT: Record<Run['status'], { label: string; tone: BadgeTone }> = {
-  running: { label: 'Đang chạy', tone: 'info' }, stopping: { label: 'Đang dừng', tone: 'warn' },
-  passed: { label: 'ĐẠT', tone: 'good' }, failed: { label: 'KHÔNG ĐẠT', tone: 'bad' }, cancelled: { label: 'Đã dừng', tone: 'warn' },
+  running: { label: 'Running', tone: 'info' }, stopping: { label: 'Stopping', tone: 'warn' },
+  passed: { label: 'PASSED', tone: 'good' }, failed: { label: 'FAILED', tone: 'bad' }, cancelled: { label: 'Stopped', tone: 'warn' },
 }
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
 
@@ -43,7 +43,7 @@ function Result({ run, scenario, now }: { run: Run; scenario: Scenario | undefin
         <Badge tone={verdict.tone} className="px-3 py-1 text-sm">{verdict.label}</Badge>
         <span className="text-sm text-ink-2">{scenario?.title ?? run.scenario} · {live ? `${run.phase} · ${clock(elapsed)} / ~${clock(run.estimatedSeconds)}` : `${clock(elapsed)}`}</span>
       </div>
-      {!live && <Button variant="ghost" size="sm" onClick={() => download(run)}><Download size={14} aria-hidden="true" />Tải JSON</Button>}
+      {!live && <Button variant="ghost" size="sm" onClick={() => download(run)}><Download size={14} aria-hidden="true" />Download JSON</Button>}
     </div>
     {live && <div className="h-1.5 overflow-hidden rounded-full bg-inset" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(99, Math.round(elapsed / run.estimatedSeconds * 100))}>
       <div className="h-full bg-brand transition-all" style={{ width: `${Math.min(99, elapsed / run.estimatedSeconds * 100)}%` }} /></div>}
@@ -67,12 +67,12 @@ export function StressTestPage() {
   const busy = pending || Boolean(data?.busy)
   const now = useNow(Boolean(data?.active))
   if (!data || !scenario) return <section className="space-y-5" aria-labelledby="stress-title">
-    <Header badge={state.isLoading ? { label: 'Đang kết nối agent…', tone: 'neutral' } : { label: 'Agent chưa chạy', tone: 'bad' }} />
+    <Header badge={state.isLoading ? { label: 'Connecting to the agent…', tone: 'neutral' } : { label: 'Agent offline', tone: 'bad' }} />
     {!state.isLoading && <Card><CardContent className="space-y-3 text-sm text-ink-2">
-      <p role="alert" className="text-bad">{state.error instanceof Error ? state.error.message : 'Không kết nối được agent stress.'}</p>
-      <p>Trang này điều khiển agent chạy trên server (homelab). Khởi động agent rồi tải lại:</p>
+      <p role="alert" className="text-bad">{state.error instanceof Error ? state.error.message : 'Could not reach the stress agent.'}</p>
+      <p>This page controls the stress agent running on the server (homelab). Start the agent, then reload:</p>
       <pre className="overflow-x-auto rounded-control border border-line bg-inset p-3 font-mono text-xs">pnpm stress:agent:build{'\n'}node .stress-agent/agent.mjs --manifest ~/velora-chat-stress/manifest.json</pre>
-      <Button variant="secondary" size="sm" onClick={() => void state.refetch()}>Thử lại</Button></CardContent></Card>}
+      <Button variant="secondary" size="sm" onClick={() => void state.refetch()}>Retry</Button></CardContent></Card>}
   </section>
 
   const values = edited[scenario.id] ?? presetValues(scenario, scenario.presets[1] ?? scenario.presets[0])
@@ -83,20 +83,20 @@ export function StressTestPage() {
   async function start() {
     if (submitting.current || !scenario || problem) return
     submitting.current = true; setPending(true); setError(null)
-    try { await startRun(scenario.id, values, crypto.randomUUID()) } catch (e) { setError(e instanceof Error ? e.message : 'Không bắt đầu được') }
+    try { await startRun(scenario.id, values, crypto.randomUUID()) } catch (e) { setError(e instanceof Error ? e.message : 'Could not start the run') }
     finally { submitting.current = false; setPending(false); void client.invalidateQueries({ queryKey: QUERY_KEY }) }
   }
   async function stop() {
     if (!data?.active) return
     setError(null)
-    try { await stopRun(data.active.id) } catch (e) { setError(e instanceof Error ? e.message : 'Không dừng được') }
+    try { await stopRun(data.active.id) } catch (e) { setError(e instanceof Error ? e.message : 'Could not stop the run') }
     finally { void client.invalidateQueries({ queryKey: QUERY_KEY }) }
   }
 
-  const badge = data.active ? VERDICT[data.active.status] : { label: 'Sẵn sàng', tone: 'good' as BadgeTone }
+  const badge = data.active ? VERDICT[data.active.status] : { label: 'Ready', tone: 'good' as BadgeTone }
   return <section className="space-y-5" aria-labelledby="stress-title">
     <Header badge={badge} />
-    <div role="tablist" aria-label="Kịch bản" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div role="tablist" aria-label="Scenario" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {data.scenarios.map((s) => <button key={s.id} role="tab" type="button" aria-selected={s.id === scenario.id}
         onClick={() => { setSelected(s.id); setError(null) }}
         className={cn('rounded-control border px-3 py-2.5 text-sm font-medium transition-colors', s.id === scenario.id ? 'border-brand bg-brand/10 text-ink' : 'border-line bg-raised text-ink-2 hover:border-line-strong')}>{s.title}</button>)}
@@ -104,7 +104,7 @@ export function StressTestPage() {
     <Card><CardContent className="space-y-5">
       <p className="text-sm text-ink-2">{scenario.description}</p>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-ink-3">Mức:</span>
+        <span className="text-sm text-ink-3">Level:</span>
         {scenario.presets.map((p) => {
           const preset = presetValues(scenario, p)
           const active = scenario.fields.every((f) => preset[f.key] === values[f.key])
@@ -119,9 +119,9 @@ export function StressTestPage() {
             onChange={(e) => set({ ...values, [f.key]: e.target.value === '' ? NaN : Number(e.target.value) })} /></div>)}</div>
       {(problem || error) && <p role="alert" className="text-sm text-bad">{problem ?? error}</p>}
       <div className="flex flex-wrap items-center gap-3">
-        <Button className="h-11 min-w-32" disabled={busy || Boolean(problem)} onClick={() => void start()}><Play size={16} aria-hidden="true" />Chạy</Button>
-        <Button variant="danger" className="h-11" disabled={!data.active || data.active.status === 'stopping'} onClick={() => void stop()}><Square size={16} aria-hidden="true" />Dừng</Button>
-        <span className="text-xs text-ink-3">Tải chạy thật trên hệ thống bằng tài khoản test. Đóng tab không dừng lần chạy.</span>
+        <Button className="h-11 min-w-32" disabled={busy || Boolean(problem)} onClick={() => void start()}><Play size={16} aria-hidden="true" />Run</Button>
+        <Button variant="danger" className="h-11" disabled={!data.active || data.active.status === 'stopping'} onClick={() => void stop()}><Square size={16} aria-hidden="true" />Stop</Button>
+        <span className="text-xs text-ink-3">Runs real load on the live system with test accounts. Closing this tab does not stop a run.</span>
       </div>
     </CardContent></Card>
     {shown && <Result run={shown} scenario={data.scenarios.find((s) => s.id === shown.scenario)} now={now} />}

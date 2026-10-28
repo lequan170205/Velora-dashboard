@@ -106,14 +106,14 @@ Do not use a wildcard CORS origin with credentialed requests.
 
 ## Stress test
 
-Open **Demo tools → Stress test** (`#/stress-test`) as an admin. Pick a scenario, a level (Nhẹ / Vừa / Nặng) or edit the few fields, press **Chạy**. The result is **ĐẠT** or **KHÔNG ĐẠT** with the reason and a handful of numbers; **Tải JSON** keeps them.
+Open **Demo tools → Stress test** (`#/stress-test`) as an admin. Pick a scenario, a level (Light / Medium / Heavy) or edit the few fields, press **Run**. The result is **PASSED** or **FAILED** with the reason and a handful of numbers; **Download JSON** keeps them.
 
 | Scenario | What runs |
 |---|---|
-| Gửi tin nhắn | 50 fixture users send messages into 20 rooms; every message must be acknowledged and delivered |
-| Kết nối socket | N authenticated sockets, held for a while, optionally dropped and reconnected all at once |
-| Gọi điện | N concurrent 1-1 calls through signaling; with Chrome on the agent, real audio through the SFU |
-| Hỗn hợp | sockets + chat + short and long calls at the same time (the old `campus10k` idea, fewer knobs) |
+| Chat messages | 50 fixture users send messages into 20 rooms; every message must be acknowledged and delivered |
+| Socket connections | N authenticated sockets, held for a while, optionally dropped and reconnected all at once |
+| Calls | N concurrent 1-1 calls through signaling; with Chrome on the agent, real audio through the SFU |
+| Mixed | sockets + chat + short and long calls at the same time (the old `campus10k` idea, fewer knobs) |
 
 The page does not generate load itself. It talks, through the gateway (`/monitoring/stress/runs`, ADMIN only), to the **stress agent** on the server host. The agent starts the Node tools in `scripts/stress/` against the local gateway (`http://127.0.0.1`), so the numbers do not include Cloudflare, and the browser tab can be closed during a run.
 

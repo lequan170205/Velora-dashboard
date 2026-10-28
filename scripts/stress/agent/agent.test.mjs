@@ -20,8 +20,8 @@ test('a run is idempotent per request id and only one runs at a time', async () 
   const first = jobs.start('admin', body())
   await tick()
   assert.equal(jobs.start('admin', body()), first)
-  assert.throws(() => jobs.start('admin', body(id2)), /khác/)
-  assert.throws(() => jobs.start('admin', { ...body(id1), scenario: 'sockets' }), /khác|không hợp lệ/)
+  assert.throws(() => jobs.start('admin', body(id2)), /Another run/)
+  assert.throws(() => jobs.start('admin', { ...body(id1), scenario: 'sockets' }), /already used|Unknown setting/)
   release(); await tick()
   assert.equal(first.status, 'passed'); assert.equal(jobs.state().busy, false)
   assert.equal(jobs.start('admin', body()), first)
@@ -30,9 +30,9 @@ test('a run is idempotent per request id and only one runs at a time', async () 
 
 test('invalid requests are rejected before anything starts', () => {
   const jobs = new StressJobs(async () => { throw new Error('must not run') })
-  assert.throws(() => jobs.start('admin', { scenario: 'chat', params: { rps: 0, seconds: 10 }, requestId: id1 }), /Tin mỗi giây/)
-  assert.throws(() => jobs.start('admin', { scenario: 'chat', params: { rps: 5, seconds: 10 }, requestId: 'x' }), /không hợp lệ/)
-  assert.throws(() => jobs.start('admin', { scenario: 'chat', params: { rps: 5, seconds: 10 } }), /không hợp lệ/)
+  assert.throws(() => jobs.start('admin', { scenario: 'chat', params: { rps: 0, seconds: 10 }, requestId: id1 }), /Messages per second/)
+  assert.throws(() => jobs.start('admin', { scenario: 'chat', params: { rps: 5, seconds: 10 }, requestId: 'x' }), /Invalid request/)
+  assert.throws(() => jobs.start('admin', { scenario: 'chat', params: { rps: 5, seconds: 10 } }), /Invalid request/)
   assert.equal(jobs.state().busy, false)
 })
 
@@ -42,8 +42,8 @@ test('stop aborts the run and the result is cancelled, not failed', async () => 
   await tick()
   assert.equal(jobs.stop(job.id).status, 'stopping')
   await tick()
-  assert.equal(job.status, 'cancelled'); assert.equal(job.reason, 'Đã dừng theo yêu cầu')
-  assert.throws(() => jobs.stop(job.id), /Không có/)
+  assert.equal(job.status, 'cancelled'); assert.equal(job.reason, 'Stopped by the operator')
+  assert.throws(() => jobs.stop(job.id), /No active run/)
 })
 
 test('private exceptions and storage failures never reach the dashboard', async () => {
@@ -118,7 +118,7 @@ test('execute: launches the tool on a private temp config, reads the report and 
   try {
     const result = await executeJob(target, new AbortController().signal, patch => phases.push(patch.phase), { config: configFor(), options: { binsDir, baseUrl: 'http://127.0.0.1' } })
     assert.equal(result.passed, true, JSON.stringify(result))
-    assert.ok(phases.includes('Đang gửi tin'))
+    assert.ok(phases.includes('Sending load'))
     assert.equal(JSON.stringify(target), JSON.stringify({ scenario: 'chat', params: { rps: 5, seconds: 10 }, startedAt: target.startedAt }), 'raw report must not be enumerable')
     assert.ok(target.rawReport)
     assert.equal((await readdir(tmpdir())).filter(n => n.startsWith('velora-stress-')).length, before)
@@ -129,7 +129,7 @@ test('execute: a tool that dies without a report is a failure with a safe reason
   const binsDir = await fakeBins('process.exit(7)')
   try {
     const result = await executeJob(job(), new AbortController().signal, () => {}, { config: configFor(), options: { binsDir, baseUrl: 'http://127.0.0.1' } })
-    assert.equal(result.passed, false); assert.match(result.reason, /mã 7/)
+    assert.equal(result.passed, false); assert.match(result.reason, /code 7/)
   } finally { await rm(binsDir, { recursive: true, force: true }) }
 })
 
@@ -140,7 +140,7 @@ test('execute: stop sends SIGINT and still reports a stop', async () => {
     const running = executeJob(job(), abort.signal, () => {}, { config: configFor(), options: { binsDir, baseUrl: 'http://127.0.0.1' } })
     await tick(300); abort.abort()
     const result = await running
-    assert.equal(result.passed, false); assert.equal(result.reason, 'Đã dừng theo yêu cầu')
+    assert.equal(result.passed, false); assert.equal(result.reason, 'Stopped by the operator')
   } finally { await rm(binsDir, { recursive: true, force: true }) }
 })
 

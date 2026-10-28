@@ -1,6 +1,6 @@
 # Call media test (real audio through the SFU)
 
-`run.mjs` drives real WebRTC audio between fixture accounts with an isolated Chrome profile: it logs the pairs in, starts 1-N concurrent 1-1 calls, produces synthetic voice, and checks that every endpoint keeps receiving audio packets and that each call ends with a normal `call_left`. The dashboard runs it through the stress agent (**Gọi điện → Âm thanh thật**, or inside **Hỗn hợp**); see the top-level README.
+`run.mjs` drives real WebRTC audio between fixture accounts with an isolated Chrome profile: it logs the pairs in, starts 1-N concurrent 1-1 calls, produces synthetic voice, and checks that every endpoint keeps receiving audio packets and that each call ends with a normal `call_left`. The dashboard runs it through the stress agent (**Calls → Real audio**, or inside **Mixed**); see the top-level README.
 
 ```sh
 node run.mjs --manifest /abs/private-manifest.json --run --calls 5 --seconds 60 \

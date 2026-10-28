@@ -21,17 +21,17 @@ export class StressJobs {
   }
 
   start(actor, body) {
-    if (!body || typeof body !== 'object' || Object.keys(body).sort().join(',') !== 'params,requestId,scenario' || !UUID.test(body.requestId)) throw new JobRejected('Yêu cầu không hợp lệ')
+    if (!body || typeof body !== 'object' || Object.keys(body).sort().join(',') !== 'params,requestId,scenario' || !UUID.test(body.requestId)) throw new JobRejected('Invalid request')
     let params
     try { params = validateParams(body.scenario, body.params, this.capabilities) } catch (error) { throw new JobRejected(error.message) }
     const key = `${actor}:${body.requestId}`, previous = this.keys.get(key)
     if (previous) {
-      if (previous.scenario !== body.scenario) throw new JobConflict('Mã yêu cầu đã dùng cho kịch bản khác')
+      if (previous.scenario !== body.scenario) throw new JobConflict('This request id was already used for another scenario')
       return previous
     }
-    if (this.active) throw new JobConflict('Đang có một lần chạy khác')
+    if (this.active) throw new JobConflict('Another run is already active')
     const job = {
-      id: randomUUID(), scenario: body.scenario, params, status: 'running', phase: 'Đang chuẩn bị', startedAt: this.now(), finishedAt: null,
+      id: randomUUID(), scenario: body.scenario, params, status: 'running', phase: 'Preparing', startedAt: this.now(), finishedAt: null,
       estimatedSeconds: estimateSeconds(body.scenario, params), reason: null, metrics: [], failures: [],
     }
     const abort = new AbortController()
@@ -45,10 +45,10 @@ export class StressJobs {
       })
       .catch(error => {
         job.status = abort.signal.aborted ? 'cancelled' : 'failed'
-        job.reason ??= abort.signal.aborted ? 'Đã dừng theo yêu cầu' : (error instanceof JobRejected ? error.message : 'Không chạy được; chi tiết bị ẩn')
+        job.reason ??= abort.signal.aborted ? 'Stopped by the operator' : (error instanceof JobRejected ? error.message : 'The run could not complete; details withheld')
       })
       .finally(async () => {
-        job.phase = 'Đã xong'
+        job.phase = 'Finished'
         job.finishedAt = this.now()
         try { await this.onFinished(job) } catch { /* the in-memory result is still shown */ }
         this.recent = [job, ...this.recent].slice(0, KEEP_RECENT)
@@ -59,9 +59,9 @@ export class StressJobs {
   }
 
   stop(id) {
-    if (this.active?.job.id !== id) throw new JobConflict('Không có lần chạy đang hoạt động với mã này')
+    if (this.active?.job.id !== id) throw new JobConflict('No active run with this id')
     this.active.job.status = 'stopping'
-    this.active.job.phase = 'Đang dừng và dọn dẹp'
+    this.active.job.phase = 'Stopping and cleaning up'
     this.active.abort.abort()
     return this.active.job
   }

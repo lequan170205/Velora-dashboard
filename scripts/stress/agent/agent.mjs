@@ -43,7 +43,7 @@ export function createHandler({ jobs, authorize }) {
       let text = ''
       for await (const chunk of req) {
         text += chunk
-        if (text.length > 4096) throw new JobRejected('Yêu cầu quá lớn')
+        if (text.length > 4096) throw new JobRejected('Request too large')
       }
       if (req.method === 'POST' && req.url === '/runs') return send(202, jobs.start(actor.id, JSON.parse(text)))
       const stop = req.url?.match(/^\/runs\/([0-9a-f-]{36})\/stop$/i)
