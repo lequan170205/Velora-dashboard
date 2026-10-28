@@ -142,6 +142,12 @@ test('mixed trusts its criteria, not a child exit code that is stricter than the
   assert.equal(summarize('mixed', {}, { passed: false, criteria: [{ workload: 'chat', name: 'chat report present', value: null, limit: 'present', op: '===', pass: false }], children: {} }).passed, false)
 })
 
+test('a stopped mixed run reports the stop, not a list of unmet criteria', () => {
+  const report = { passed: false, stopReason: 'operator stop', criteria: [{ workload: 'chat', name: 'chat report present', value: null, limit: 'present', op: '===', pass: false }], children: {} }
+  const r = summarize('mixed', {}, report, { stopped: true })
+  assert.equal(r.reason, 'Stopped by the operator'); assert.deepEqual(r.failures, [])
+})
+
 test('a missing report fails, and a stop is reported as a stop', () => {
   assert.match(summarize('chat', { rps: 1, seconds: 5 }, null).reason, /did not produce a report/)
   assert.equal(summarize('chat', { rps: 1, seconds: 5 }, null, { stopped: true }).reason, 'Stopped by the operator')

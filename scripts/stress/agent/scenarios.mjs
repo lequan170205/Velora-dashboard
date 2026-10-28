@@ -149,7 +149,8 @@ export function summarize(id, p, report, { stopped = false } = {}) {
   const out = (passed, metrics, failures, reason) => ({
     passed: Boolean(passed) && !stopped && failures.length === 0,
     reason: stopped ? 'Stopped by the operator' : passed && failures.length === 0 ? null : reason ?? failures[0] ?? 'Failed',
-    metrics, failures,
+    // A stopped run has no verdict, so its unmet criteria would only be noise.
+    metrics, failures: stopped ? [] : failures,
   })
   const failures = []
   if (r.stopReason) failures.push(`Stopped early: ${String(r.stopReason).slice(0, 120)}`)

@@ -44,7 +44,7 @@ export function Presenter({ run, scenario, series, now, canDemo, busy, onDemo, o
           {run.metrics.map((m) => <div key={m.label}><dt className="text-sm text-ink-3">{m.label}</dt>
             <dd className={cn('mt-1 font-mono text-3xl font-semibold', m.bad && 'text-bad')}>{m.value}</dd></div>)}</dl>}
         {!live && run.failures.length > 0 && <ul className="space-y-1 text-lg text-bad">{run.failures.map((f) => <li key={f}>• {f}</li>)}</ul>}
-        {run.status === 'passed' && <Button className="h-12 px-8 text-base" disabled={!canDemo || busy} onClick={onDemo}><Play size={18} aria-hidden="true" />Run the demo again</Button>}
+        {!live && <Button className="h-12 px-8 text-base" disabled={!canDemo || busy} onClick={onDemo}><Play size={18} aria-hidden="true" />Run the demo again</Button>}
       </>}
       <p className="text-sm text-ink-3">Tip: while the load runs, open the Velora app on a phone and send a message or place a call. It should stay smooth under load.</p>
     </div>
