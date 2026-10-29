@@ -15,31 +15,35 @@ test('four scenarios are offered, each with four presets that pass validation', 
     assert.deepEqual(scenarios.map(s => s.id), ['chat', 'sockets', 'calls', 'mixed'])
     for (const s of scenarios) {
       assert.equal(s.presets.length, 4)
-      assert.equal(s.presets.at(-1).id, 'max')
+      assert.equal(s.presets.at(-1).id, s.id === 'mixed' ? 'school-high' : 'max')
       for (const p of s.presets) assert.doesNotThrow(() => validateParams(s.id, p.values, capabilities), `${s.id}/${p.id}/${capabilities.media}`)
     }
   }
 })
 
-test('Max is the heaviest preset and stays inside every run limit', () => {
+test('Max is the heaviest preset of chat, sockets and calls and stays inside every run limit', () => {
   const max = (id, capabilities) => describeScenarios(capabilities).find(s => s.id === id).presets.find(p => p.id === 'max').values
   assert.deepEqual(max('chat', {}), { rps: 300, seconds: 33 })
   assert.ok(300 * 33 <= 10000)
   assert.deepEqual(max('sockets', {}), { sockets: 6000, hold: 120, storm: true })
   assert.deepEqual(max('calls', { media: true }), { calls: 20, seconds: 120, media: true })
-  assert.deepEqual(max('mixed', { media: true }), { sockets: 6000, chat: 33, churn: 0, calls: 20, seconds: 300 })
-  assert.deepEqual(max('mixed', { media: false }), { sockets: 6000, chat: 33, churn: 20, calls: 0, seconds: 300 })
-  // Max carries the highest load of every load setting (short-call pairs trade places with long calls, so they are left out).
-  for (const [id, keys] of [['chat', ['rps']], ['sockets', ['sockets']], ['calls', ['calls']], ['mixed', ['sockets', 'chat', 'calls']]]) {
+  // Max carries the highest load of every load setting.
+  for (const [id, keys] of [['chat', ['rps']], ['sockets', ['sockets']], ['calls', ['calls']]]) {
     const presets = describeScenarios({ media: true }).find(s => s.id === id).presets
     for (const key of keys) assert.equal(presets.at(-1).values[key], Math.max(...presets.map(p => p.values[key])), `${id}.${key}`)
   }
 })
 
-test('Max is not the default level and the heaviest mixed run takes the bounded time', () => {
+test('mixed offers Light, Medium, Campus 10k and Campus 10k high traffic, the last being the measured one', () => {
   for (const s of describeScenarios({ media: true })) assert.notEqual(s.presets[1].id, 'max')
-  const mixed = max => estimateSeconds('mixed', describeScenarios({ media: true }).find(s => s.id === 'mixed').presets.find(p => p.id === max).values)
-  assert.equal(mixed('max'), 60 + 10 + 300 + 60)
+  const mixed = describeScenarios({ media: true }).find(s => s.id === 'mixed').presets
+  assert.deepEqual(mixed.map(p => p.id), ['light', 'medium', 'school', 'school-high'])
+  assert.deepEqual(mixed.at(-1).values, { sockets: 2000, chat: 66, churn: 10, calls: 10, seconds: 150 })
+  assert.equal(mixed.at(-1).values.chat * mixed.at(-1).values.seconds <= 10000, true)
+  assert.equal(mixed[2].values.sockets, mixed.at(-1).values.sockets)
+  assert.equal(mixed.at(-1).values.chat, 2 * mixed[2].values.chat)
+  assert.equal(describeScenarios({ media: false }).find(s => s.id === 'mixed').presets.at(-1).values.calls, 0)
+  assert.equal(estimateSeconds('mixed', mixed.at(-1).values), 20 + 10 + 150 + 60)
 })
 
 test('mixed presets are accepted by the mixed tool itself', () => {

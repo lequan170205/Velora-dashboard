@@ -106,7 +106,7 @@ Do not use a wildcard CORS origin with credentialed requests.
 
 ## Stress test
 
-Open **Demo tools → Stress test** (`#/stress-test`) as an admin. Pick a scenario, a level (Light / Medium / Heavy / Max) or edit the few fields, press **Run**. The result is **PASSED** or **FAILED** with the reason and a handful of numbers; **Download JSON** keeps them. **Max** pushes each scenario to its limit (chat 300 msg/s, 6,000 sockets, 20 calls); watch the server's RAM, it is the first thing to run out, so run it on purpose and not as the default.
+Open **Demo tools → Stress test** (`#/stress-test`) as an admin. Pick a scenario, a level (Light / Medium / Heavy, plus Max or Campus 10k high traffic) or edit the few fields, press **Run**. The result is **PASSED** or **FAILED** with the reason and a handful of numbers; **Download JSON** keeps them. **Max** (chat 300 msg/s, 6,000 sockets, 20 calls) pushes one scenario to its limit and is meant to find where things break; the load generator shares the homelab host with the server, so a Max failure may be the host's CPU. **Mixed** has four levels: Light, Medium, Campus 10k (the average hour, about 1 message per user per minute) and Campus 10k high traffic (same 2,000 sockets with twice the chat). On the homelab the high-traffic level passes 16/16 (ack p95 350 ms); 3,000 sockets with the same calls already miss the 1 s latency limits.
 
 | Scenario | What runs |
 |---|---|

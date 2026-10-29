@@ -65,8 +65,9 @@ export function describeScenarios(capabilities = {}) {
         { id: 'light', label: 'Light', values: { sockets: 200, chat: 5, churn: 3, calls: 0, seconds: 30 } },
         { id: 'medium', label: 'Medium', values: { sockets: 1000, chat: 17, churn: 5, calls: media ? 4 : 0, seconds: 120 } },
         { id: 'school', label: 'Campus 10k', values: { sockets: 2000, chat: 33, churn: 10, calls: media ? 10 : 0, seconds: 300 } },
-        // Long calls and short-call pairs share the 20 call pairs, so without Chrome the pairs go to short calls.
-        { id: 'max', label: 'Max', values: { sockets: 6000, chat: 33, churn: media ? 0 : 20, calls: media ? 20 : 0, seconds: 300 } },
+        // Same crowd as Campus 10k with twice the chat (about 2 messages per user per minute). Measured on the
+        // homelab: 16/16 criteria, ack p95 350 ms. 3,000 sockets already fail the latency limits there.
+        { id: 'school-high', label: 'Campus 10k high traffic', values: { sockets: 2000, chat: 66, churn: 10, calls: media ? 10 : 0, seconds: 150 } },
       ],
     },
   ]
