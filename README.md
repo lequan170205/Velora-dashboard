@@ -106,7 +106,7 @@ Do not use a wildcard CORS origin with credentialed requests.
 
 ## Stress test
 
-Open **Demo tools → Stress test** (`#/stress-test`) as an admin. Pick a scenario, a level (Light / Medium / Heavy) or edit the few fields, press **Run**. The result is **PASSED** or **FAILED** with the reason and a handful of numbers; **Download JSON** keeps them.
+Open **Demo tools → Stress test** (`#/stress-test`) as an admin. Pick a scenario, a level (Light / Medium / Heavy / Max) or edit the few fields, press **Run**. The result is **PASSED** or **FAILED** with the reason and a handful of numbers; **Download JSON** keeps them. **Max** pushes each scenario to its limit (chat 300 msg/s, 6,000 sockets, 20 calls); watch the server's RAM, it is the first thing to run out, so run it on purpose and not as the default.
 
 | Scenario | What runs |
 |---|---|

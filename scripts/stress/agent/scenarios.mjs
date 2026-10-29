@@ -22,6 +22,8 @@ export function describeScenarios(capabilities = {}) {
         { id: 'light', label: 'Light', values: { rps: 5, seconds: 30 } },
         { id: 'medium', label: 'Medium', values: { rps: 33, seconds: 60 } },
         { id: 'heavy', label: 'Heavy', values: { rps: 100, seconds: 100 } },
+        // 300 msg/s is the field maximum; the 10,000-message cap per run leaves 33 s.
+        { id: 'max', label: 'Max', values: { rps: 300, seconds: 33 } },
       ],
     },
     {
@@ -34,6 +36,7 @@ export function describeScenarios(capabilities = {}) {
         { id: 'light', label: 'Light', values: { sockets: 200, hold: 30, storm: false } },
         { id: 'medium', label: 'Medium', values: { sockets: 1000, hold: 60, storm: true } },
         { id: 'heavy', label: 'Heavy', values: { sockets: 2000, hold: 120, storm: true } },
+        { id: 'max', label: 'Max', values: { sockets: 6000, hold: 120, storm: true } },
       ],
     },
     {
@@ -48,6 +51,7 @@ export function describeScenarios(capabilities = {}) {
         { id: 'light', label: 'Light', values: { calls: 2, seconds: 30, media: false } },
         { id: 'medium', label: 'Medium', values: { calls: 5, seconds: 60, media: media } },
         { id: 'heavy', label: 'Heavy', values: { calls: 10, seconds: 120, media: media } },
+        { id: 'max', label: 'Max', values: { calls: 20, seconds: 120, media: media } },
       ],
     },
     {
@@ -61,6 +65,8 @@ export function describeScenarios(capabilities = {}) {
         { id: 'light', label: 'Light', values: { sockets: 200, chat: 5, churn: 3, calls: 0, seconds: 30 } },
         { id: 'medium', label: 'Medium', values: { sockets: 1000, chat: 17, churn: 5, calls: media ? 4 : 0, seconds: 120 } },
         { id: 'school', label: 'Campus 10k', values: { sockets: 2000, chat: 33, churn: 10, calls: media ? 10 : 0, seconds: 300 } },
+        // Long calls and short-call pairs share the 20 call pairs, so without Chrome the pairs go to short calls.
+        { id: 'max', label: 'Max', values: { sockets: 6000, chat: 33, churn: media ? 0 : 20, calls: media ? 20 : 0, seconds: 300 } },
       ],
     },
   ]

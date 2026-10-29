@@ -9,15 +9,37 @@ const PATHS = {
 }
 const flag = (argv, name) => argv[argv.indexOf(name) + 1]
 
-test('four scenarios are offered, each with three presets that pass validation', () => {
+test('four scenarios are offered, each with four presets that pass validation', () => {
   for (const capabilities of [{ media: false }, { media: true }]) {
     const scenarios = describeScenarios(capabilities)
     assert.deepEqual(scenarios.map(s => s.id), ['chat', 'sockets', 'calls', 'mixed'])
     for (const s of scenarios) {
-      assert.equal(s.presets.length, 3)
+      assert.equal(s.presets.length, 4)
+      assert.equal(s.presets.at(-1).id, 'max')
       for (const p of s.presets) assert.doesNotThrow(() => validateParams(s.id, p.values, capabilities), `${s.id}/${p.id}/${capabilities.media}`)
     }
   }
+})
+
+test('Max is the heaviest preset and stays inside every run limit', () => {
+  const max = (id, capabilities) => describeScenarios(capabilities).find(s => s.id === id).presets.find(p => p.id === 'max').values
+  assert.deepEqual(max('chat', {}), { rps: 300, seconds: 33 })
+  assert.ok(300 * 33 <= 10000)
+  assert.deepEqual(max('sockets', {}), { sockets: 6000, hold: 120, storm: true })
+  assert.deepEqual(max('calls', { media: true }), { calls: 20, seconds: 120, media: true })
+  assert.deepEqual(max('mixed', { media: true }), { sockets: 6000, chat: 33, churn: 0, calls: 20, seconds: 300 })
+  assert.deepEqual(max('mixed', { media: false }), { sockets: 6000, chat: 33, churn: 20, calls: 0, seconds: 300 })
+  // Max carries the highest load of every load setting (short-call pairs trade places with long calls, so they are left out).
+  for (const [id, keys] of [['chat', ['rps']], ['sockets', ['sockets']], ['calls', ['calls']], ['mixed', ['sockets', 'chat', 'calls']]]) {
+    const presets = describeScenarios({ media: true }).find(s => s.id === id).presets
+    for (const key of keys) assert.equal(presets.at(-1).values[key], Math.max(...presets.map(p => p.values[key])), `${id}.${key}`)
+  }
+})
+
+test('Max is not the default level and the heaviest mixed run takes the bounded time', () => {
+  for (const s of describeScenarios({ media: true })) assert.notEqual(s.presets[1].id, 'max')
+  const mixed = max => estimateSeconds('mixed', describeScenarios({ media: true }).find(s => s.id === 'mixed').presets.find(p => p.id === max).values)
+  assert.equal(mixed('max'), 60 + 10 + 300 + 60)
 })
 
 test('mixed presets are accepted by the mixed tool itself', () => {
