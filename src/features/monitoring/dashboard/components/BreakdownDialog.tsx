@@ -2,7 +2,8 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useMemo } from 'react'
 import { RefreshCw } from 'lucide-react'
 
-import type { ContainerResource, MonitoringContainers, MonitoringOverview } from '../../api'
+import type { ContainerResource, MonitoringContainers } from '../../api'
+import type { MonitoringHost } from '../../hosts/api'
 import { formatBytes, formatPercent } from '../../formatters'
 import { formatMonitoringAge } from '../../freshness'
 import type { ServerMetric } from '../types'
@@ -28,7 +29,7 @@ type BreakdownRow = {
 type BreakdownDialogProps = {
   metric: ServerMetric | null
   overallValue: string
-  host: MonitoringOverview['host'] | null | undefined
+  host: MonitoringHost | null | undefined
   response: MonitoringContainers | null
   containers: readonly ContainerResource[]
   error: string | null
@@ -253,10 +254,21 @@ export function BreakdownDialog({
                   </div>
                 )}
 
-                {response?.dockerEngineUp === false ? (
+                {response?.reason === 'not-configured' ? (
+                  <div role="status" className="mt-3 flex flex-col items-center gap-1 rounded-control border border-dashed border-line px-4 py-8 text-center">
+                    <strong className="text-sm font-semibold text-ink">Container details are not set up for this host</strong>
+                    <span className="text-[13px] text-ink-2">
+                      Run the Docker socket proxy from infra/vps-agent on {host?.name ?? 'this host'} and add its docker_port label to the Prometheus target.
+                    </span>
+                  </div>
+                ) : response?.dockerEngineUp === false ? (
                   <div role="status" className="mt-3 flex flex-col items-center gap-1 rounded-control border border-dashed border-line px-4 py-8 text-center">
                     <strong className="text-sm font-semibold text-ink">Docker Engine unavailable</strong>
-                    <span className="text-[13px] text-ink-2">Container rows will appear when the Docker socket is reachable.</span>
+                    <span className="text-[13px] text-ink-2">
+                      {host?.containers === 'remote'
+                        ? `Container rows will appear when the Docker API on ${host.name} is reachable over the private network.`
+                        : 'Container rows will appear when the Docker socket is reachable.'}
+                    </span>
                   </div>
                 ) : rows.length === 0 ? (
                   <div role="status" className="mt-3 flex flex-col items-center gap-1 rounded-control border border-dashed border-line px-4 py-8 text-center">

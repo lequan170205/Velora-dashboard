@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 
 import { fetchMonitoringStatus } from '../api'
 import {
+  combineHostStatus,
   getMonitoringConnectionState,
   MONITORING_REFRESH_INTERVAL_MS,
   type MonitoringConnectionState,
@@ -40,6 +41,6 @@ export function useMonitoringConnection(): MonitoringConnectionState {
     refreshing: isFetching,
     hasError: isError,
     monitoringUp: data?.monitoringUp,
-    hostUp: data?.hostUp,
+    hostUp: combineHostStatus(data),
   })
 }

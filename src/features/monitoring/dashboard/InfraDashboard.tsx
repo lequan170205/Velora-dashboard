@@ -6,14 +6,11 @@ import { fetchMonitoringTimeseries } from '../api'
 import { getMonitoringOverviewHealth, HISTORY_REFRESH_INTERVAL_MS, MONITORING_REFRESH_INTERVAL_MS } from '../freshness'
 import { RANGE_OPTIONS, type RangeHours } from '../model'
 import { useOverviewQuery } from '../hooks/useOverviewQuery'
-import { useContainerResourcesQuery } from '../hooks/useContainerResourcesQuery'
-import type { InfraViewConfig, ServerMetric } from './types'
-import { BreakdownDialog } from './components/BreakdownDialog'
+import type { InfraViewConfig } from './types'
 import { ErrorBanner } from './components/ErrorBanner'
 import { FactsRow } from './components/FactsRow'
 import { HealthBanner } from './components/HealthBanner'
 import { HistoryChart } from './components/HistoryChart'
-import { HostStrip } from './components/HostStrip'
 import { InfraToolbar } from './components/InfraToolbar'
 import { StatCardGrid, StatCardGroups } from './components/StatCard'
 import { TechnicalDetails } from './components/TechnicalDetails'
@@ -22,43 +19,10 @@ import { useNow } from '@/shared/lib/useNow'
 
 type InfraDashboardProps = {
   config: InfraViewConfig
-  onOpenLogs?: (service: string) => void
 }
 
 /* Initial-load placeholder mirroring the real page: toolbar, stat cards with
    the exact per-config count, and one chart card per configured series. */
-function HostStripSkeleton() {
-  return (
-    <div className="rounded-card border border-line bg-panel">
-      <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
-        <Skeleton className="h-3 w-28" />
-        <Skeleton className="h-3 w-20" />
-      </div>
-      <div className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-3 sm:p-3">
-        <div className="flex flex-col gap-3 rounded-control p-3">
-          <Skeleton className="h-2.5 w-10" />
-          <Skeleton className="h-8 w-24" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-3 w-28" />
-        </div>
-        {[0, 1].map((block) => (
-          <div key={block} className="flex flex-col gap-3 rounded-control p-3">
-            <Skeleton className="h-2.5 w-10" />
-            <Skeleton className="h-7 w-20" />
-            <Skeleton className="h-1.5 w-full" />
-            <Skeleton className="h-3 w-32" />
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-6 border-t border-line px-4 py-3 sm:px-5">
-        {[0, 1, 2].map((fact) => (
-          <Skeleton key={fact} className="h-3 w-24" />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function InfraDashboardSkeleton({ config }: { config: InfraViewConfig }) {
   const cardCount =
     config.cards?.({ overview: null, hasData: false }).length
@@ -76,9 +40,7 @@ function InfraDashboardSkeleton({ config }: { config: InfraViewConfig }) {
   return (
     <section className="flex flex-col gap-4" aria-busy="true" aria-label={`${config.toolbar.title} loading`}>
       {config.toolbar.placement === 'top' && toolbar}
-      {config.hostStrip ? <HostStripSkeleton /> : (
-        <StatCardsSkeleton count={cardCount} gridClassName={config.cardsGridClassName} />
-      )}
+      <StatCardsSkeleton count={cardCount} gridClassName={config.cardsGridClassName} />
       {config.toolbar.placement === 'history' && toolbar}
       {config.historyHeading && (
         <div className="flex items-baseline gap-2">
@@ -91,10 +53,9 @@ function InfraDashboardSkeleton({ config }: { config: InfraViewConfig }) {
   )
 }
 
-export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
+export function InfraDashboard({ config }: InfraDashboardProps) {
   const queryClient = useQueryClient()
   const [rangeHours, setRangeHours] = useState<RangeHours>(RANGE_OPTIONS[0].hours)
-  const [activeMetric, setActiveMetric] = useState<ServerMetric | null>(null)
   const now = useNow(MONITORING_REFRESH_INTERVAL_MS)
 
   const overviewQuery = useOverviewQuery(config.errorMessage)
@@ -158,16 +119,7 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
   const snapshots = config.snapshots?.(overview)
   const technicalDetails = config.technicalDetails?.(overview) ?? null
 
-  const containerResources = useContainerResourcesQuery(config.breakdown === true && activeMetric !== null)
-
   if (initialLoading) return <InfraDashboardSkeleton config={config} />
-
-  const host = overview?.host ?? null
-  const overallValue = activeMetric === 'cpu'
-    ? cards?.find((card) => card.dialog === 'cpu')?.value ?? '—'
-    : activeMetric === 'memory'
-      ? cards?.find((card) => card.dialog === 'memory')?.value ?? '—'
-      : cards?.find((card) => card.dialog === 'disk')?.value ?? '—'
 
   const toolbar = (
     <InfraToolbar
@@ -230,45 +182,26 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
 
       <ErrorBanner error={error} title={config.errorTitle} hasData={hasData} />
 
-      {config.hostStrip ? (
-        <HostStrip
-          health={health}
-          cards={cards ?? []}
-          facts={facts ?? []}
-          sparkPoints={historyByMetric[config.hostStrip.sparkMetric]}
-          generatedAt={overview?.generatedAt}
-          refreshing={refreshing}
-          onDialog={config.breakdown ? (metric) => setActiveMetric(metric ?? null) : undefined}
-        />
+      <HealthBanner
+        tone={health.tone}
+        label={health.label}
+        title={health.title}
+        detail={health.detail}
+        generatedAt={overview?.generatedAt}
+        refreshing={refreshing}
+      />
+      {cardGroups ? (
+        <StatCardGroups groups={cardGroups} refreshing={refreshing} />
       ) : (
-        <>
-          <HealthBanner
-            tone={health.tone}
-            label={health.label}
-            title={health.title}
-            detail={health.detail}
-            generatedAt={overview?.generatedAt}
+        cards && (
+          <StatCardGrid
+            cards={cards}
+            gridClassName={config.cardsGridClassName}
             refreshing={refreshing}
           />
-          {cardGroups ? (
-            <StatCardGroups
-              groups={cardGroups}
-              refreshing={refreshing}
-              onDialog={config.breakdown ? (metric) => setActiveMetric(metric ?? null) : undefined}
-            />
-          ) : (
-            cards && (
-              <StatCardGrid
-                cards={cards}
-                gridClassName={config.cardsGridClassName}
-                refreshing={refreshing}
-                onDialog={config.breakdown ? (metric) => setActiveMetric(metric ?? null) : undefined}
-              />
-            )
-          )}
-          {facts && facts.length > 0 && <FactsRow facts={facts} />}
-        </>
+        )
       )}
+      {facts && facts.length > 0 && <FactsRow facts={facts} />}
 
       {config.toolbar.placement === 'history' && (
         <section aria-label="History" className="flex flex-col gap-3">
@@ -281,20 +214,6 @@ export function InfraDashboard({ config, onOpenLogs }: InfraDashboardProps) {
 
       {technicalDetails && <TechnicalDetails details={technicalDetails} />}
 
-      {config.breakdown && (
-        <BreakdownDialog
-          metric={activeMetric}
-          overallValue={overallValue}
-          host={host}
-          response={containerResources.data ?? null}
-          containers={containerResources.data?.containers ?? []}
-          error={containerResources.error?.message ?? null}
-          refreshing={containerResources.isFetching}
-          onRefresh={() => void containerResources.refetch()}
-          onClose={() => setActiveMetric(null)}
-          onOpenLogs={onOpenLogs}
-        />
-      )}
     </section>
   )
 }

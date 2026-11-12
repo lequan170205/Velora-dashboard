@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import { CircleOff, Pause, Play, RefreshCw, ScrollText } from 'lucide-react'
 
 import type { MonitoringLogEntry, MonitoringLogLevel } from '../../logsApi'
+import { useHostsQuery } from '../../hooks/useHostsQuery'
 import { useLogsQuery, type LogsRangeMinutes } from '../../hooks/useLogsQuery'
 import { LOG_SERVICE_OPTIONS } from '../../services'
 import { LogDetailDialog } from './LogDetailDialog'
@@ -62,6 +63,8 @@ export function LogsView({ preset = null }: LogsViewProps) {
     refreshNow,
   } = useLogsQuery(preset)
 
+  // Host names only label a selector, so a slow refresh is plenty.
+  const hostOptions = useHostsQuery(60_000).data?.hosts ?? []
   const [selectedEntry, setSelectedEntry] = useState<MonitoringLogEntry | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const virtualizer = useVirtualizer({
@@ -111,7 +114,25 @@ export function LogsView({ preset = null }: LogsViewProps) {
       </div>
 
       <div className="rounded-card border border-line bg-panel px-3 py-3 sm:sticky sm:top-14 sm:z-20 sm:backdrop-blur-md sm:bg-panel/95">
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={cn('grid grid-cols-1 gap-2.5 sm:grid-cols-2', hostOptions.length > 1 ? 'xl:grid-cols-5' : 'xl:grid-cols-4')}>
+          {hostOptions.length > 1 && (
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="logs-host">Server</Label>
+              <NativeSelect
+                id="logs-host"
+                value={filters.host}
+                onChange={(event) => updateFilter('host', event.target.value)}
+              >
+                <option value="all">All servers</option>
+                {hostOptions.map((host) => (
+                  <option key={host.id} value={host.id}>{host.name}</option>
+                ))}
+                {filters.host !== 'all' && !hostOptions.some((host) => host.id === filters.host) && (
+                  <option value={filters.host}>{filters.host}</option>
+                )}
+              </NativeSelect>
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             <Label htmlFor="logs-service">Service</Label>
             <NativeSelect
@@ -192,6 +213,12 @@ export function LogsView({ preset = null }: LogsViewProps) {
           <span>log lines</span>
           <span>·</span>
           <span>{appliedFilters.service === 'all' ? 'all services' : appliedFilters.service}</span>
+          {appliedFilters.host !== 'all' && (
+            <>
+              <span>·</span>
+              <span>{hostOptions.find((host) => host.id === appliedFilters.host)?.name ?? appliedFilters.host}</span>
+            </>
+          )}
           <span>·</span>
           <span>{appliedFilters.level === 'all' ? 'all levels' : appliedFilters.level}</span>
         </div>

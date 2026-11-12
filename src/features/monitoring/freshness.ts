@@ -6,6 +6,20 @@ export type MonitoringHistoryFreshnessState = 'fresh' | 'stale' | 'unknown'
 export const MONITORING_REFRESH_INTERVAL_MS = 5_000
 export const HISTORY_REFRESH_INTERVAL_MS = 10_000
 
+/**
+ * Host health for the global indicator: the machine that runs the stack, and
+ * every other monitored VPS. One down VPS degrades the indicator. A backend
+ * without multi-host support reports only `hostUp`.
+ */
+export const combineHostStatus = (
+  status: { hostUp: boolean | null; hosts?: { total: number; up: number } } | undefined,
+): boolean | null | undefined => {
+  if (!status) return undefined
+  if (status.hostUp === false) return false
+  if (status.hosts && status.hosts.total > 0 && status.hosts.up < status.hosts.total) return false
+  return status.hostUp
+}
+
 export const getMonitoringConnectionState = ({
   now,
   lastSuccessfulAt,

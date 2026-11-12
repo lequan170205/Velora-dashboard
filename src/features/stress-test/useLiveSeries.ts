@@ -13,7 +13,7 @@ const POLL_MS = 2000
 export function useLiveSeries(active: Run | null): { runId: string | null; series: Sample[] } {
   const live = Boolean(active)
   const overview = useQuery({ queryKey: ['stress', 'overview'], queryFn: ({ signal }) => fetchMonitoringOverview(signal), enabled: live, refetchInterval: live ? POLL_MS : false, gcTime: 0, retry: false })
-  const containers = useQuery({ queryKey: ['stress', 'containers'], queryFn: ({ signal }) => fetchMonitoringContainers(signal), enabled: live, refetchInterval: live ? POLL_MS : false, gcTime: 0, retry: false })
+  const containers = useQuery({ queryKey: ['stress', 'containers'], queryFn: ({ signal }) => fetchMonitoringContainers({ signal }), enabled: live, refetchInterval: live ? POLL_MS : false, gcTime: 0, retry: false })
   const [state, setState] = useState<{ runId: string | null; series: Sample[] }>({ runId: null, series: [] })
   const seen = useRef(0)
   useEffect(() => {

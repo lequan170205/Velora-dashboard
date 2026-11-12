@@ -30,6 +30,15 @@ export const formatCount = (value: number) =>
 
 export const formatLoad = (value: number) => Number.isFinite(value) ? value.toFixed(2) : '—'
 
+export const formatBytesPerSecond = (value: number) => {
+  if (!Number.isFinite(value) || value < 0) return '—'
+  if (value < 1024) return `${value.toFixed(0)} B/s`
+  const kib = value / 1024
+  if (kib < 1024) return `${kib.toFixed(kib >= 100 ? 0 : 1)} KB/s`
+  const mib = kib / 1024
+  return mib < 1024 ? `${mib.toFixed(mib >= 100 ? 0 : 1)} MB/s` : `${(mib / 1024).toFixed(2)} GB/s`
+}
+
 export const formatUptime = (seconds: number) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '—'
   const days = Math.floor(seconds / 86400)

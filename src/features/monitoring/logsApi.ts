@@ -18,6 +18,7 @@ export type MonitoringLogsResponse = {
   source: 'loki'
   query: {
     service: string
+    host?: string
     level: MonitoringLogLevel
     search: string
     from: string
@@ -30,6 +31,8 @@ export type MonitoringLogsResponse = {
 
 export type MonitoringLogsQuery = {
   service: string
+  /** One VPS; omit for all hosts. */
+  host?: string
   level: MonitoringLogLevel
   search: string
   from: string
@@ -47,6 +50,7 @@ export const fetchMonitoringLogs = async (query: MonitoringLogsQuery) => {
     to: query.to,
     limit: String(query.limit ?? 200),
   })
+  if (query.host) params.set('host', query.host)
 
   const response = await fetchApi(`/monitoring/logs?${params.toString()}`, {
     signal: query.signal,

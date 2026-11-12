@@ -8,6 +8,8 @@ import {
 
 import { AlertsView, LogsView } from "../features/monitoring";
 import { InfraDashboard } from "../features/monitoring/dashboard/InfraDashboard";
+import { ServersView } from "../features/monitoring/hosts/ServersView";
+import { serverPathForHost } from "../features/monitoring/hosts/model";
 import {
   authServiceConfig,
   callServiceConfig,
@@ -15,7 +17,6 @@ import {
   monitoringServiceConfig,
   notificationServiceConfig,
   reelsConfig,
-  serverConfig,
   userServiceConfig,
 } from "../features/monitoring/dashboard/configs";
 import type { LogsPreset } from "../features/monitoring/hooks/useLogsQuery";
@@ -47,9 +48,8 @@ function AuthGate() {
 function ServerRoute() {
   const navigate = useNavigate();
   return (
-    <InfraDashboard
-      config={serverConfig}
-      onOpenLogs={(service) => openLogs(navigate, service, 'all')}
+    <ServersView
+      onOpenLogs={(service, host) => openLogs(navigate, service, 'all', host)}
     />
   );
 }
@@ -58,8 +58,10 @@ function AlertsRoute() {
   const navigate = useNavigate();
   return (
     <AlertsView
-      onNavigate={(view) => navigate(`/${view}`)}
-      onOpenLogs={(service) => openLogs(navigate, service)}
+      onNavigate={(view, host) =>
+        navigate(view === "server" ? serverPathForHost(host) : `/${view}`)
+      }
+      onOpenLogs={(service, host) => openLogs(navigate, service, undefined, host)}
     />
   );
 }
@@ -70,11 +72,12 @@ function LogsRoute() {
   const [searchParams] = useSearchParams();
   const service = searchParams.get("service");
   const level = searchParams.get("level");
+  const host = searchParams.get("host");
 
   const preset = useMemo<LogsPreset | null>(() => {
     if (!service || !isLogsLevel(level)) return null;
-    return { service, level };
-  }, [service, level]);
+    return { service, level, host: host ?? "all" };
+  }, [service, level, host]);
 
   return <LogsView preset={preset} />;
 }

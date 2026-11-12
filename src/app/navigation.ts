@@ -37,8 +37,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       {
         to: "/server",
-        label: "Server",
-        title: "Server resources",
+        label: "Servers",
+        title: "Servers",
         icon: Server,
       },
     ],

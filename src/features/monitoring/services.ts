@@ -5,6 +5,8 @@ export const LOG_SERVICE_OPTIONS = [
   'monitoring-service',
   'conversation-service',
   'call-service',
+  'call-media-1',
+  'call-media-2',
   'auth-service',
   'user-service',
   'friend-service',
@@ -34,4 +36,7 @@ export const LOG_SERVICE_OPTIONS = [
   'grafana',
   'loki',
   'alloy',
+  'mongo-replica',
+  'postgres-replica',
+  'docker-proxy',
 ] as const

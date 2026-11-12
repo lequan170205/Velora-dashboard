@@ -10,7 +10,7 @@ const source = await readFile(
 const output = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-const { getMonitoringConnectionState, getMonitoringHistoryFreshnessState, getMonitoringOverviewHealth } = await import(
+const { combineHostStatus, getMonitoringConnectionState, getMonitoringHistoryFreshnessState, getMonitoringOverviewHealth } = await import(
   `data:text/javascript;base64,${Buffer.from(output).toString('base64')}`
 );
 
@@ -90,4 +90,23 @@ test('coarse 24-hour history respects sample spacing instead of the faster polli
 test('unknown cadence and client clock skew do not manufacture stale samples', () => {
   for (const step of [null, 0, -1, Number.NaN]) assert.equal(history(0, step), 'unknown');
   assert.equal(history(-5_000), 'fresh');
+});
+
+test('one unreachable VPS degrades the global indicator even when the primary host is up', () => {
+  assert.equal(combineHostStatus(undefined), undefined);
+  assert.equal(combineHostStatus({ hostUp: true }), true);
+  assert.equal(combineHostStatus({ hostUp: true, hosts: { total: 2, up: 2 } }), true);
+  assert.equal(combineHostStatus({ hostUp: true, hosts: { total: 2, up: 1 } }), false);
+  assert.equal(combineHostStatus({ hostUp: false, hosts: { total: 2, up: 2 } }), false);
+  assert.equal(combineHostStatus({ hostUp: null, hosts: { total: 2, up: 2 } }), null);
+  assert.equal(combineHostStatus({ hostUp: true, hosts: { total: 0, up: 0 } }), true);
+
+  assert.equal(
+    connection(1_000, { hostUp: combineHostStatus({ hostUp: true, hosts: { total: 3, up: 2 } }) }),
+    'degraded',
+  );
+  assert.equal(
+    connection(1_000, { hostUp: combineHostStatus({ hostUp: true, hosts: { total: 3, up: 3 } }) }),
+    'live',
+  );
 });

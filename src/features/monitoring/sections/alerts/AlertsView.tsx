@@ -155,8 +155,8 @@ function CountRail({
 }
 
 type AlertsViewProps = {
-  onNavigate?: (view: AlertMetricView) => void;
-  onOpenLogs?: (service: string) => void;
+  onNavigate?: (view: AlertMetricView, host?: string | null) => void;
+  onOpenLogs?: (service: string, host?: string | null) => void;
 };
 
 export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
@@ -176,11 +176,21 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
     useState<FilterValues<MonitoringAlertState>>("all");
   const [severityFilter, setSeverityFilter] =
     useState<FilterValues<MonitoringAlertSeverity>>("all");
+  const [hostFilter, setHostFilter] = useState<string>("all");
+
+  // Only offered when alerts come from more than one VPS.
+  const alertHosts = Array.from(
+    new Set(alerts.flatMap((alert) => (alert.host ? [alert.host] : []))),
+  ).sort((left, right) => left.localeCompare(right));
+  // A host whose alerts all resolved falls back to "all" instead of an empty list.
+  const activeHostFilter =
+    hostFilter === "all" || alertHosts.includes(hostFilter) ? hostFilter : "all";
 
   const visibleAlerts = alerts.filter(
     (alert) =>
       (stateFilter === "all" || alert.state === stateFilter) &&
-      (severityFilter === "all" || alert.severity === severityFilter),
+      (severityFilter === "all" || alert.severity === severityFilter) &&
+      (activeHostFilter === "all" || alert.host === activeHostFilter),
   );
 
   return (
@@ -284,6 +294,17 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
             { value: "info", label: "Info" },
           ]}
         />
+        {alertHosts.length > 1 && (
+          <FilterChips<string>
+            label="Host"
+            value={activeHostFilter}
+            onChange={setHostFilter}
+            options={[
+              { value: "all", label: "All" },
+              ...alertHosts.map((host) => ({ value: host, label: host })),
+            ]}
+          />
+        )}
       </div>
 
       {initialLoading ? (
@@ -311,7 +332,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
         <EmptyState
           icon={BellRing}
           title="No alerts match these filters"
-          description={`${alerts.length} alert${alerts.length === 1 ? "" : "s"} are hidden by the current state or severity filters.`}
+          description={`${alerts.length} alert${alerts.length === 1 ? "" : "s"} are hidden by the current state, severity or host filters.`}
         />
       ) : (
         <div className="flex flex-col gap-2.5">
@@ -360,6 +381,14 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                         ? routingService
                         : alert.service}
                     </span>
+                    {alert.host && (
+                      <span
+                        className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-2"
+                        title="Server this alert is about"
+                      >
+                        {alert.host}
+                      </span>
+                    )}
                     {isDeploymentAlert && deploymentStatus && (
                       <span className="rounded-full border border-bad-soft bg-bad-soft/50 px-2 py-0.5 font-mono text-[11px] text-bad">
                         {deploymentStatus}
@@ -491,7 +520,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => onNavigate(metricView)}
+                        onClick={() => onNavigate(metricView, alert.host)}
                       >
                         View metrics
                       </Button>
@@ -500,7 +529,7 @@ export function AlertsView({ onNavigate, onOpenLogs }: AlertsViewProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onOpenLogs(logService)}
+                        onClick={() => onOpenLogs(logService, alert.host)}
                       >
                         {logActionLabel(logService)}
                       </Button>

@@ -8,6 +8,8 @@ export type MonitoringAlert = {
   state: MonitoringAlertState
   severity: MonitoringAlertSeverity
   service: string
+  /** VPS the alert is about; null for alerts that are not tied to one host. */
+  host?: string | null
   activeAt: string | null
   value: number | null
   summary: string

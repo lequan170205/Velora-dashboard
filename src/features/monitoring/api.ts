@@ -189,7 +189,10 @@ export type MonitoringStatus = {
   generatedAt: string;
   source: "prometheus";
   monitoringUp: boolean | null;
+  /** The machine that runs the Velora stack (the primary host). */
   hostUp: boolean | null;
+  /** Every monitored VPS. Absent when the backend predates multi-host support. */
+  hosts?: { total: number; up: number };
 };
 
 export type ContainerResource = {
@@ -204,7 +207,9 @@ export type ContainerResource = {
 export type MonitoringContainers = {
   generatedAt: string;
   source: "docker";
+  /** `null` when the host has no container access configured. */
   dockerEngineUp?: boolean | null;
+  reason?: "not-configured";
   runningContainers?: number | null;
   sampledContainers?: number | null;
   hostCpuCount?: NullableMetric;
@@ -229,6 +234,8 @@ export type MonitoringMetric =
   | "host_swap"
   | "host_disk"
   | "host_load1"
+  | "host_network_receive"
+  | "host_network_transmit"
   | "conversation_cpu"
   | "conversation_memory"
   | "conversation_event_loop_p99"
@@ -343,6 +350,7 @@ export type MonitoringPoint = { timestamp: number; value: number };
 
 export type MonitoringTimeseries = {
   metric: MonitoringMetric;
+  host?: string;
   from: string;
   to: string;
   stepSeconds: number;
@@ -363,8 +371,12 @@ export const fetchMonitoringStatus = async (signal?: AbortSignal) => {
   return (await response.json()) as MonitoringStatus;
 };
 
-export const fetchMonitoringContainers = async (signal?: AbortSignal) => {
-  const response = await fetchApi("/monitoring/containers", { signal });
+export const fetchMonitoringContainers = async ({
+  host,
+  signal,
+}: { host?: string; signal?: AbortSignal } = {}) => {
+  const search = host ? `?${new URLSearchParams({ host })}` : "";
+  const response = await fetchApi(`/monitoring/containers${search}`, { signal });
   if (!response.ok)
     throw new Error(`Unable to load container resources (${response.status})`);
   return (await response.json()) as MonitoringContainers;
@@ -372,12 +384,15 @@ export const fetchMonitoringContainers = async (signal?: AbortSignal) => {
 
 export const fetchMonitoringTimeseries = async ({
   metric,
+  host,
   from,
   to,
   stepSeconds = 10,
   signal,
 }: {
   metric: MonitoringMetric;
+  /** Host metrics only; omit for the primary host. */
+  host?: string;
   from: string;
   to: string;
   stepSeconds?: number;
@@ -389,6 +404,7 @@ export const fetchMonitoringTimeseries = async ({
     to,
     stepSeconds: String(stepSeconds),
   });
+  if (host) search.set("host", host);
   const response = await fetchApi(`/monitoring/timeseries?${search}`, {
     signal,
   });

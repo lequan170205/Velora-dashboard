@@ -6,11 +6,13 @@ import { fetchMonitoringLogs, type MonitoringLogLevel } from '../logsApi'
 export type LogsRangeMinutes = 15 | 60 | 360 | 1440
 export type LogsFilters = {
   service: string
+  /** A host id, or 'all' for every host. */
+  host: string
   level: MonitoringLogLevel
   search: string
   rangeMinutes: LogsRangeMinutes
 }
-export type LogsPreset = Pick<LogsFilters, 'service' | 'level'>
+export type LogsPreset = Pick<LogsFilters, 'service' | 'level'> & { host?: string }
 
 const SEARCH_DEBOUNCE_MS = 400
 const LIVE_REFRESH_INTERVAL_MS = 10_000
@@ -18,6 +20,7 @@ const LOG_LIMIT = 200
 
 const defaultFilters = (): LogsFilters => ({
   service: 'all',
+  host: 'all',
   level: 'all',
   search: '',
   rangeMinutes: 60,
@@ -36,10 +39,16 @@ export function useLogsQuery(preset?: LogsPreset | null) {
     return () => window.clearTimeout(timer)
   }, [filters.search])
 
-  const presetKey = preset ? `${preset.service}|${preset.level}` : null
+  const presetKey = preset ? `${preset.service}|${preset.level}|${preset.host ?? 'all'}` : null
   useEffect(() => {
     if (!preset) return
-    setFilters((prev) => ({ ...prev, service: preset.service, level: preset.level, search: '' }))
+    setFilters((prev) => ({
+      ...prev,
+      service: preset.service,
+      level: preset.level,
+      host: preset.host ?? 'all',
+      search: '',
+    }))
   }, [presetKey]) // preset identity only — filter edits must not re-trigger it
 
   const appliedFilters = useMemo<LogsFilters>(
@@ -54,6 +63,7 @@ export function useLogsQuery(preset?: LogsPreset | null) {
       const from = new Date(to.getTime() - appliedFilters.rangeMinutes * 60 * 1000)
       return fetchMonitoringLogs({
         service: appliedFilters.service,
+        host: appliedFilters.host === 'all' ? undefined : appliedFilters.host,
         level: appliedFilters.level,
         search: appliedFilters.search,
         from: from.toISOString(),

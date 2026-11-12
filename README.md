@@ -71,17 +71,31 @@ Key monitoring endpoints currently include:
 ```text
 GET /monitoring/overview
 GET /monitoring/status
-GET /monitoring/containers
-GET /monitoring/timeseries?metric=...&from=...&to=...&stepSeconds=...
+GET /monitoring/hosts
+GET /monitoring/hosts/history?metric=host_cpu&from=...&to=...&stepSeconds=...
+GET /monitoring/containers?host=...
+GET /monitoring/timeseries?metric=...&host=...&from=...&to=...&stepSeconds=...
 GET /monitoring/alerts
-GET /monitoring/logs?...filters
+GET /monitoring/logs?...filters&host=...
 ```
 
 The dashboard uses the same ADMIN session cookie flow as the backend. Requests are sent with credentials enabled, and the client attempts `/auth/refresh` once when an authenticated request returns `401`.
 
+## Monitoring several servers
+
+The **Servers** page (`#/server`) shows every VPS that has a node-exporter target in the backend's Prometheus config. There is nothing to configure in the dashboard: a server appears when the backend lists it.
+
+- With more than one server, a tile per server (CPU, RAM, disk, 15-minute CPU trend, alert count) sits above the detail. Click a tile to open that server; the choice is kept in the URL (`#/server?host=velora-node-2`), so a link opens the same server.
+- The detail is the same for every server: status, gauges, load/uptime/traffic, history charts (including network in/out) and the container breakdown. The breakdown reads that server's Docker API, or says it is not set up.
+- **Alerts** show which server an alert is about and can be filtered by server; **View metrics** and **View logs** open the right server. **Logs** has a server filter. The top-bar indicator turns **Degraded** when any server is down.
+- One request (`/monitoring/hosts`) carries every server, so the page costs the same for two servers or twenty. Only the selected server's history is queried.
+- Against a backend that predates multi-host support the page falls back to a single server built from the overview.
+
+How to add a server to the backend is described in `infra/monitoring/README.md` ("Monitoring more than one VPS") in the backend repository.
+
 ## Monitoring cadence
 
-One default applies to every monitoring view: overview, status and alerts refresh every 5 seconds; history every 10 seconds. History opens at 15 minutes with 10-second points, while 1h/6h/24h ranges remain available at coarser resolution. Polling pauses in hidden tabs. Container resources refresh every 5 seconds only while the breakdown dialog is open.
+One default applies to every monitoring view: overview, servers, status and alerts refresh every 5 seconds; history every 10 seconds (the fleet sparklines every 30 seconds). History opens at 15 minutes with 10-second points, while 1h/6h/24h ranges remain available at coarser resolution. Polling pauses in hidden tabs. Container resources refresh every 5 seconds only while the breakdown dialog is open.
 
 The backend uses 5-second Prometheus scrapes and rolling 1-minute rate/CPU/p95 windows. CPU alerting requires a 1-minute average above 70% for 60 seconds; other alert windows remain unchanged. These are sampled, rolling measurements, so brief spikes may be smoothed. The chat p95 measures successful send handler execution, not database-only latency or client delivery time.
 

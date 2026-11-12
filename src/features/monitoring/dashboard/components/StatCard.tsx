@@ -46,28 +46,7 @@ function StatCardBody({ card }: { card: StatCardVm }) {
 const cardClass =
   'relative flex flex-col gap-1.5 rounded-card border border-line bg-panel px-4 pb-4 pt-4 text-left transition-colors duration-150'
 
-export function StatCard({
-  card,
-  onDialog,
-}: {
-  card: StatCardVm
-  onDialog?: (metric: StatCardVm['dialog']) => void
-}) {
-  if (card.dialog && onDialog) {
-    return (
-      <button
-        type="button"
-        className={cn(cardClass, 'cursor-pointer hover:border-line-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand')}
-        aria-haspopup="dialog"
-        aria-label={`${card.label}: ${card.value}. Open breakdown`}
-        title={card.helper}
-        onClick={() => onDialog(card.dialog)}
-      >
-        <StatCardBody card={card} />
-      </button>
-    )
-  }
-
+export function StatCard({ card }: { card: StatCardVm }) {
   return (
     <article className={cardClass} title={card.helper}>
       <StatCardBody card={card} />
@@ -79,12 +58,10 @@ export function StatCardGrid({
   cards,
   gridClassName,
   refreshing = false,
-  onDialog,
 }: {
   cards: readonly StatCardVm[]
   gridClassName?: string
   refreshing?: boolean
-  onDialog?: (metric: StatCardVm['dialog']) => void
 }) {
   return (
     <div
@@ -92,16 +69,15 @@ export function StatCardGrid({
       className={cn('grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3', gridClassName)}
     >
       {cards.map((card) => (
-        <StatCard key={card.label} card={card} onDialog={onDialog} />
+        <StatCard key={card.label} card={card} />
       ))}
     </div>
   )
 }
 
-export function StatCardGroups({ groups, refreshing, onDialog }: {
+export function StatCardGroups({ groups, refreshing }: {
   groups: readonly StatCardGroupVm[]
   refreshing?: boolean
-  onDialog?: (metric: StatCardVm['dialog']) => void
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -117,7 +93,6 @@ export function StatCardGroups({ groups, refreshing, onDialog }: {
             cards={group.cards}
             gridClassName={group.gridClassName}
             refreshing={refreshing}
-            onDialog={onDialog}
           />
         </section>
       ))}

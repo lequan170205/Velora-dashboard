@@ -16,7 +16,7 @@ export type StatCardVm = {
   tone: Tone
   /** Optional capacity gauge (0..1) rendered as a fill bar with threshold notches. */
   meter?: { ratio: number; warnAt?: number; badAt?: number } | null
-  /** Server-only: opens the metric breakdown dialog. */
+  /** Host panel only: opens the container breakdown dialog. */
   dialog?: ServerMetric
 }
 
@@ -98,11 +98,6 @@ export type InfraViewConfig = {
   snapshots?: (overview: MonitoringOverview | null) => Partial<Record<MonitoringMetric, MonitoringTooltipSnapshot>>
   technicalDetails?: (overview: MonitoringOverview | null) => TechnicalDetailsVm | null
   historyHeading?: { title: string; hint: string }
-  /** Server-style layout: one host panel (status + metric blocks + facts) instead
-      of a separate health banner, card grid and facts row. */
-  hostStrip?: { sparkMetric: MonitoringMetric }
-  /** Server only: cards open the container breakdown dialog. */
-  breakdown?: boolean
 }
 
 export type { RangeHours }

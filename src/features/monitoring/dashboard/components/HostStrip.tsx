@@ -1,4 +1,6 @@
 import { Badge, type BadgeTone } from '@/shared/components/ui'
+import { Meter } from './Meter'
+import { Sparkline } from './Sparkline'
 import { formatMonitoringAge } from '../../freshness'
 import type { MonitoringPoint } from '../../api'
 import type { Tone } from '../../formatters'
@@ -17,91 +19,11 @@ const DOT_CLASS: Record<Tone, string> = {
   neutral: 'bg-ink-3/50',
 }
 
-const METER_FILL: Record<Tone, string> = {
-  good: 'bg-ok/70',
-  warn: 'bg-warn',
-  bad: 'bg-bad',
-  neutral: 'bg-ink-3/40',
-}
-
 const BADGE_TONE: Record<Tone, BadgeTone> = {
   good: 'good',
   warn: 'warn',
   bad: 'bad',
   neutral: 'neutral',
-}
-
-function Sparkline({ points }: { points: readonly MonitoringPoint[] }) {
-  if (points.length < 2) return null
-
-  const width = 220
-  const height = 40
-  const pad = 3
-  const values = points.map((point) => point.value).filter(Number.isFinite)
-  if (values.length < 2) return null
-
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const span = max - min || 1
-  const step = (width - pad * 2) / (points.length - 1)
-
-  const path = points
-    .map((point, index) => {
-      const x = pad + index * step
-      const y = height - pad - ((point.value - min) / span) * (height - pad * 2)
-      return `${index === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
-    })
-    .join(' ')
-
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      className="h-10 w-full"
-    >
-      <path
-        d={path}
-        fill="none"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-        className="stroke-brand"
-      />
-    </svg>
-  )
-}
-
-function Meter({
-  ratio,
-  tone = 'good',
-  warnAt,
-  badAt,
-}: {
-  ratio: number
-  tone?: Tone
-  warnAt?: number
-  badAt?: number
-}) {
-  if (!Number.isFinite(ratio)) return null
-  const pct = Math.min(100, Math.max(0, ratio * 100))
-
-  return (
-    <div className="relative h-1.5 overflow-hidden rounded-full bg-inset">
-      <div className={cn('absolute inset-y-0 left-0 rounded-full', METER_FILL[tone])} style={{ width: `${pct}%` }} />
-      {[warnAt, badAt].map(
-        (notch) =>
-          Number.isFinite(notch) && (
-            <span
-              key={notch}
-              aria-hidden="true"
-              className="absolute inset-y-0 w-px bg-canvas/70"
-              style={{ left: `${Math.min(100, Math.max(0, (notch as number) * 100))}%` }}
-            />
-          ),
-      )}
-    </div>
-  )
 }
 
 function MetricBlock({
