@@ -86,7 +86,7 @@ export const HOST_SERIES: readonly HostSeriesConfig[] = [
     metric: 'host_disk',
     title: 'Disk usage',
     question: 'How full is the monitored storage?',
-    description: 'Usage of the main filesystem reported by node exporter. On the homelab that is the OrbStack volume that holds Docker data, not the Mac disk.',
+    description: 'Usage of the main filesystem node exporter reports for this host, the volume that holds its Docker data.',
     formatter: formatPercent,
     axisFormatter: formatPercent,
     accentToken: 'amber',
@@ -164,7 +164,7 @@ export const hostCards = (host: MonitoringHost | null): readonly StatCardVm[] =>
     label: 'Disk',
     value: formatPercent(host?.diskUsageRatio ?? Number.NaN),
     detail: `${formatBytes(host?.diskUsedBytes ?? Number.NaN)} / ${formatBytes(host?.diskTotalBytes ?? Number.NaN)} · ${formatBytes(host?.diskAvailableBytes ?? Number.NaN)} free`,
-    helper: 'Usage of the main filesystem node exporter reports for this host (on the homelab, the OrbStack volume that holds Docker data). Opens the container breakdown.',
+    helper: 'Usage of the main filesystem node exporter reports for this host, the volume that holds its Docker data. Opens the container breakdown.',
     badge: gaugeBadge(host, host?.diskUsageRatio ?? null, HOST_THRESHOLDS.disk.warn, HOST_THRESHOLDS.disk.bad),
     tone: toneForThreshold(host?.diskUsageRatio ?? null, HOST_THRESHOLDS.disk.warn, HOST_THRESHOLDS.disk.bad),
     meter: {
