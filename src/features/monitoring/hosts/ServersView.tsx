@@ -24,7 +24,7 @@ import { useHostsHistoryQuery } from '../hooks/useHostsHistoryQuery'
 import { useHostsQuery } from '../hooks/useHostsQuery'
 import { RANGE_OPTIONS, type RangeHours } from '../model'
 import { HostFleet } from './HostFleet'
-import { hostCards, hostCurrentValues, hostFacts, hostSnapshots, HOST_SERIES } from './hostView'
+import { hostCards, hostCurrentValues, hostFacts, hostSnapshots, HOST_SERIES, seriesForHost } from './hostView'
 import { hostHealth, hostPlace, resolveSelectedHostId } from './model'
 
 const ERROR_TITLE = 'Server metrics are temporarily unavailable.'
@@ -114,11 +114,7 @@ export function ServersView({ onOpenLogs }: ServersViewProps) {
     return counts
   }, [alerts.alerts])
 
-  // A backend without multi-host support cannot serve the traffic charts.
-  const series = useMemo(
-    () => (fleet?.legacy ? HOST_SERIES.filter((item) => !item.metric.startsWith('host_network_')) : HOST_SERIES),
-    [fleet?.legacy],
-  )
+  const series = useMemo(() => seriesForHost(selected, fleet?.legacy), [selected, fleet?.legacy])
 
   const rangeOption = RANGE_OPTIONS.find((option) => option.hours === rangeHours) ?? RANGE_OPTIONS[0]
   const seriesQueries = useQueries({

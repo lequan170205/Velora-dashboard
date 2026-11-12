@@ -33,7 +33,7 @@ const viewSource = transpile(await read('hosts/hostView.ts'))
     fromFormatters('badgeForThreshold, formatBytes, formatBytesPerSecond, formatLoad, formatPercent, formatUptime, toneForThreshold'),
   )
   .replace(/import \{ HOST_THRESHOLDS \} from ['"]\.\/model['"];\n/, 'const { HOST_THRESHOLDS } = globalThis.__hostModel;\n')
-const { HOST_SERIES, hostCards, hostCurrentValues, hostFacts, hostSnapshots } = await import(toDataUrl(viewSource))
+const { HOST_SERIES, hasNetworkFigures, hostCards, hostCurrentValues, hostFacts, hostSnapshots, seriesForHost } = await import(toDataUrl(viewSource))
 
 const GiB = 1024 ** 3
 const host = (overrides = {}) => ({
@@ -175,7 +175,7 @@ test('host facts include traffic', () => {
 
   assert.equal(facts.load, '0.50')
   assert.equal(facts.uptime, '1d 1h')
-  assert.equal(facts['net in'], '2.0 KB/s')
+  assert.equal(facts['net in'], '2.0 KiB/s')
   assert.equal(facts['net out'], '512 B/s')
 })
 
@@ -190,10 +190,51 @@ test('every history chart of a host has current values and a host-aware tooltip'
 
   const ram = HOST_SERIES.find((series) => series.metric === 'host_memory')
   assert.deepEqual(ram.tooltipDetails(host(), 0.5), [
-    { label: 'Approx. used', value: '8.00 GB' },
-    { label: 'Capacity', value: '16.00 GB' },
+    { label: 'Approx. used', value: '8.00 GiB' },
+    { label: 'Capacity', value: '16.00 GiB' },
   ])
   assert.deepEqual(ram.tooltipDetails(null, 0.5), [])
   assert.deepEqual(Object.keys(hostSnapshots(host())).sort(), ['host_disk', 'host_memory'])
   assert.deepEqual(hostSnapshots(null), {})
+})
+
+test('a host whose exporter cannot see the machine network shows no traffic figures or charts', () => {
+  const bridged = host({ network: 'unavailable', networkReceiveBytesPerSecond: null, networkTransmitBytesPerSecond: null })
+
+  assert.equal(hasNetworkFigures(bridged), false)
+  assert.equal(hasNetworkFigures(host({ network: 'host' })), true)
+  // An older backend does not say: keep showing what it reports.
+  assert.equal(hasNetworkFigures(host()), true)
+  assert.equal(hasNetworkFigures(null), true)
+
+  const labels = hostFacts(bridged).map((fact) => fact.label)
+  assert.deepEqual(labels, ['swap', 'load', 'uptime'])
+  assert.ok(hostFacts(host({ network: 'host' })).map((fact) => fact.label).includes('net in'))
+
+  assert.deepEqual(
+    seriesForHost(bridged).map((item) => item.metric),
+    ['host_cpu', 'host_memory', 'host_disk', 'host_load1'],
+  )
+  assert.equal(seriesForHost(host({ network: 'host' })).length, HOST_SERIES.length)
+})
+
+test('a backend without multi-host support gets no traffic charts either', () => {
+  assert.deepEqual(
+    seriesForHost(host(), true).map((item) => item.metric),
+    ['host_cpu', 'host_memory', 'host_disk', 'host_load1'],
+  )
+})
+
+test('byte units are binary and labelled as such, like free -h and df -h', () => {
+  const { formatBytes, formatBytesAxis, formatBytesPerSecond } = globalThis.__formatters
+  const GiB = 1024 ** 3
+
+  // node-2 as the OS reports it: 12 GiB of RAM leaves 11.68 GiB, the ext4 root is 192.69 GiB.
+  assert.equal(formatBytes(12247536 * 1024), '11.68 GiB')
+  assert.equal(formatBytes(206900281344), '192.69 GiB')
+  assert.equal(formatBytes(995 * 1024 * 1024), '995 MiB')
+  assert.equal(formatBytesAxis(2.5 * GiB), '2.5 GiB')
+  assert.equal(formatBytesPerSecond(3.9 * 1024), '3.9 KiB/s')
+  assert.equal(formatBytesPerSecond(5 * 1024 * 1024), '5.0 MiB/s')
+  assert.ok(![formatBytes(GiB), formatBytesAxis(GiB), formatBytesPerSecond(GiB)].some((text) => /\b[KMG]B\b/.test(text)))
 })

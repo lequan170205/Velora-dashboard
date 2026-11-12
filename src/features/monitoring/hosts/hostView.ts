@@ -86,7 +86,7 @@ export const HOST_SERIES: readonly HostSeriesConfig[] = [
     metric: 'host_disk',
     title: 'Disk usage',
     question: 'How full is the monitored storage?',
-    description: 'Usage of the root filesystem reported by node exporter.',
+    description: 'Usage of the main filesystem reported by node exporter. On the homelab that is the OrbStack volume that holds Docker data, not the Mac disk.',
     formatter: formatPercent,
     axisFormatter: formatPercent,
     accentToken: 'amber',
@@ -164,7 +164,7 @@ export const hostCards = (host: MonitoringHost | null): readonly StatCardVm[] =>
     label: 'Disk',
     value: formatPercent(host?.diskUsageRatio ?? Number.NaN),
     detail: `${formatBytes(host?.diskUsedBytes ?? Number.NaN)} / ${formatBytes(host?.diskTotalBytes ?? Number.NaN)} · ${formatBytes(host?.diskAvailableBytes ?? Number.NaN)} free`,
-    helper: 'Usage of the root filesystem node exporter reports for this host. Opens the container breakdown.',
+    helper: 'Usage of the main filesystem node exporter reports for this host (on the homelab, the OrbStack volume that holds Docker data). Opens the container breakdown.',
     badge: gaugeBadge(host, host?.diskUsageRatio ?? null, HOST_THRESHOLDS.disk.warn, HOST_THRESHOLDS.disk.bad),
     tone: toneForThreshold(host?.diskUsageRatio ?? null, HOST_THRESHOLDS.disk.warn, HOST_THRESHOLDS.disk.bad),
     meter: {
@@ -176,12 +176,31 @@ export const hostCards = (host: MonitoringHost | null): readonly StatCardVm[] =>
   },
 ]
 
+/** False when the host's exporter cannot see the machine's network interfaces. */
+export const hasNetworkFigures = (host: Pick<MonitoringHost, 'network'> | null): boolean =>
+  host?.network !== 'unavailable'
+
+/** The history charts that make sense for this host. */
+export const seriesForHost = (
+  host: Pick<MonitoringHost, 'network'> | null,
+  legacy = false,
+): readonly HostSeriesConfig[] =>
+  // A host without network visibility, or a backend that cannot serve the
+  // traffic metrics, gets no traffic charts instead of empty or wrong ones.
+  legacy || !hasNetworkFigures(host)
+    ? HOST_SERIES.filter((item) => !item.metric.startsWith('host_network_'))
+    : HOST_SERIES
+
 export const hostFacts = (host: MonitoringHost | null): readonly FactVm[] => [
   { label: 'swap', value: `${formatBytes(host?.swapUsedBytes ?? Number.NaN)} / ${formatBytes(host?.swapTotalBytes ?? Number.NaN)}` },
   { label: 'load', value: formatLoad(host?.load1 ?? Number.NaN) },
   { label: 'uptime', value: formatUptime(host?.uptimeSeconds ?? Number.NaN) },
-  { label: 'net in', value: formatBytesPerSecond(host?.networkReceiveBytesPerSecond ?? Number.NaN) },
-  { label: 'net out', value: formatBytesPerSecond(host?.networkTransmitBytesPerSecond ?? Number.NaN) },
+  ...(hasNetworkFigures(host)
+    ? [
+        { label: 'net in', value: formatBytesPerSecond(host?.networkReceiveBytesPerSecond ?? Number.NaN) },
+        { label: 'net out', value: formatBytesPerSecond(host?.networkTransmitBytesPerSecond ?? Number.NaN) },
+      ]
+    : []),
 ]
 
 const usedContext = (used: number | null | undefined) =>

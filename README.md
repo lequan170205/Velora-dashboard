@@ -89,6 +89,7 @@ The **Servers** page (`#/server`) shows every VPS that has a node-exporter targe
 - The detail is the same for every server: status, gauges, load/uptime/traffic, history charts (including network in/out) and the container breakdown. The breakdown reads that server's Docker API, or says it is not set up.
 - **Alerts** show which server an alert is about and can be filtered by server; **View metrics** and **View logs** open the right server. **Logs** has a server filter. The top-bar indicator turns **Degraded** when any server is down.
 - One request (`/monitoring/hosts`) carries every server, so the page costs the same for two servers or twenty. Only the selected server's history is queried.
+- A server whose node-exporter cannot see the machine's network interfaces (it runs in a bridged container, as the homelab's does) reports no traffic figures, so its network facts and charts are hidden instead of showing the exporter container's own traffic.
 - Against a backend that predates multi-host support the page falls back to a single server built from the overview.
 
 How to add a server to the backend is described in `infra/monitoring/README.md` ("Monitoring more than one VPS") in the backend repository.

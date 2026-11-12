@@ -1,16 +1,19 @@
 export type Tone = 'good' | 'warn' | 'bad' | 'neutral'
 
+/* Binary units: values are divided by 1024, so they are MiB and GiB, the same
+   figures `free -h` and `df -h` print. A 12 GiB VPS reports 11.68 GiB because
+   the kernel keeps some memory for itself. */
 export const formatBytes = (value: number) => {
   if (!Number.isFinite(value)) return '—'
   const mib = value / (1024 * 1024)
-  if (mib >= 1024) return `${(mib / 1024).toFixed(2)} GB`
-  return `${mib.toFixed(mib >= 100 ? 0 : 1)} MB`
+  if (mib >= 1024) return `${(mib / 1024).toFixed(2)} GiB`
+  return `${mib.toFixed(mib >= 100 ? 0 : 1)} MiB`
 }
 
 export const formatBytesAxis = (value: number) => {
   if (!Number.isFinite(value)) return '—'
   const mib = value / (1024 * 1024)
-  return mib >= 1024 ? `${(mib / 1024).toFixed(1)} GB` : `${mib.toFixed(0)} MB`
+  return mib >= 1024 ? `${(mib / 1024).toFixed(1)} GiB` : `${mib.toFixed(0)} MiB`
 }
 
 export const formatPercent = (value: number, digits = 1) =>
@@ -34,9 +37,9 @@ export const formatBytesPerSecond = (value: number) => {
   if (!Number.isFinite(value) || value < 0) return '—'
   if (value < 1024) return `${value.toFixed(0)} B/s`
   const kib = value / 1024
-  if (kib < 1024) return `${kib.toFixed(kib >= 100 ? 0 : 1)} KB/s`
+  if (kib < 1024) return `${kib.toFixed(kib >= 100 ? 0 : 1)} KiB/s`
   const mib = kib / 1024
-  return mib < 1024 ? `${mib.toFixed(mib >= 100 ? 0 : 1)} MB/s` : `${(mib / 1024).toFixed(2)} GB/s`
+  return mib < 1024 ? `${mib.toFixed(mib >= 100 ? 0 : 1)} MiB/s` : `${(mib / 1024).toFixed(2)} GiB/s`
 }
 
 export const formatUptime = (seconds: number) => {

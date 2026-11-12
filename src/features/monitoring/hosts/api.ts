@@ -8,6 +8,8 @@ export type HostRole = 'primary' | 'worker'
 /** How container resources of a host can be read. */
 export type HostContainerAccess = 'local' | 'remote' | 'none'
 
+export type HostNetworkAccess = 'host' | 'unavailable'
+
 /**
  * One monitored VPS: its identity (from the Prometheus target labels) and its
  * current state. Ratios are fractions (0..1) of the host's own capacity.
@@ -21,6 +23,11 @@ export type MonitoringHost = {
   /** node-exporter scrape address, e.g. 100.86.68.16:9100. */
   instance: string
   containers: HostContainerAccess
+  /**
+   * `unavailable` when the host's node-exporter cannot see the machine's network
+   * interfaces, so it reports no network figures. Absent on an older backend.
+   */
+  network?: HostNetworkAccess
   up: boolean | null
   cpuUsageRatio: NullableMetric
   cpuCount: NullableMetric
