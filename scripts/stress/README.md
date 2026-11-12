@@ -51,7 +51,20 @@ most two concurrent requests, and does not change application database pools.
 Tokens rotate per user, with one refresh in flight and a stable request ID if
 the rotation response is lost. HTTP requests and WebSocket handshakes identify the
 Node runner as `VeloraStressDemo/1.0`; the runner does not impersonate a browser
-or require weakening edge protection. Ctrl+C disconnects owned sockets and attempts
+or require weakening edge protection.
+
+The gateway limits login (10 per minute), refresh and logout per client IP and
+reads that IP from `CF-Connecting-IP`, which Cloudflare sets for real users. A
+runner on the server host reaches nginx directly, so every fixture user would
+share the Docker bridge address and a 50-user login would be refused with 429.
+Each login, refresh and logout therefore sends the user's own stable address
+from 198.18.0.0/15 (reserved for benchmarking) in that header, so the limits see
+the fixture as many separate users, as they would in production. Through the
+public edge Cloudflare overwrites the header, so nothing is bypassed there. If a
+run stops at setup and `rate limit exceeded` appears in the gateway log, check
+that the deployed agent bundle is current.
+
+Ctrl+C disconnects owned sockets and attempts
 logout of owned sessions with two concurrent requests, a 5-second request
 timeout, and a cohort-sized overall budget (up to 130 seconds for 50 sessions).
 Cleanup is separate from the 8-second message deadline. Check cleanup failures

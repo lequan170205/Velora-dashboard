@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { AuthManager, parseJwtSub, validateConfig, run, STRESS_USER_AGENT } from './stress/runner.mjs'
+import { AuthManager, parseJwtSub, validateConfig, run, STRESS_USER_AGENT, CLIENT_IP_HEADER, fixtureClientIp } from './stress/runner.mjs'
 import { Ledger, skippedSlots, dueSlots, pacingWake, pacingTolerance, PACING_TICK_MS } from './stress/protocol.mjs'
 
 const token = (sub, exp = Math.floor(Date.now() / 1000) + 3600) => `e30.${Buffer.from(JSON.stringify({ sub, exp })).toString('base64url')}.x`
@@ -65,6 +65,40 @@ test('cleanup budgets the whole cohort without increasing request concurrency or
   assert.equal(requests, 50); assert.equal(peak, 2); assert.equal(manager.sessions.size, 0)
   assert.ok(budgets[0] >= 25 * 5000)
   assert.ok(budgets.slice(1).every(ms => ms === 5000))
+})
+test('every fixture user gets a stable address in the benchmarking range, spread so no login bucket is shared', () => {
+  const ids = Array.from({ length: 2000 }, (_, i) => `account-${i}`)
+  const counts = new Map()
+  for (const id of ids) {
+    const ip = fixtureClientIp(id)
+    assert.equal(ip, fixtureClientIp(id))
+    assert.match(ip, /^198\.(18|19)\.\d{1,3}\.\d{1,3}$/)
+    counts.set(ip, (counts.get(ip) ?? 0) + 1)
+  }
+  // The gateway allows 10 logins per minute per address; a user logs in once per run.
+  assert.ok(Math.max(...counts.values()) < 10)
+  assert.ok(counts.size > 1900)
+})
+test('login, refresh and logout each present the user’s own address so the per-IP auth limits are not shared', async () => {
+  const seen = []
+  const manager = new AuthManager(config(), { jitter: () => 0, fetchImpl: async (url, init) => {
+    seen.push({ path: url.pathname, ip: init.headers[CLIENT_IP_HEADER] })
+    if (url.pathname.endsWith('login')) {
+      const id = JSON.parse(init.body).email.endsWith('.001@velora-stress.invalid') ? 'a' : 'b'
+      return { ok: true, json: async () => ({ accessToken: token(id, 1), refreshToken: 'rt-' + id }) }
+    }
+    if (url.pathname.endsWith('refresh')) return { ok: true, json: async () => ({ accessToken: token('a'), refreshToken: 'rt-a-2' }) }
+    return { ok: true, json: async () => ({ message: 'logged out' }) }
+  } })
+  const [a, b] = config().accounts
+  await manager.login(a); await manager.login(b)
+  await manager.token(a) // its access token expired at once, so this refreshes
+  await manager.logoutAll()
+  assert.notEqual(fixtureClientIp('a'), fixtureClientIp('b'))
+  const steps = id => seen.filter(r => r.ip === fixtureClientIp(id)).map(r => r.path.split('/').pop())
+  assert.deepEqual(steps('a'), ['login', 'refresh', 'logout'])
+  assert.deepEqual(steps('b'), ['login', 'logout'])
+  assert.equal(seen.length, 5)
 })
 test('ACK before fanout does not settle; two recipients are two deliveries, not duplicates', async () => {
   const l = new Ledger(config().accounts, { deadline: 100 })

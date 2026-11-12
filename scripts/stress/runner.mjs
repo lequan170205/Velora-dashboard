@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir, stat, chmod } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { io } from 'socket.io-client'
 import { Ledger, sleep, boundedMap, dueSlots, pacingWake } from './protocol.mjs'
 
@@ -8,6 +8,19 @@ export const LIMITS = Object.freeze({ minAccounts: 2, maxAccounts: 200, rooms: 2
 export const DEFAULT_STAGES = [{ name: '50 users', users: 50, rps: 5, seconds: 180 }]
 // Identify this authorized Node runner consistently for the public HTTP/WS edge.
 export const STRESS_USER_AGENT = 'VeloraStressDemo/1.0'
+// The gateway rate-limits login, refresh and logout per client IP and reads that
+// IP from this header, which Cloudflare sets for every real user. A runner on the
+// server host reaches nginx directly, so without the header all fixture users
+// share one address (the Docker bridge) and 50 logins hit the 10-per-minute
+// login limit. Each fixture user presents its own address instead, as real
+// users do. Through the public edge Cloudflare overwrites the header, so this
+// cannot widen anything there.
+export const CLIENT_IP_HEADER = 'CF-Connecting-IP'
+/** A stable address for one fixture user, inside 198.18.0.0/15 (RFC 2544, reserved for benchmarking). */
+export function fixtureClientIp(accountId) {
+  const n = createHash('sha256').update(String(accountId)).digest().readUInt32BE(0) % 131072
+  return `198.${18 + (n >>> 16)}.${(n >>> 8) & 255}.${n & 255}`
+}
 export function claims(token) {
   try { return JSON.parse(Buffer.from(String(token).split('.')[1], 'base64url').toString()) } catch { return {} }
 }
@@ -59,12 +72,13 @@ export class AuthManager {
     await new Promise(resolve => this.queue.push(resolve))
   }
   release() { const next = this.queue.shift(); if (next) next(); else this.active-- }
-  async request(path, body, { token, signal = this.signal, timeout = 30000 } = {}) {
+  async request(path, body, { token, accountId, signal = this.signal, timeout = 30000 } = {}) {
     await this.gate()
     try {
       const s = AbortSignal.any([AbortSignal.timeout(timeout), ...(signal ? [signal] : [])])
       const r = await this.fetch(new URL(path, this.config.baseUrl), {
         method: body ? 'POST' : 'GET', headers: { 'User-Agent': STRESS_USER_AGENT, ...(body ? { 'content-type': 'application/json' } : {}),
+          ...(accountId ? { [CLIENT_IP_HEADER]: fixtureClientIp(accountId) } : {}),
           ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: body ? JSON.stringify(body) : undefined, signal: s })
       if (!r.ok) { const error = new Error('HTTP request failed'); error.status = r.status; throw error }
@@ -78,7 +92,7 @@ export class AuthManager {
     return result.accessToken
   }
   async login(account) {
-    const result = await this.request('/auth/mobile/login', { email: account.email, password: account.password })
+    const result = await this.request('/auth/mobile/login', { email: account.email, password: account.password }, { accountId: account.id })
     this.stats.logins++; this.accept(account, result); return result
   }
   async token(account) {
@@ -92,10 +106,10 @@ export class AuthManager {
       const body = { refreshToken: s.refreshToken, refreshRequestId: randomUUID() }
       try {
         let result
-        try { result = await this.request('/auth/mobile/refresh', body) }
+        try { result = await this.request('/auth/mobile/refresh', body, { accountId: account.id }) }
         catch (error) {
           if (error.status || this.signal?.aborted) throw error
-          result = await this.request('/auth/mobile/refresh', body)
+          result = await this.request('/auth/mobile/refresh', body, { accountId: account.id })
         }
         return this.accept(account, result)
       } catch (error) { this.stats.refreshFailures++; throw error }
@@ -106,8 +120,8 @@ export class AuthManager {
     // Two requests at a time; allow each owned session its existing 5s budget.
     const deadline = AbortSignal.timeout(Math.max(30000, Math.ceil(this.sessions.size / 2) * 5000 + 5000))
     let revoked = 0, failed = 0
-    await boundedMap([...this.sessions.values()], 2, async session => {
-      try { await this.request('/auth/mobile/logout', { refreshToken: session.refreshToken }, { signal: deadline, timeout: 5000 }); revoked++ }
+    await boundedMap([...this.sessions.entries()], 2, async ([accountId, session]) => {
+      try { await this.request('/auth/mobile/logout', { refreshToken: session.refreshToken }, { accountId, signal: deadline, timeout: 5000 }); revoked++ }
       catch { failed++ }
     })
     this.sessions.clear(); return { revoked, failed }
