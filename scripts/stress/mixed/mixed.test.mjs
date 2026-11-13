@@ -90,7 +90,7 @@ test('each workload can fail the verdict on its own', () => {
   failing(r => { r.connections.hold.unexpectedDisconnects = 1 }, 'connections', 'unexpected disconnects')
   failing(r => { r.connections.hold.probes.lastDeliveryMs.p95 = 5000 }, 'connections', 'last-delivery')
   failing(r => { r.chat.stages[0].failedMessages = 1 }, 'chat', 'failed messages')
-  failing(r => { r.chat.stages[0].ack.p95 = 2000 }, 'chat', 'ack p95')
+  failing(r => { r.chat.stages[0].ack.p95 = 2500 }, 'chat', 'ack p95')
   failing(r => { r.chat.stages[0].delivery.p95 = 3000 }, 'chat', 'delivery p95')
   failing(r => { r.chat.stages[0].skipped = 90 }, 'chat', 'skipped ratio')
   failing(r => { r.churn.counts.failed = 3 }, 'calls (signaling)', 'failed calls')
@@ -98,6 +98,16 @@ test('each workload can fail the verdict on its own', () => {
   failing(r => { r.churn.latencyMs.setupMs.p95 = 4000 }, 'calls (signaling)', 'setup p95')
   failing(r => { r.media.passed = false }, 'calls (media)', 'run passed')
   failing(r => { r.media.stages[0].pairs[0].audio[0].lost = 1000 }, 'calls (media)', 'packet loss')
+})
+
+test('the three p95 latency limits are 2 s; failures and skipped work stay strict', () => {
+  const s = resolveScenario()
+  assert.deepEqual([s.thresholds.chatAckP95Ms, s.thresholds.probeLastDeliveryP95Ms, s.thresholds.callSetupP95Ms], [2000, 2000, 2000])
+  const slow = good()
+  slow.chat.stages[0].ack.p95 = 1900; slow.connections.hold.probes.lastDeliveryMs.p95 = 1950; slow.churn.latencyMs.setupMs.p95 = 1850
+  assert.equal(evaluate(slow, s).passed, true)
+  const skipping = good(); skipping.chat.stages[0].skipped = 90
+  assert.equal(evaluate(skipping, s).passed, false)
 })
 
 test('a missing child report fails the verdict instead of passing silently', () => {

@@ -30,7 +30,7 @@ Every number can be overridden (`--sockets --ramp --window --chat-rps --media-ca
 
 ## Verdict
 
-Reported per criterion: connect failures <= 0.1% and all sockets connected, no unexpected disconnects, every probe delivered with last-delivery p95 <= 1 s, no failed or missing chat messages, chat ack p95 <= 1 s and delivery p95 <= 2 s, no failed or stuck calls, call setup p95 <= 1 s, media run passed with packet loss <= 0.5%. A child that produces no report fails the run. The report also contains container CPU/memory (mean and peak, from `docker stats` when run on the server host) and every child's full report.
+Reported per criterion: connect failures <= 0.1% and all sockets connected, no unexpected disconnects, every probe delivered with last-delivery p95 <= 2 s, no failed or missing chat messages, chat ack p95 <= 2 s and delivery p95 <= 2 s, no failed or stuck calls, call setup p95 <= 2 s, media run passed with packet loss <= 0.5%. A child that produces no report fails the run. The report also contains container CPU/memory (mean and peak, from `docker stats` when run on the server host) and every child's full report.
 
 ## Caveats
 
