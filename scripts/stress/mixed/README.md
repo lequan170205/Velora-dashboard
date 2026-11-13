@@ -35,3 +35,7 @@ Reported per criterion: connect failures <= 0.1% and all sockets connected, no u
 ## Caveats
 
 The load generator runs on the same host as the services, so its CPU competes with them (Chrome alone uses about one core for 20 calls). Several sockets per fixture account stand in for several devices. Media goes straight to the SFU over the LAN (no Internet UDP, no TURN). Test with `pnpm test:mixed`.
+
+## Scale manifest
+
+A manifest with `"fixtureProfile": "scale"` (thousands of accounts in many small rooms, see `scripts/ops/CHAT-STRESS-FIXTURES.md` in the backend repository) lets sockets spread one or two per account, so a message reaches a few sockets as in real use instead of hundreds. Only `--chat-users N` accounts (default 200, a multiple of 5 so whole rooms are kept) send chat; every account still holds sockets through the connections tool, so the ramp is slower while thousands of accounts log in once.

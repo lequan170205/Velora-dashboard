@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 // usage: node scripts/stress/mixed/cli.mjs --config /abs/private-manifest.json --bins-dir /abs/bins --plan|--run
 //   [--profile campus10k|smoke] [--base-url http://127.0.0.1] [--chrome PATH --lan-address IP] [--output /abs/report.json]
-//   overrides: --sockets --ramp --window --chat-rps --media-calls --churn-pairs --churn-cps --churn-hold-ms --no-docker --media-local
+//   overrides: --sockets --ramp --window --chat-rps --media-calls --churn-pairs --churn-cps --churn-hold-ms --chat-users --no-docker --media-local
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { loadConfig } from '../runner.mjs'
+import { loadConfig, subsetConfig } from '../runner.mjs'
 import { buildCommands, buildTimeline, chatStage, resolveScenario } from './scenario.mjs'
 import { runMixed } from './orchestrator.mjs'
 
-const VALUE = new Set(['config', 'bins-dir', 'profile', 'base-url', 'chrome', 'lan-address', 'output', 'sockets', 'ramp', 'window', 'chat-rps', 'media-calls', 'churn-pairs', 'churn-cps', 'churn-hold-ms'])
+const VALUE = new Set(['config', 'bins-dir', 'profile', 'base-url', 'chrome', 'lan-address', 'output', 'sockets', 'ramp', 'window', 'chat-rps', 'media-calls', 'churn-pairs', 'churn-cps', 'churn-hold-ms', 'chat-users'])
 const FLAG = new Set(['plan', 'run', 'no-docker', 'media-local'])
 export function parseArgs(argv) {
   const out = {}
@@ -59,7 +59,11 @@ async function main() {
     const output = resolve(options.output ?? `stress-private/results/mixed-${Date.now()}.json`)
     try { await stat(output); throw new Error('Refusing to overwrite report') } catch (error) { if (error.code !== 'ENOENT') throw error }
     await writeFile(localConfig, JSON.stringify(local), { mode: 0o600 })
-    await writeFile(chatConfig, JSON.stringify({ ...local, stages: [chatStage(scenario, config.accounts.length)] }), { mode: 0o600 })
+    // A scale manifest has thousands of accounts. Every sender account logs in and
+    // holds a socket, so only a bounded cohort (default 200) sends chat; the others
+    // stay online through the connections tool.
+    const chatBase = config.fixtureProfile === 'scale' ? { ...local, ...subsetConfig(local, Number(options['chat-users'] ?? 200)) } : local
+    await writeFile(chatConfig, JSON.stringify({ ...chatBase, stages: [chatStage(scenario, chatBase.accounts.length)] }), { mode: 0o600 })
     const controller = new AbortController()
     const stop = () => controller.abort()
     process.on('SIGINT', stop); process.on('SIGTERM', stop)

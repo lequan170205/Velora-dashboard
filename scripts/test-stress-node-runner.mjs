@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { AuthManager, parseJwtSub, validateConfig, run, STRESS_USER_AGENT, CLIENT_IP_HEADER, fixtureClientIp } from './stress/runner.mjs'
+import { AuthManager, parseJwtSub, validateConfig, subsetConfig, run, STRESS_USER_AGENT, CLIENT_IP_HEADER, fixtureClientIp } from './stress/runner.mjs'
 import { Ledger, skippedSlots, dueSlots, pacingWake, pacingTolerance, PACING_TICK_MS } from './stress/protocol.mjs'
 
 const token = (sub, exp = Math.floor(Date.now() / 1000) + 3600) => `e30.${Buffer.from(JSON.stringify({ sub, exp })).toString('base64url')}.x`
@@ -21,6 +21,41 @@ test('reject identity collisions, real emails, external members, and inflated co
   assert.throws(() => validateConfig(badRoom), /fixture/)
   assert.throws(() => validateConfig(config({ stages: [{ name: 'fake', users: 2, rps: 1, seconds: 1 }] })), /cohort/)
   assert.equal(parseJwtSub(token('a')), 'a')
+})
+// A crowd: blocks of five accounts, one trio and one pair per block (2.5 members per room).
+function scaleConfig(users = 1000, extra = {}) {
+  const fixtureNamespace = 'mu-0123456789ab'
+  const accounts = Array.from({ length: users }, (_, i) => ({ id: `u${i}`,
+    email: `${fixtureNamespace}.${String(i + 1).padStart(3, '0')}@velora-stress.invalid`, password: 'test-only-password-0123456789' }))
+  const rooms = []
+  for (let b = 0; b < users; b += 5) {
+    rooms.push({ id: `r${b}a`, participantIds: [b, b + 1, b + 2].map(i => `u${i}`) })
+    rooms.push({ id: `r${b}b`, participantIds: [b + 3, b + 4].map(i => `u${i}`) })
+  }
+  return { baseUrl: 'https://fixture.test', fixtureNamespace, fixtureProfile: 'scale', accounts, rooms,
+    stages: [{ name: 'crowd', users, rps: 10, seconds: 1 }], ...extra }
+}
+test('a scale manifest allows thousands of accounts in many rooms, the default profile does not', () => {
+  assert.equal(validateConfig(scaleConfig(2000)).rooms.length, 800)
+  const plain = scaleConfig(1000); delete plain.fixtureProfile
+  assert.throws(() => validateConfig(plain), /2\.\.200|exactly 20/)
+  assert.throws(() => validateConfig(scaleConfig(1000, { fixtureProfile: 'huge' })), /unknown fixtureProfile/)
+  assert.throws(() => validateConfig(scaleConfig(5005)), /2\.\.5000/)
+  const left = scaleConfig(1000); left.rooms.pop()
+  assert.throws(() => validateConfig(left), /every configured account/)
+  const noRooms = scaleConfig(1000, { rooms: [] })
+  assert.throws(() => validateConfig(noRooms), /rooms required/)
+})
+test('subsetConfig keeps whole rooms and refuses a cut through a room', () => {
+  const subset = subsetConfig(scaleConfig(2000), 200)
+  assert.equal(subset.accounts.length, 200)
+  assert.equal(subset.rooms.length, 80)
+  assert.ok(subset.rooms.every(r => r.participantIds.every(id => Number(id.slice(1)) < 200)))
+  const forChat = { ...subset, stages: [{ name: 'chat', users: 200, rps: 5, seconds: 1 }] }
+  assert.equal(validateConfig(forChat).accounts.length, 200)
+  assert.throws(() => subsetConfig(scaleConfig(2000), 201), /room boundary/)
+  assert.throws(() => subsetConfig(config(), 2), /scale manifest/)
+  assert.throws(() => subsetConfig(scaleConfig(100), 101), /userCount/)
 })
 test('lagging scheduler accounts every missed slot and resumes at a future slot without catchup', () => {
   assert.equal(skippedSlots(0, 0, 225, 100, 10), 3)

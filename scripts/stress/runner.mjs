@@ -5,6 +5,10 @@ import { io } from 'socket.io-client'
 import { Ledger, sleep, boundedMap, dueSlots, pacingWake } from './protocol.mjs'
 
 export const LIMITS = Object.freeze({ minAccounts: 2, maxAccounts: 200, rooms: 20, pending: 100, messages: 10000, seconds: 1200 })
+// A manifest with `fixtureProfile: 'scale'` describes a crowd instead of the
+// 50-user demo: thousands of accounts in many small rooms, so a message reaches
+// a few sockets as in real use rather than hundreds.
+export const SCALE_LIMITS = Object.freeze({ maxAccounts: 5000, maxRooms: 3000 })
 export const DEFAULT_STAGES = [{ name: '50 users', users: 50, rps: 5, seconds: 180 }]
 // Identify this authorized Node runner consistently for the public HTTP/WS edge.
 export const STRESS_USER_AGENT = 'VeloraStressDemo/1.0'
@@ -31,7 +35,10 @@ export function validateConfig(input) {
   if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/') throw new Error('baseUrl must be an origin')
   if (!/^mu-[a-f0-9]{12}$/.test(input.fixtureNamespace ?? '')) throw new Error('fixtureNamespace must be isolated')
   const { accounts, rooms } = input
-  if (!Array.isArray(accounts) || accounts.length < 2 || accounts.length > 200) throw new Error('accounts must contain 2..200 fixture accounts')
+  const scale = input.fixtureProfile === 'scale'
+  if (input.fixtureProfile !== undefined && !scale) throw new Error('unknown fixtureProfile')
+  const maxAccounts = scale ? SCALE_LIMITS.maxAccounts : LIMITS.maxAccounts
+  if (!Array.isArray(accounts) || accounts.length < 2 || accounts.length > maxAccounts) throw new Error(`accounts must contain 2..${maxAccounts} fixture accounts`)
   const ids = new Set(), emails = new Set()
   for (const [i, a] of accounts.entries()) {
     if (!a?.id || ids.has(a.id) || emails.has(a.email) ||
@@ -39,7 +46,9 @@ export function validateConfig(input) {
         typeof a.password !== 'string' || a.password.length < 24) throw new Error('fixture identities must be unique and isolated')
     ids.add(a.id); emails.add(a.email)
   }
-  if (!Array.isArray(rooms) || rooms.length !== 20) throw new Error('exactly 20 rooms required')
+  if (!Array.isArray(rooms) || (scale ? rooms.length < 1 || rooms.length > SCALE_LIMITS.maxRooms : rooms.length !== 20)) {
+    throw new Error(scale ? `1..${SCALE_LIMITS.maxRooms} rooms required` : 'exactly 20 rooms required')
+  }
   const roomIds = new Set(), covered = new Set()
   for (const room of rooms) {
     const members = new Set(room?.participantIds)
@@ -61,14 +70,34 @@ export function validateConfig(input) {
   return { ...input, stages }
 }
 
+/**
+ * The first `userCount` accounts of a scale manifest with every room made only of
+ * them, for a tool that logs all accounts in (the chat sender cohort). Rooms
+ * are laid out in blocks, so a userCount on a block boundary leaves no account
+ * without a room; anything else is refused instead of renumbering accounts.
+ */
+export function subsetConfig(config, userCount) {
+  if (config.fixtureProfile !== 'scale') throw new Error('only a scale manifest can be subset')
+  if (!Number.isInteger(userCount) || userCount < 2 || userCount > config.accounts.length) throw new Error('userCount must be 2..accounts')
+  const accounts = config.accounts.slice(0, userCount)
+  const ids = new Set(accounts.map(a => a.id))
+  const rooms = config.rooms.filter(room => room.participantIds.every(id => ids.has(id)))
+  const covered = new Set(rooms.flatMap(room => room.participantIds))
+  if (covered.size !== accounts.length) throw new Error('userCount must end on a room boundary')
+  return { ...config, accounts, rooms }
+}
+
 export class AuthManager {
   constructor(config, { fetchImpl = fetch, now = Date.now, jitter = () => Math.random() * 10000, signal } = {}) {
     this.config = config; this.fetch = fetchImpl; this.now = now; this.jitter = jitter; this.signal = signal
     this.sessions = new Map(); this.flights = new Map(); this.queue = []; this.active = 0
+    // Thousands of accounts must each log in once before their sockets can open;
+    // two at a time would stretch that ramp to minutes.
+    this.concurrency = config.fixtureProfile === 'scale' ? 6 : 2
     this.stats = { logins: 0, refreshAttempts: 0, refreshFailures: 0 }
   }
   async gate() {
-    if (this.active < 2) { this.active++; return }
+    if (this.active < this.concurrency) { this.active++; return }
     await new Promise(resolve => this.queue.push(resolve))
   }
   release() { const next = this.queue.shift(); if (next) next(); else this.active-- }
