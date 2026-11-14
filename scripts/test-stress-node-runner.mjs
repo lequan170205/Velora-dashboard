@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { AuthManager, parseJwtSub, validateConfig, subsetConfig, run, STRESS_USER_AGENT, CLIENT_IP_HEADER, fixtureClientIp } from './stress/runner.mjs'
+import { AuthManager, parseJwtSub, validateConfig, subsetConfig, stagePassed, run, STRESS_USER_AGENT, CLIENT_IP_HEADER, fixtureClientIp } from './stress/runner.mjs'
 import { Ledger, skippedSlots, dueSlots, pacingWake, pacingTolerance, PACING_TICK_MS } from './stress/protocol.mjs'
 
 const token = (sub, exp = Math.floor(Date.now() / 1000) + 3600) => `e30.${Buffer.from(JSON.stringify({ sub, exp })).toString('base64url')}.x`
@@ -45,6 +45,37 @@ test('a scale manifest allows thousands of accounts in many rooms, the default p
   assert.throws(() => validateConfig(left), /every configured account/)
   const noRooms = scaleConfig(1000, { rooms: [] })
   assert.throws(() => validateConfig(noRooms), /rooms required/)
+})
+test('a scale manifest may plan far more messages per run than the demo cap, but still a bounded number', () => {
+  const big = scaleConfig(1000, { stages: [{ name: 'heavy', users: 1000, rps: 800, seconds: 120 }] })
+  assert.equal(validateConfig(big).stages[0].rps, 800)
+  const plain = config({ stages: [{ name: 'heavy', users: 3, rps: 800, seconds: 120 }] })
+  assert.throws(() => validateConfig(plain), /bounded/)
+  const huge = scaleConfig(1000, { stages: [{ name: 'huge', users: 1000, rps: 1000, seconds: 1000 }] })
+  assert.throws(() => validateConfig(huge), /bounded/)
+})
+test('a scale cohort sliced from the middle keeps the isolation check, a demo manifest does not accept one', () => {
+  const full = scaleConfig(1000)
+  const slice = { ...full, accounts: full.accounts.slice(100, 200), rooms: full.rooms.filter(r => r.participantIds.every(id => { const n = Number(id.slice(1)); return n >= 100 && n < 200 })) }
+  slice.stages = [{ name: 'slice', users: 100, rps: 5, seconds: 1 }]
+  assert.equal(validateConfig(slice).accounts.length, 100)
+  const stranger = structuredClone(slice); stranger.accounts[0].email = 'someone@example.com'
+  assert.throws(() => validateConfig(stranger), /isolated/)
+  const otherNamespace = structuredClone(slice); otherNamespace.accounts[0].email = 'mu-ffffffffffff.101@velora-stress.invalid'
+  assert.throws(() => validateConfig(otherNamespace), /isolated/)
+  const demo = config(); demo.accounts[1].email = `${demo.fixtureNamespace}.009@velora-stress.invalid`
+  assert.throws(() => validateConfig(demo), /isolated/)
+})
+test('a demo stage needs every slot; a scale stage tolerates 1% skipped but never failed messages or a stop', () => {
+  const base = { stopped: false, planned: 10000, emitted: 10000, skipped: 0, failed: 0 }
+  assert.equal(stagePassed(base), true)
+  assert.equal(stagePassed({ ...base, emitted: 9999, skipped: 1 }), false)
+  assert.equal(stagePassed({ ...base, emitted: 9999, skipped: 1, scale: true }), true)
+  assert.equal(stagePassed({ ...base, emitted: 9900, skipped: 100, scale: true }), true)
+  assert.equal(stagePassed({ ...base, emitted: 9899, skipped: 101, scale: true }), false)
+  assert.equal(stagePassed({ ...base, failed: 1, scale: true }), false)
+  assert.equal(stagePassed({ ...base, stopped: true, scale: true }), false)
+  assert.equal(stagePassed({ ...base, emitted: 9000, skipped: 0, scale: true }), false)
 })
 test('subsetConfig keeps whole rooms and refuses a cut through a room', () => {
   const subset = subsetConfig(scaleConfig(2000), 200)

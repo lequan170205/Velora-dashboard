@@ -8,7 +8,7 @@ export const LIMITS = Object.freeze({ minAccounts: 2, maxAccounts: 200, rooms: 2
 // A manifest with `fixtureProfile: 'scale'` describes a crowd instead of the
 // 50-user demo: thousands of accounts in many small rooms, so a message reaches
 // a few sockets as in real use rather than hundreds.
-export const SCALE_LIMITS = Object.freeze({ maxAccounts: 5000, maxRooms: 3000 })
+export const SCALE_LIMITS = Object.freeze({ maxAccounts: 5000, maxRooms: 3000, messages: 400000 })
 export const DEFAULT_STAGES = [{ name: '50 users', users: 50, rps: 5, seconds: 180 }]
 // Identify this authorized Node runner consistently for the public HTTP/WS edge.
 export const STRESS_USER_AGENT = 'VeloraStressDemo/1.0'
@@ -41,8 +41,12 @@ export function validateConfig(input) {
   if (!Array.isArray(accounts) || accounts.length < 2 || accounts.length > maxAccounts) throw new Error(`accounts must contain 2..${maxAccounts} fixture accounts`)
   const ids = new Set(), emails = new Set()
   for (const [i, a] of accounts.entries()) {
-    if (!a?.id || ids.has(a.id) || emails.has(a.email) ||
-        a.email !== `${input.fixtureNamespace}.${String(i + 1).padStart(3, '0')}@velora-stress.invalid` ||
+    // A scale manifest may be sliced into cohorts that do not start at the first account, so
+    // its emails are checked against the namespace pattern instead of their position.
+    const isolatedEmail = scale
+      ? new RegExp(`^${input.fixtureNamespace}\\.\\d{3,}@velora-stress\\.invalid$`).test(a?.email ?? '')
+      : a?.email === `${input.fixtureNamespace}.${String(i + 1).padStart(3, '0')}@velora-stress.invalid`
+    if (!a?.id || ids.has(a.id) || emails.has(a.email) || !isolatedEmail ||
         typeof a.password !== 'string' || a.password.length < 24) throw new Error('fixture identities must be unique and isolated')
     ids.add(a.id); emails.add(a.email)
   }
@@ -66,7 +70,7 @@ export function validateConfig(input) {
         !Number.isInteger(s.seconds) || s.seconds < 1 || !Number.isFinite(s.rps) || s.rps < 0 || s.rps > 1000) throw new Error('invalid fixed-cohort stage')
     messages += Math.floor(s.rps * s.seconds); seconds += s.seconds
   }
-  if (messages > LIMITS.messages || seconds > LIMITS.seconds) throw new Error('run exceeds bounded limits')
+  if (messages > (scale ? SCALE_LIMITS.messages : LIMITS.messages) || seconds > LIMITS.seconds) throw new Error('run exceeds bounded limits')
   return { ...input, stages }
 }
 
@@ -85,6 +89,18 @@ export function subsetConfig(config, userCount) {
   const covered = new Set(rooms.flatMap(room => room.participantIds))
   if (covered.size !== accounts.length) throw new Error('userCount must end on a room boundary')
   return { ...config, accounts, rooms }
+}
+
+/**
+ * Whether a stage met its offered load. The demo fixture is strict: every planned
+ * slot must be emitted. A scale run climbs a ladder of stages, and one skipped slot
+ * in thousands should not end the climb, so up to 1% may be skipped there. Failed
+ * messages and a stopped run always fail the stage.
+ */
+export function stagePassed({ stopped, planned, emitted, skipped, failed, scale = false }) {
+  if (stopped || failed !== 0) return false
+  const tolerance = scale ? Math.floor(planned * 0.01) : 0
+  return skipped <= tolerance && emitted >= planned - tolerance
 }
 
 export class AuthManager {
@@ -275,7 +291,7 @@ export async function run(input, options = {}) {
       const entries = [...ledger.records.values()].filter(e => e.stage === stageName)
       const summary = ledger.summary(entries)
       const elapsed = (performance.now() - start) / 1000
-      const passed = !report.stopReason && !signal.aborted && emitted === planned && skipped === 0 && summary.failedMessages === 0
+      const passed = stagePassed({ stopped: Boolean(report.stopReason) || signal.aborted, planned, emitted, skipped, failed: summary.failedMessages, scale: config.fixtureProfile === 'scale' })
       report.stages.push({ name: stage.name, users: stage.users, planned, offered: slot,
         skipped, notOffered: planned - slot, plannedRps: stage.rps,
         achievedRps: emitted / stage.seconds, elapsedSeconds: elapsed, passed, ...summary })
